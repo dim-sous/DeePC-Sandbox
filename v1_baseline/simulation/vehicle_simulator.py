@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from config import DeePCConfig
+from config.parameters import DeePCConfig
 
 
 class VehicleSimulator:

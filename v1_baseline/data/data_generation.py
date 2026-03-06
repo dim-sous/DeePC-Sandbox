@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from config import DeePCConfig
-from simulator.vehicle_simulator import VehicleSimulator
+from config.parameters import DeePCConfig
+from simulation.vehicle_simulator import VehicleSimulator
 
 
 def generate_prbs(

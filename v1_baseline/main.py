@@ -1,15 +1,36 @@
-"""Main entry point for the DeePC trajectory tracking experiment."""
+"""v1_baseline — DeePC trajectory tracking for autonomous vehicle.
+
+Baseline version with timing instrumentation and results saving.
+
+Usage (from repo root):
+    uv run python -m v1_baseline.main
+"""
 
 from __future__ import annotations
 
+import json
+import logging
+import pathlib
 import sys
+import time
+
 import numpy as np
 
-from config import DeePCConfig
+VERSION_TAG = "v1_baseline"
+
+# Ensure version folder root is importable (and ONLY this folder)
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+REPO_ROOT = PROJECT_ROOT.parent
+RESULTS_DIR = REPO_ROOT / "results"
+
+from config.parameters import DeePCConfig
 from data.data_generation import collect_data
 from deepc.deepc_controller import DeePCController
-from simulator.vehicle_simulator import VehicleSimulator
-from plotting import plot_all
+from simulation.vehicle_simulator import VehicleSimulator
+from visualization.plot_results import plot_all
 
 
 def generate_reference_trajectory(config: DeePCConfig) -> np.ndarray:
@@ -19,7 +40,7 @@ def generate_reference_trajectory(config: DeePCConfig) -> np.ndarray:
     sinusoidal lateral (y) path:
 
         x_ref(k) = v_ref * k * Ts
-        y_ref(k) = A * sin(2π f k Ts)
+        y_ref(k) = A * sin(2pi f k Ts)
         v_ref(k) = v_ref
 
     The array is padded by N extra steps so the controller always has a
@@ -60,7 +81,8 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
 
     Returns:
         Dictionary with keys ``times``, ``y_history``, ``u_history``,
-        ``y_ref_history``, ``costs``, ``sigma_norms``, ``statuses``.
+        ``y_ref_history``, ``costs``, ``sigma_norms``, ``statuses``,
+        ``solve_times``.
     """
     # --- Step 1: Collect offline data ---
     print("Collecting persistently exciting data...")
@@ -99,6 +121,7 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
     costs: list[float] = []
     sigma_norms: list[float] = []
     statuses: list[str] = []
+    solve_times: list[float] = []
 
     print(f"Running closed-loop simulation ({config.sim_steps} steps)...")
     for k in range(config.sim_steps):
@@ -112,7 +135,9 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
         y_ref_horizon = y_ref_full[step_idx : step_idx + config.N]
 
         # Solve DeePC
+        t_start = time.perf_counter()
         u_opt, info = controller.solve(u_ini, y_ini, y_ref_horizon)
+        t_solve = time.perf_counter() - t_start
 
         # Apply to plant
         y_new = sim.step(u_opt)
@@ -127,12 +152,14 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
         costs.append(info["cost"])
         sigma_norms.append(info["sigma_y_norm"])
         statuses.append(info["status"])
+        solve_times.append(t_solve)
 
         if (k + 1) % 50 == 0 or k == 0:
             print(
                 f"  Step {k + 1:>4d}/{config.sim_steps}  "
                 f"status={info['status']}  "
-                f"cost={info['cost']:.2f}"
+                f"cost={info['cost']:.2f}  "
+                f"solve={t_solve*1000:.1f}ms"
             )
 
     # --- Package results ---
@@ -145,6 +172,7 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
         "costs": costs,
         "sigma_norms": sigma_norms,
         "statuses": statuses,
+        "solve_times": solve_times,
     }
 
     # Summary
@@ -156,11 +184,51 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
     return results
 
 
+def save_results(results: dict, version_tag: str) -> None:
+    """Save simulation results to results/ directory."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Save numpy arrays
+    array_keys = ["times", "y_history", "u_history", "y_ref_history"]
+    np.savez(
+        RESULTS_DIR / f"{version_tag}_results.npz",
+        **{k: results[k] for k in array_keys},
+    )
+
+    # Save scalar/list data
+    scalars = {
+        "costs": results["costs"],
+        "sigma_norms": [
+            float(s) if s is not None else None
+            for s in results["sigma_norms"]
+        ],
+        "statuses": results["statuses"],
+        "solve_times": results["solve_times"],
+    }
+    with open(RESULTS_DIR / f"{version_tag}_scalars.json", "w") as f:
+        json.dump(scalars, f, indent=2)
+
+    print(f"Results saved to {RESULTS_DIR}/")
+
+
 def main() -> None:
     """Entry point."""
     config = DeePCConfig()
     results = run_deepc_simulation(config)
-    plot_all(results, config, save_dir=".")
+
+    # Save results and plots
+    save_results(results, VERSION_TAG)
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    plot_all(results, config, save_dir=str(RESULTS_DIR))
+
+    # Compute and save metrics
+    sys.path.insert(0, str(REPO_ROOT))
+    from comparison.metrics import compute_all_metrics, save_metrics
+
+    metrics = compute_all_metrics(results, VERSION_TAG)
+    save_metrics(metrics, RESULTS_DIR / f"{VERSION_TAG}_metrics.json")
+
     print("Experiment complete.")
 
 

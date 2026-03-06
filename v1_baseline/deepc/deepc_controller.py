@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import cvxpy as cp
 
-from config import DeePCConfig
+from config.parameters import DeePCConfig
 from deepc.hankel import build_data_matrices
 from deepc.regularization import check_persistent_excitation
 

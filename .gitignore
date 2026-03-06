@@ -6,8 +6,11 @@ dist/
 wheels/
 *.egg-info
 
-# Images
-*.png
+# Results (tracked via results/.gitkeep, contents ignored)
+results/*.png
+results/*.npz
+results/*.json
+results/*.csv
 
 # Virtual environments
 .venv
