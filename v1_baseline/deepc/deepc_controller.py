@@ -171,12 +171,21 @@ class DeePCController:
         self.y_ref_param.value = np.asarray(y_ref, dtype=float).ravel()
 
         # Solve (with fallback)
+        solver_kwargs: dict = {
+            "solver": cfg.solver,
+            "verbose": cfg.solver_verbose,
+            "warm_start": True,
+        }
+        if cfg.solver == "OSQP":
+            solver_kwargs.update({
+                "eps_abs": 1e-5,
+                "eps_rel": 1e-5,
+                "max_iter": 10000,
+                "polish": True,
+            })
+
         try:
-            self.problem.solve(
-                solver=cfg.solver,
-                verbose=cfg.solver_verbose,
-                warm_start=True,
-            )
+            self.problem.solve(**solver_kwargs)
         except (cp.SolverError, Exception):
             self.problem.solve(
                 solver="SCS",

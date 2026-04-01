@@ -48,7 +48,7 @@ class DeePCConfig:
     ref_frequency: float = 0.05  # sinusoidal frequency [Hz]
 
     # --- Solver ---
-    solver: str = "CLARABEL"
+    solver: str = "OSQP"
     solver_verbose: bool = False
 
     @property

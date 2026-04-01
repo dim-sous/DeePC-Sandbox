@@ -6,8 +6,39 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 from config.parameters import DeePCConfig
+
+# ── Publication-quality style ───────────────────────────────────────
+_STYLE = {
+    "font.family": "serif",
+    "font.size": 10,
+    "axes.titlesize": 11,
+    "axes.titleweight": "bold",
+    "axes.labelsize": 10,
+    "axes.linewidth": 0.8,
+    "axes.grid": True,
+    "grid.alpha": 0.25,
+    "grid.linewidth": 0.5,
+    "lines.linewidth": 1.3,
+    "legend.fontsize": 8,
+    "legend.framealpha": 0.85,
+    "legend.edgecolor": "0.7",
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "figure.dpi": 150,
+    "savefig.dpi": 200,
+    "savefig.bbox": "tight",
+    "savefig.pad_inches": 0.15,
+}
+
+_C_REF = "#d62728"  # red
+_C_ACT = "#1f77b4"  # blue
+_C_ERR = "#2ca02c"  # green
+_C_STEER = "#1f77b4"
+_C_ACCEL = "#ff7f0e"
+_C_SOLVE = "#9467bd"  # purple
 
 
 def plot_all(
@@ -15,107 +46,126 @@ def plot_all(
     config: DeePCConfig,
     save_dir: str = ".",
 ) -> None:
-    """Generate a single combined figure with all result plots.
+    """Generate a publication-quality combined figure.
 
-    Layout (3 rows x 2 cols):
-        [0,0] 2-D trajectory (x-y plane)
-        [0,1] Velocity tracking
-        [1,0] x tracking error
-        [1,1] y tracking error
-        [2,0–1] Control inputs (steering + acceleration on one axis)
+    Layout (2 rows x 2 cols):
+        [0,0] 2-D trajectory (x-y plane) with start/end markers
+        [0,1] Velocity tracking + error band
+        [1,0] Position tracking error over time
+        [1,1] Control inputs (steering + acceleration, dual axis)
+
+    Removes the redundant x(t) and y(t) panels — the x-y trajectory
+    already conveys that information spatially.
     """
-    y_hist = results["y_history"]
-    y_ref = results["y_ref_history"]
-    u_hist = results["u_history"]
-    times = results["times"]
+    with plt.rc_context(_STYLE):
+        _plot_impl(results, config, save_dir)
 
-    # Align lengths
+
+def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
+    y_hist = np.asarray(results["y_history"])
+    y_ref = np.asarray(results["y_ref_history"])
+    u_hist = np.asarray(results["u_history"])
+    times = np.asarray(results["times"])
+
     n = min(len(times), len(y_hist), len(y_ref), len(u_hist))
     times = times[:n]
     y_hist = y_hist[:n]
     y_ref = y_ref[:n]
     u_hist = u_hist[:n]
 
-    fig = plt.figure(figsize=(14, 12))
-    gs = fig.add_gridspec(3, 2, hspace=0.35, wspace=0.3)
+    # Derived quantities
+    pos_err = np.sqrt((y_hist[:, 0] - y_ref[:, 0]) ** 2 + (y_hist[:, 1] - y_ref[:, 1]) ** 2)
+    vel_err = y_hist[:, 2] - y_ref[:, 2]
 
-    # --- [0,0] 2-D trajectory ---
-    ax_traj = fig.add_subplot(gs[0, 0])
-    ax_traj.plot(y_ref[:, 0], y_ref[:, 1], "r--", linewidth=1.5, label="Reference")
-    ax_traj.plot(y_hist[:, 0], y_hist[:, 1], "b-", linewidth=1.2, label="Actual")
-    ax_traj.set_xlabel("x [m]")
-    ax_traj.set_ylabel("y [m]")
-    ax_traj.set_title("Trajectory (x-y plane)")
-    ax_traj.legend(fontsize=8)
-    ax_traj.set_aspect("equal", adjustable="datalim")
-    ax_traj.grid(True, alpha=0.3)
+    # Metrics for annotation
+    rmse_pos = float(np.sqrt(np.mean(pos_err**2)))
+    rmse_vel = float(np.sqrt(np.mean(vel_err**2)))
+    max_pos_err = float(np.max(pos_err))
 
-    # --- [0,1] Velocity tracking ---
-    ax_vel = fig.add_subplot(gs[0, 1])
-    ax_vel.plot(times, y_ref[:, 2], "r--", linewidth=1.2, label="Reference")
-    ax_vel.plot(times, y_hist[:, 2], "b-", linewidth=1.0, label="Actual")
-    ax_vel.set_xlabel("Time [s]")
-    ax_vel.set_ylabel("v [m/s]")
-    ax_vel.set_title("Velocity Tracking")
-    ax_vel.legend(fontsize=8)
-    ax_vel.grid(True, alpha=0.3)
+    fig, axes = plt.subplots(2, 2, figsize=(13, 9))
+    fig.suptitle("v1\_baseline — DeePC Trajectory Tracking", fontsize=13, fontweight="bold", y=0.97)
 
-    # --- [1,0] x tracking ---
-    ax_x = fig.add_subplot(gs[1, 0])
-    ax_x.plot(times, y_ref[:, 0], "r--", linewidth=1.2, label="Reference")
-    ax_x.plot(times, y_hist[:, 0], "b-", linewidth=1.0, label="Actual")
-    ax_x.set_xlabel("Time [s]")
-    ax_x.set_ylabel("x [m]")
-    ax_x.set_title("Longitudinal Tracking")
-    ax_x.legend(fontsize=8)
-    ax_x.grid(True, alpha=0.3)
+    # ── [0,0] 2-D Trajectory ───────────────────────────────────────
+    ax = axes[0, 0]
+    ax.plot(y_ref[:, 0], y_ref[:, 1], color=_C_REF, linestyle="--", linewidth=1.0, label="Reference", zorder=2)
+    ax.plot(y_hist[:, 0], y_hist[:, 1], color=_C_ACT, linewidth=1.2, label="Actual", zorder=3)
+    ax.plot(y_hist[0, 0], y_hist[0, 1], "o", color=_C_ACT, markersize=6, zorder=4, label="Start")
+    ax.plot(y_hist[-1, 0], y_hist[-1, 1], "s", color=_C_ACT, markersize=6, zorder=4, label="End")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_title("Trajectory (x–y)")
+    ax.legend(loc="upper left")
+    ax.set_aspect("equal", adjustable="datalim")
 
-    # --- [1,1] y tracking ---
-    ax_y = fig.add_subplot(gs[1, 1])
-    ax_y.plot(times, y_ref[:, 1], "r--", linewidth=1.2, label="Reference")
-    ax_y.plot(times, y_hist[:, 1], "b-", linewidth=1.0, label="Actual")
-    ax_y.set_xlabel("Time [s]")
-    ax_y.set_ylabel("y [m]")
-    ax_y.set_title("Lateral Tracking")
-    ax_y.legend(fontsize=8)
-    ax_y.grid(True, alpha=0.3)
-
-    # --- [2,0:1] Control inputs (combined) ---
-    ax_u = fig.add_subplot(gs[2, :])
-    color_steer = "tab:blue"
-    color_accel = "tab:orange"
-
-    ax_u.plot(
-        times, u_hist[:, 0], color=color_steer, linewidth=0.9, label="Steering [rad]"
+    # Annotate RMSE
+    ax.text(
+        0.98, 0.02,
+        f"RMSE$_{{pos}}$ = {rmse_pos:.3f} m\nmax err = {max_pos_err:.3f} m",
+        transform=ax.transAxes, ha="right", va="bottom",
+        fontsize=8, fontfamily="monospace",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="0.7", alpha=0.9),
     )
-    ax_u.axhline(-config.delta_max, color=color_steer, linestyle=":", alpha=0.4)
-    ax_u.axhline(config.delta_max, color=color_steer, linestyle=":", alpha=0.4)
-    ax_u.set_ylabel("Steering [rad]", color=color_steer)
-    ax_u.tick_params(axis="y", labelcolor=color_steer)
 
-    ax_u2 = ax_u.twinx()
-    ax_u2.plot(
+    # ── [0,1] Velocity Tracking ────────────────────────────────────
+    ax = axes[0, 1]
+    ax.plot(times, y_ref[:, 2], color=_C_REF, linestyle="--", linewidth=1.0, label="Reference")
+    ax.plot(times, y_hist[:, 2], color=_C_ACT, linewidth=1.2, label="Actual")
+    ax.fill_between(
         times,
-        u_hist[:, 1],
-        color=color_accel,
-        linewidth=0.9,
-        label="Acceleration [m/s^2]",
+        y_ref[:, 2] - np.abs(vel_err),
+        y_ref[:, 2] + np.abs(vel_err),
+        color=_C_ERR, alpha=0.15, label="Error band",
     )
-    ax_u2.axhline(config.a_min, color=color_accel, linestyle=":", alpha=0.4)
-    ax_u2.axhline(config.a_max, color=color_accel, linestyle=":", alpha=0.4)
-    ax_u2.set_ylabel("Acceleration [m/s^2]", color=color_accel)
-    ax_u2.tick_params(axis="y", labelcolor=color_accel)
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("v [m/s]")
+    ax.set_title("Velocity Tracking")
+    ax.legend(loc="lower right")
 
-    ax_u.set_xlabel("Time [s]")
-    ax_u.set_title("Control Inputs")
-    ax_u.grid(True, alpha=0.3)
+    ax.text(
+        0.98, 0.02,
+        f"RMSE$_v$ = {rmse_vel:.3f} m/s",
+        transform=ax.transAxes, ha="right", va="bottom",
+        fontsize=8, fontfamily="monospace",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="0.7", alpha=0.9),
+    )
+
+    # ── [1,0] Position Tracking Error ──────────────────────────────
+    ax = axes[1, 0]
+    ax.fill_between(times, 0, pos_err, color=_C_ERR, alpha=0.3)
+    ax.plot(times, pos_err, color=_C_ERR, linewidth=1.0)
+    ax.axhline(rmse_pos, color=_C_ERR, linestyle=":", linewidth=0.8, alpha=0.7, label=f"RMSE = {rmse_pos:.3f} m")
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Position error [m]")
+    ax.set_title("Tracking Error")
+    ax.legend(loc="upper right")
+    ax.set_ylim(bottom=0)
+
+    # ── [1,1] Control Inputs ───────────────────────────────────────
+    ax = axes[1, 1]
+
+    ax.plot(times, u_hist[:, 0], color=_C_STEER, linewidth=1.0, label="Steering $\\delta$ [rad]")
+    ax.axhline(-config.delta_max, color=_C_STEER, linestyle=":", linewidth=0.7, alpha=0.5)
+    ax.axhline(config.delta_max, color=_C_STEER, linestyle=":", linewidth=0.7, alpha=0.5)
+    ax.set_ylabel("Steering $\\delta$ [rad]", color=_C_STEER)
+    ax.tick_params(axis="y", labelcolor=_C_STEER)
+
+    ax2 = ax.twinx()
+    ax2.plot(times, u_hist[:, 1], color=_C_ACCEL, linewidth=1.0, label="Accel $a$ [m/s²]")
+    ax2.axhline(config.a_min, color=_C_ACCEL, linestyle=":", linewidth=0.7, alpha=0.5)
+    ax2.axhline(config.a_max, color=_C_ACCEL, linestyle=":", linewidth=0.7, alpha=0.5)
+    ax2.set_ylabel("Accel $a$ [m/s²]", color=_C_ACCEL)
+    ax2.tick_params(axis="y", labelcolor=_C_ACCEL)
+
+    ax.set_xlabel("Time [s]")
+    ax.set_title("Control Inputs")
 
     # Combined legend
-    lines1, labels1 = ax_u.get_legend_handles_labels()
-    lines2, labels2 = ax_u2.get_legend_handles_labels()
-    ax_u.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper right")
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper right")
 
-    fig.suptitle("v1_baseline — DeePC Results", fontsize=14, fontweight="bold")
-    fig.savefig(f"{save_dir}/v1_baseline_results.png", dpi=150, bbox_inches="tight")
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    path = f"{save_dir}/v1_baseline_results.png"
+    fig.savefig(path)
     plt.close(fig)
-    print(f"Plot saved to {save_dir}/v1_baseline_results.png")
+    print(f"Plot saved to {path}")
