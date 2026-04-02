@@ -13,6 +13,5 @@ dependencies = [
 
 [tool.ruff.lint.per-file-ignores]
 "v1_baseline/main.py" = ["E402"]
-"v1_baseline/stress_test.py" = ["E402"]
-"v1_baseline/gate_v1.py" = ["E402"]
+"v1_baseline/gate.py" = ["E402"]
 "comparison/process_results.py" = ["E402"]

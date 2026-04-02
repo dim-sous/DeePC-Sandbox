@@ -159,6 +159,8 @@ need different regularization strength.
 | K4 | T_data=200 is only ~1.9x the PE minimum; marginal for nonlinear regimes | Low | v1_baseline |
 | K5 | No rate constraints on inputs; actuator wear risk on hardware | Low | v1_baseline |
 | K7 | First few control steps show larger tracking error (warm-up transient from zero-input init) | Low | v1_baseline |
+| K8 | Unscaled outputs cause poor Hankel conditioning (Yf cond~31k, QP Hessian cond~823k); OSQP hits max_iter on many steps | High | v1_baseline |
+| K9 | High measurement noise (10x) degrades tracking beyond acceptable bounds; no robust DeePC formulation | Medium | v1_baseline |
 
 ---
 
@@ -174,6 +176,6 @@ need different regularization strength.
 | v1 | Hidden heading state (realistic output model) |
 | v1 | Kinematic bicycle plant model (decoupled in `plants/`) |
 | v1 | Centralized config (single dataclass) |
-| v1 | Sinusoidal reference tracking (100% optimal solves) |
-| v1 | Three-stage validation gate |
+| v1 | Sinusoidal reference tracking |
+| v1 | Three-stage validation gate (A: 10/10, B: 9/10, C: 7/8) |
 | v1 | Swapped CLARABEL -> OSQP for solver performance |
