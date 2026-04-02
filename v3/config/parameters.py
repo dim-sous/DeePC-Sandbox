@@ -16,7 +16,7 @@ class DeePCConfig:
     # --- Simulation ---
     Ts: float = 0.1  # sampling time [s]
     L_wheelbase: float = 2.5  # vehicle wheelbase [m]
-    sim_steps: int = 300  # closed-loop control steps
+    sim_steps: int = 150  # closed-loop control steps
     v_ref: float = 5.0  # reference forward velocity [m/s]
 
     # --- Data collection ---

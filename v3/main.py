@@ -36,88 +36,16 @@ from visualization.plot_results import plot_all
 
 
 def generate_reference_trajectory(config: DeePCConfig) -> np.ndarray:
-    """Generate a demanding multi-phase reference trajectory.
-
-    Segments (8 phases):
-      1. Sine weave at cruise speed (warm-up)
-      2. Hard lane change left + accelerate
-      3. Slalom at high speed (increasing frequency)
-      4. Emergency braking to low speed
-      5. Tight S-curve at low speed
-      6. Accelerate back + sweeping right turn
-      7. Double lane change (left then right)
-      8. Cruise with damped oscillation (settle)
-    """
+    """Generate a sinusoidal reference trajectory (same as v1/v2)."""
     total = config.Tini + config.sim_steps + config.N
     y_ref = np.zeros((total, config.p))
-
-    # Phase boundaries (fractions of total)
-    cuts = [0.0, 0.10, 0.20, 0.35, 0.42, 0.55, 0.65, 0.82, 1.0]
-    idx = [int(c * total) for c in cuts]
-
-    v_cruise = config.v_ref
-    v_high = config.v_ref * 1.4
-    v_low = config.v_ref * 0.6
-    A = config.ref_amplitude
-    f0 = config.ref_frequency
-
     for k in range(total):
         t = k * config.Ts
-
-        if k < idx[1]:
-            # Phase 1: sine weave at cruise
-            y_ref[k, 1] = A * 0.5 * np.sin(2 * np.pi * f0 * t)
-            y_ref[k, 2] = v_cruise
-
-        elif k < idx[2]:
-            # Phase 2: hard lane change left + accelerate
-            blend = (k - idx[1]) / (idx[2] - idx[1])
-            y_ref[k, 1] = A * 0.8 * (1 - np.cos(np.pi * blend)) / 2
-            y_ref[k, 2] = v_cruise + (v_high - v_cruise) * blend
-
-        elif k < idx[3]:
-            # Phase 3: slalom at high speed (increasing frequency)
-            blend = (k - idx[2]) / (idx[3] - idx[2])
-            freq = f0 * (1 + 2 * blend)  # frequency ramps up 1x to 3x
-            offset = A * 0.8
-            y_ref[k, 1] = offset + A * 0.6 * np.sin(2 * np.pi * freq * t)
-            y_ref[k, 2] = v_high
-
-        elif k < idx[4]:
-            # Phase 4: emergency braking
-            blend = (k - idx[3]) / (idx[4] - idx[3])
-            y_ref[k, 1] = A * 0.8  # hold lateral
-            y_ref[k, 2] = v_high + (v_low - v_high) * blend
-
-        elif k < idx[5]:
-            # Phase 5: tight S-curve at low speed
-            blend = (k - idx[4]) / (idx[5] - idx[4])
-            y_ref[k, 1] = A * 0.8 * np.cos(2 * np.pi * blend)
-            y_ref[k, 2] = v_low
-
-        elif k < idx[6]:
-            # Phase 6: accelerate + sweeping right turn
-            blend = (k - idx[5]) / (idx[6] - idx[5])
-            y_ref[k, 1] = -A * 0.8 + A * 0.4 * blend
-            y_ref[k, 2] = v_low + (v_cruise - v_low) * blend
-
-        elif k < idx[7]:
-            # Phase 7: double lane change (left-right-center)
-            blend = (k - idx[6]) / (idx[7] - idx[6])
-            y_ref[k, 1] = -A * 0.4 + A * np.sin(2 * np.pi * blend)
-            y_ref[k, 2] = v_cruise
-
-        else:
-            # Phase 8: settle with damped oscillation
-            blend = (k - idx[7]) / max(total - idx[7], 1)
-            decay = np.exp(-3 * blend)
-            y_ref[k, 1] = A * 0.3 * decay * np.sin(2 * np.pi * f0 * 3 * t)
-            y_ref[k, 2] = v_cruise
-
-        # x integrates velocity
-        if k > 0:
-            y_ref[k, 0] = y_ref[k - 1, 0] + y_ref[k, 2] * config.Ts
-
+        y_ref[k, 0] = config.v_ref * t
+        y_ref[k, 1] = config.ref_amplitude * np.sin(
+            2 * np.pi * config.ref_frequency * t
+        )
+        y_ref[k, 2] = config.v_ref
     return y_ref
 
 
