@@ -40,14 +40,25 @@ need different regularization strength.
 
 ---
 
-### 1.4 Output Scaling / QP Conditioning (v3 candidate)
-**Why:** Unscaled outputs (x grows to ~95m, y oscillates ±5m, v stays ~5) cause Yf cond~31k
-and QP Hessian cond~823k. This is the root cause of K8, K10, K11, K12.
+### 1.4 QP Conditioning — Sparse Form (v4 candidate)
+**Why:** The condensed QP form (g as sole decision variable) produces a Hessian
+`Yf'QYf + Uf'RUf + lambda_g I` that inherits Yf's poor conditioning (cond~823k).
+v3's std-scaling fixed solve time (24ms, 100% optimal) but degraded position tracking
+(RMSE 0.36 → 0.92) because scaling distorts the Q weighting — x_std=27 makes
+x-errors invisible to the optimizer. **Scaling solves the wrong problem.**
 
-- Normalize each output channel by its std before building Hankel matrices
-- Denormalize predicted outputs after solving
-- Alternative: sparse QP form (keep u, y as separate decision variables)
-- Expected: solve time drops to single-digit ms, optimal rate near 100%, L1 becomes viable
+The original DeePC paper (Coulson, Lygeros, Dörfler 2019) formulates the QP with
+u and y as explicit decision variables, not substituted out. This "sparse form" keeps
+the Hessian block-diagonal (Q, R, lambda_g I) — inherently well-conditioned regardless
+of output scale. It also enables L1 norms as the paper recommends (L1 on g and sigma_y).
+
+Proposed approach for v4:
+- Sparse QP: decision variables are (g, u, y, sigma_y, sigma_out) with equality
+  constraints u = Uf g, y = Yf g linking them
+- L1 norms on g and sigma_y (per original paper, eq. 8)
+- Low-rank SVD approximation of Hankel matrix (paper's third regularization)
+- Remove output scaling (no longer needed with sparse form)
+- Expected: good conditioning WITHOUT distorting tracking weights
 
 ---
 
@@ -170,14 +181,15 @@ and QP Hessian cond~823k. This is the root cause of K8, K10, K11, K12.
 | K4 | T_data=200 is only ~1.9x the PE minimum; marginal for nonlinear regimes | Low | v1_baseline |
 | K5 | ~~No rate constraints on inputs~~ — resolved in v2 | ~~Low~~ | ~~v1_baseline~~ |
 | K7 | First few control steps show larger tracking error (warm-up transient from zero-input init) | Low | v1, v2 |
-| K8 | ~~Unscaled outputs cause poor Hankel conditioning~~ — resolved in v3 (Hessian cond 823k → 16k, 100% optimal, 24ms avg) | ~~High~~ | ~~v1, v2~~ |
+| K8 | Poor QP conditioning from condensed form (Hessian cond~823k). v3 std-scaling fixes solve time but degrades tracking — wrong tradeoff. Root fix: sparse QP form (1.4) | High | v1, v2, v3 |
 | K9 | High measurement noise (10x) degrades tracking; no robust DeePC formulation | Medium | v1, v2, v3 |
-| K10 | ~~v2 solve time regression~~ — resolved in v3 (24ms avg vs v2's 760ms) | ~~High~~ | ~~v2~~ |
-| K11 | L1/L1 regularization unreliable with OSQP (L1/L2 works, full L1/L1 hits max_iter) | Low | v2, v3 |
-| K12 | ~~Low optimal solve rate~~ — resolved in v3 (100% optimal) | ~~High~~ | ~~v2~~ |
-| K13 | Tracking degrades when simulation visits speed regimes outside training data (v=3 or v=7 vs training v=[4.6,6.0]). Error accumulates and persists even after returning to known regime | High | v3 |
+| K10 | v2 solve time ~2x v1 due to condensed form + more constraints. v3 scaling fixes speed but at cost of tracking | High | v2, v3 |
+| K11 | L1/L1 regularization unreliable with OSQP in condensed form. Sparse form should fix this | Medium | v2, v3 |
+| K12 | Optimal solve rate: v1=91%, v2=70%, v3=100% (but v3 tracking regressed) | High | v1, v2 |
+| K13 | Tracking degrades when simulation visits speed regimes outside training data. Error accumulates and persists even after returning to known regime | High | v3 |
 | K14 | Increasing T_data alone does not improve tracking; wider excitation amplitude is needed for data coverage | Medium | v3 |
 | K15 | Nonlinear regime (v=10) stress test fails — bicycle model dynamics at high speed are far from LTI assumption | Medium | v3 |
+| K16 | v3 output scaling distorts Q weighting — position RMSE regressed from 0.36 (v1) to 0.92 (v3) on identical scenario. Scaling x by std=27 makes x-errors invisible to optimizer | High | v3 |
 
 ---
 
