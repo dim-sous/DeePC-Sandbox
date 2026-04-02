@@ -7,10 +7,7 @@ wheels/
 *.egg-info
 
 # Results (tracked via results/.gitkeep, contents ignored)
-results/*.png
-results/*.npz
-results/*.json
-results/*.csv
+results/
 
 # Virtual environments
 .venv

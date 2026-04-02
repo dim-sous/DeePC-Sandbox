@@ -8,16 +8,17 @@ primary nonlinearity mitigation strategy -- the items below address the root cau
 
 ## Priority 1 -- Robustness to Nonlinearity and Disturbances
 
-### 1.1 Online Sliding Hankel Window
-**Why:** The offline Hankel matrix captures dynamics at one operating point. As conditions
-change, the Hankel matrix must track the current regime.
+### ~~1.1 Online Sliding Hankel Window~~ — implemented in v6
+v6 adds append-then-slide Hankel window with cp.Parameter matrices (no QP rebuild).
+Hankel blocks (Up, Yp, Uf, Yf) updated each step with closed-loop I/O data.
+Quality filter: only adds data when prediction residual < 1.0m.
 
-- Replace the fixed offline dataset with a rolling buffer of the most recent `T_data` samples
-- Re-build (or rank-1 update) the Hankel matrices after each control step
-- Add a persistent excitation monitor -- warn or pause updates if the incoming data is
-  insufficiently rich
-- Tune the window length as a trade-off: too short loses diversity, too long retains
-  stale dynamics
+**Key finding:** Online Hankel degrades nominal tracking (RMSE 0.66→1.04m at warmup=50)
+because closed-loop data contains tracking errors that bias the implicit model. With
+warmup=100 (default), nominal passes but stress tests are too short (150 steps) for
+online adaptation to help. The mechanism works structurally (A13/A14 validated) but
+needs longer episodes or better data quality filtering to outperform the offline baseline.
+Net result: same C-stage pass rate as v5 (4/9) with no regression.
 
 ### 1.2 Disturbance Feedforward Estimator
 **Why:** Persistent, correlated disturbances are not zero-mean noise.
@@ -195,6 +196,8 @@ Proposed approach for v4:
 | K21 | Wider excitation amplitude in data collection (δ=0.5 vs 0.3) does not improve tracking on hard scenarios — pushes plant into nonlinear regimes during training, degrading Hankel matrix quality for the linear assumption | Low | v4 |
 | K22 | v5 noise estimator conflates measurement noise with tracking error. Prediction residuals grow to 3.4m under high noise (vs 0.1m actual noise) because tracking error dominates. A separate noise/mismatch decomposition would improve the Wasserstein ball calibration | Medium | v5 |
 | K23 | v5 gate thresholds tightened to production-grade (RMSE<2m for most C-tests, opt>90%, solve<0.5s). All 5 C-stage failures trace to the same root cause: offline Hankel matrix does not represent the operating regime (noise, data scarcity, nonlinearity, constraint mismatch) | — | v5 |
+| K24 | Online Hankel (v6) degrades nominal tracking: closed-loop data contains tracking errors that bias the implicit model. RMSE 0.66→1.04m at warmup=50. Warmup=100 preserves nominal but limits online adaptation to last 50 steps of 150-step stress tests — insufficient for meaningful improvement | Medium | v6 |
+| K25 | 150-step stress tests are too short for online Hankel adaptation. The mechanism needs ~200+ steps of good-quality closed-loop data to meaningfully improve the implicit model. Stress test duration should scale with hankel_warmup_steps | Low | v6 |
 
 ---
 
@@ -239,3 +242,8 @@ Proposed approach for v4:
 | v5 | C2 RMSE improved 47% (23.2→12.2m) via adaptive regularization |
 | v5 | Production-grade gate thresholds: RMSE<2m, opt>90%, solve<0.5s |
 | v5 | Gate: A 15/15, B 15/15, C 4/9 — 5 failures all trace to LTI assumption (K9/K18/K19/K20) |
+| v6 | Online sliding Hankel window (append-then-slide) per arXiv:2407.16066 |
+| v6 | Hankel blocks as cp.Parameter matrices — no QP rebuild on update, warm-start preserved |
+| v6 | Quality filter: only adds closed-loop data when prediction residual < 1.0m |
+| v6 | Warmup period (default 100 steps) to prevent early tracking errors from corrupting Hankel |
+| v6 | Gate: A 17/17, B 15/15, C 4/9 — same C-stage as v5, no regression |
