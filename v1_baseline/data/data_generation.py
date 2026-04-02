@@ -3,7 +3,7 @@
 import numpy as np
 
 from config.parameters import DeePCConfig
-from simulation.vehicle_simulator import VehicleSimulator
+from plants.bicycle_model import BicycleModel
 
 
 def generate_prbs(
@@ -96,8 +96,12 @@ def collect_data(
         y_data: Output trajectory, shape (T_data, p).
     """
     rng = np.random.default_rng(seed)
-    sim = VehicleSimulator(
-        config,
+    sim = BicycleModel(
+        Ts=config.Ts,
+        L_wheelbase=config.L_wheelbase,
+        delta_max=config.delta_max,
+        a_max=config.a_max,
+        a_min=config.a_min,
         initial_state=np.array([0.0, 0.0, 0.0, config.v_ref]),
     )
 

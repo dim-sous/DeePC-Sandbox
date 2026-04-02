@@ -1,21 +1,24 @@
-"""Nonlinear kinematic bicycle model for autonomous vehicle simulation."""
+"""Nonlinear kinematic bicycle model.
+
+A simple 2-D vehicle plant useful as a first benchmark for DeePC
+controllers.  The model is intentionally decoupled from any specific
+DeePC configuration so it can be reused across versions.
+"""
 
 import numpy as np
 
-from config.parameters import DeePCConfig
 
-
-class VehicleSimulator:
+class BicycleModel:
     """Kinematic bicycle model (nonlinear, discrete-time).
 
     State vector:  [x, y, theta, v]
-        x, y   — position in the global frame [m]
-        theta  — heading angle [rad]
-        v      — longitudinal velocity [m/s]
+        x, y   -- position in the global frame [m]
+        theta  -- heading angle [rad]
+        v      -- longitudinal velocity [m/s]
 
     Input vector:  [delta, a]
-        delta  — front steering angle [rad]
-        a      — longitudinal acceleration [m/s^2]
+        delta  -- front steering angle [rad]
+        a      -- longitudinal acceleration [m/s^2]
 
     Output vector: [x, y, v]
         The heading is *not* exposed as an output; the controller
@@ -30,16 +33,25 @@ class VehicleSimulator:
 
     def __init__(
         self,
-        config: DeePCConfig,
+        Ts: float,
+        L_wheelbase: float,
+        delta_max: float,
+        a_max: float,
+        a_min: float,
         initial_state: np.ndarray | None = None,
+        v_default: float = 5.0,
     ) -> None:
-        self.config = config
+        self.Ts = Ts
+        self.L_wheelbase = L_wheelbase
+        self.delta_max = delta_max
+        self.a_max = a_max
+        self.a_min = a_min
         self._nx = 4  # internal state dimension
 
         if initial_state is not None:
             self.state = np.array(initial_state, dtype=float)
         else:
-            self.state = np.array([0.0, 0.0, 0.0, config.v_ref])
+            self.state = np.array([0.0, 0.0, 0.0, v_default])
 
         self._initial_state = self.state.copy()
 
@@ -57,13 +69,12 @@ class VehicleSimulator:
         Returns:
             Measurement [x, y, v], shape (p,).
         """
-        cfg = self.config
-        delta = np.clip(u[0], -cfg.delta_max, cfg.delta_max)
-        a = np.clip(u[1], cfg.a_min, cfg.a_max)
+        delta = np.clip(u[0], -self.delta_max, self.delta_max)
+        a = np.clip(u[1], self.a_min, self.a_max)
 
         x, y, theta, v = self.state
-        Ts = cfg.Ts
-        Lw = cfg.L_wheelbase
+        Ts = self.Ts
+        Lw = self.L_wheelbase
 
         x_new = x + v * np.cos(theta) * Ts
         y_new = y + v * np.sin(theta) * Ts

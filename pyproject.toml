@@ -1,7 +1,7 @@
 [project]
-name = "deepc-project"
+name = "deepc-sandbox"
 version = "0.1.0"
-description = "Add your description here"
+description = "DeePC sandbox — developing, testing, and benchmarking Data-Enabled Predictive Control algorithms"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

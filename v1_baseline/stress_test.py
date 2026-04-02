@@ -1,4 +1,4 @@
-"""Stress tests for v1_baseline DeePC controller.
+"""Stress tests for v1_baseline DeePC controller (bicycle model plant).
 
 Tests the controller under challenging conditions:
   1. High measurement noise
@@ -29,10 +29,14 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+REPO_ROOT = PROJECT_ROOT.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from config.parameters import DeePCConfig
 from data.data_generation import collect_data
 from deepc.deepc_controller import DeePCController
-from simulation.vehicle_simulator import VehicleSimulator
+from plants.bicycle_model import BicycleModel
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -61,8 +65,12 @@ def _run_closed_loop(
 
     x0 = y_ref_full[0, 0]
     y0 = y_ref_full[0, 1]
-    sim = VehicleSimulator(
-        config,
+    sim = BicycleModel(
+        Ts=config.Ts,
+        L_wheelbase=config.L_wheelbase,
+        delta_max=config.delta_max,
+        a_max=config.a_max,
+        a_min=config.a_min,
         initial_state=np.array([x0, y0, 0.0, config.v_ref]),
     )
 

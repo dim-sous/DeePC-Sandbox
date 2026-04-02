@@ -1,4 +1,4 @@
-"""v1_baseline — DeePC trajectory tracking for autonomous vehicle.
+"""v1_baseline — DeePC trajectory tracking (bicycle model plant).
 
 Baseline version with timing instrumentation and results saving.
 
@@ -17,18 +17,21 @@ import numpy as np
 
 VERSION_TAG = "v1_baseline"
 
-# Ensure version folder root is importable (and ONLY this folder)
+# Ensure version folder and repo root are importable
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 REPO_ROOT = PROJECT_ROOT.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 RESULTS_DIR = REPO_ROOT / "results"
 
 from config.parameters import DeePCConfig
 from data.data_generation import collect_data
 from deepc.deepc_controller import DeePCController
-from simulation.vehicle_simulator import VehicleSimulator
+from plants.bicycle_model import BicycleModel
 from visualization.plot_results import plot_all
 
 
@@ -99,8 +102,12 @@ def run_deepc_simulation(config: DeePCConfig) -> dict:
     # --- Step 4: Initialise simulator ---
     x0 = y_ref_full[0, 0]
     y0 = y_ref_full[0, 1]
-    sim = VehicleSimulator(
-        config,
+    sim = BicycleModel(
+        Ts=config.Ts,
+        L_wheelbase=config.L_wheelbase,
+        delta_max=config.delta_max,
+        a_max=config.a_max,
+        a_min=config.a_min,
         initial_state=np.array([x0, y0, 0.0, config.v_ref]),
     )
 

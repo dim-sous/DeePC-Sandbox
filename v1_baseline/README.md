@@ -1,23 +1,23 @@
-# v1_baseline — Core DeePC Trajectory Tracking
+# v1_baseline -- DeePC Baseline (Bicycle Model Plant)
 
-Baseline DeePC controller for autonomous vehicle trajectory tracking. Implements the standard regularized DeePC formulation with L2 penalties on Hankel weights (g) and output slack (sigma_y), solving a parametric QP at each control step via CVXPY + CLARABEL.
+Baseline DeePC controller using a kinematic bicycle model as the example plant. Implements the standard regularized DeePC formulation with L2 penalties on Hankel weights (g) and output slack (sigma_y), solving a parametric QP at each control step via CVXPY + OSQP.
 
 ## DeePC Formulation
 
 At each time step k, the controller solves:
 
 ```
-minimize    ||Y_f g - y_ref||²_Q  +  ||U_f g||²_R  +  λ_g ||g||²  +  λ_y ||σ_y||²
+minimize    ||Y_f g - y_ref||^2_Q  +  ||U_f g||^2_R  +  lambda_g ||g||^2  +  lambda_y ||sigma_y||^2
 
-subject to  U_p g  = u_ini                  (past input consistency — hard)
-            Y_p g  - y_ini = σ_y            (past output consistency — softened)
-            u_lb  ≤  U_f g  ≤  u_ub         (input box constraints)
+subject to  U_p g  = u_ini                  (past input consistency -- hard)
+            Y_p g  - y_ini = sigma_y        (past output consistency -- softened)
+            u_lb  <=  U_f g  <=  u_ub       (input box constraints)
 ```
 
 Where:
 - `U_p, Y_p, U_f, Y_f` are partitioned Hankel matrices from offline data
 - `g` is the Hankel combination weight vector
-- `σ_y` is a slack variable for output consistency (robustness to noise/nonlinearity)
+- `sigma_y` is a slack variable for output consistency (robustness to noise/nonlinearity)
 - `u_ini, y_ini` are the most recent Tini input-output measurements
 - `y_ref` is the reference trajectory over the N-step prediction horizon
 
@@ -25,59 +25,49 @@ Where:
 
 | Parameter | Value | Role |
 |-----------|-------|------|
-| `Tini` | 3 | Past window — balances initialization accuracy vs data requirements |
-| `N` | 15 | Prediction horizon — long enough for smooth tracking |
-| `λ_g` | 100.0 | Regularizes g toward zero, improving robustness to noisy Hankel data |
-| `λ_y` | 10000.0 | Heavily penalizes output slack, keeping past-data consistency tight |
+| `Tini` | 3 | Past window -- balances initialization accuracy vs data requirements |
+| `N` | 15 | Prediction horizon -- long enough for smooth tracking |
+| `lambda_g` | 100.0 | Regularizes g toward zero, improving robustness to noisy Hankel data |
+| `lambda_y` | 10000.0 | Heavily penalizes output slack, keeping past-data consistency tight |
 | `Q_diag` | [10, 10, 1] | Prioritizes position tracking over velocity |
-| `R_diag` | [0.1, 0.1] | Light input penalty — allows aggressive control when needed |
+| `R_diag` | [0.1, 0.1] | Light input penalty -- allows aggressive control when needed |
 
-## Data Collection
+## Plant Model
 
-The offline dataset is collected by driving the vehicle with persistently exciting inputs:
-
-| Signal | Type | Purpose |
-|--------|------|---------|
-| Steering | 50% PRBS + 50% uniform random | Rich spectral content at low frequencies |
-| Acceleration | 50% multisine (10 freqs) + 50% uniform random | Broadband excitation covering vehicle dynamics |
-
-Persistent excitation is verified by checking that `rank(H_L(u)) ≥ L × m` where `L = Tini + N`.
-
-## Vehicle Model (Plant Only)
-
-The controller never sees this model — it operates purely from data.
+The plant is a **kinematic bicycle model** defined in `plants/bicycle_model.py`. The controller never sees this model -- it operates purely from data.
 
 ```
-x(k+1)     = x(k)     + v(k) cos(θ(k)) Ts
-y(k+1)     = y(k)     + v(k) sin(θ(k)) Ts
-θ(k+1)     = θ(k)     + (v(k)/L_wb) tan(δ(k)) Ts
+x(k+1)     = x(k)     + v(k) cos(theta(k)) Ts
+y(k+1)     = y(k)     + v(k) sin(theta(k)) Ts
+theta(k+1) = theta(k) + (v(k)/L_wb) tan(delta(k)) Ts
 v(k+1)     = v(k)     + a(k) Ts
 
-Output:  y = [x, y, v]    (heading θ is hidden)
-Input:   u = [δ, a]       (steering, acceleration)
+Output:  y = [x, y, v]    (heading theta is hidden)
+Input:   u = [delta, a]   (steering, acceleration)
 ```
 
-This is a nonlinear kinematic bicycle model with forward Euler integration. The nonlinearity creates inherent model mismatch that the DeePC regularization must handle.
+This is a nonlinear model with forward Euler integration. The nonlinearity creates inherent model mismatch that the DeePC regularization must handle.
 
 ## Module Structure
 
 ```
 v1_baseline/
-├── main.py                   # Entry point: VERSION_TAG="v1_baseline"
-├── stress_test.py            # 8-test stress suite with plots
-├── config/
-│   └── parameters.py         # DeePCConfig dataclass with all tunable parameters
-├── data/
-│   └── data_generation.py    # PRBS, multisine generation + data collection loop
-├── deepc/
-│   ├── deepc_controller.py   # Parametric CVXPY QP with warm-starting
-│   ├── hankel.py             # Block-Hankel matrix construction + data partitioning
-│   └── regularization.py     # Persistent excitation rank check
-├── simulation/
-│   └── vehicle_simulator.py  # Nonlinear kinematic bicycle model
-└── visualization/
-    └── plot_results.py       # 6-panel combined figure
+|-- main.py                   # Entry point: VERSION_TAG="v1_baseline"
+|-- stress_test.py            # 8-test stress suite with plots
+|-- gate_v1.py                # Three-stage validation gate
+|-- config/
+|   +-- parameters.py         # DeePCConfig dataclass with all tunable parameters
+|-- data/
+|   +-- data_generation.py    # PRBS, multisine generation + data collection loop
+|-- deepc/
+|   |-- deepc_controller.py   # Parametric CVXPY QP with warm-starting
+|   |-- hankel.py             # Block-Hankel matrix construction + data partitioning
+|   +-- regularization.py     # Persistent excitation rank check
++-- visualization/
+    +-- plot_results.py       # 6-panel combined figure
 ```
+
+Plant model imported from `plants/bicycle_model.py` (shared across versions).
 
 ## Running
 
@@ -87,6 +77,9 @@ uv run python -m v1_baseline.main
 
 # Run stress tests
 uv run python -m v1_baseline.stress_test
+
+# Run three-stage gate
+uv run python -m v1_baseline.gate_v1
 
 # Compare with other versions
 uv run python -m comparison.process_results
@@ -108,8 +101,6 @@ uv run python -m comparison.compare_versions
 | 7 | Disturbance rejection | Recovery from external velocity perturbation | RMSE < 5 m |
 | 8 | Long horizon (500 steps) | Sustained performance and solver reliability | RMSE < 3 m, max solve < 2 s |
 
-Results plotted to `results/v1_baseline_stress_tests.png`.
-
 ## Results
 
 | Metric | Value |
@@ -119,6 +110,5 @@ Results plotted to `results/v1_baseline_stress_tests.png`.
 | Velocity RMSE | 0.23 m/s |
 | Max position error | 0.92 m |
 | Total control effort | 11.7 |
-| Avg solve time | 387 ms |
 | Optimal solves | 100% |
 | Mean slack norm | 0.007 |

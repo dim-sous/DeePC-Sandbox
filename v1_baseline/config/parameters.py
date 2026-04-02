@@ -1,4 +1,4 @@
-"""Centralized configuration for the DeePC trajectory tracking experiment."""
+"""Centralized configuration for the v1_baseline DeePC experiment."""
 
 from dataclasses import dataclass, field
 
@@ -7,7 +7,7 @@ import numpy as np
 
 @dataclass
 class DeePCConfig:
-    """All tunable parameters for the DeePC autonomous vehicle experiment."""
+    """All tunable parameters for the v1_baseline DeePC experiment."""
 
     # --- System dimensions ---
     m: int = 2  # number of inputs: [steering angle, acceleration]

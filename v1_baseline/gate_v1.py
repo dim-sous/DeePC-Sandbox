@@ -23,13 +23,16 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 REPO_ROOT = PROJECT_ROOT.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 RESULTS_DIR = REPO_ROOT / "results"
 
 from config.parameters import DeePCConfig
 from data.data_generation import collect_data
 from deepc.deepc_controller import DeePCController
 from deepc.hankel import build_hankel_matrix, build_data_matrices
-from simulation.vehicle_simulator import VehicleSimulator
+from plants.bicycle_model import BicycleModel
 
 # ── colour helpers ──────────────────────────────────────────────────
 PASS = "\033[92mPASS\033[0m"
@@ -114,7 +117,14 @@ def stage_a(config: DeePCConfig, u_data: np.ndarray, y_data: np.ndarray) -> list
     # ── A4: Simulator dynamics spot-check ───────────────────────────
     #  Run one step with known inputs and verify the kinematic bicycle
     #  equations are satisfied.
-    sim = VehicleSimulator(config, initial_state=np.array([0.0, 0.0, 0.0, 5.0]))
+    sim = BicycleModel(
+        Ts=config.Ts,
+        L_wheelbase=config.L_wheelbase,
+        delta_max=config.delta_max,
+        a_max=config.a_max,
+        a_min=config.a_min,
+        initial_state=np.array([0.0, 0.0, 0.0, 5.0]),
+    )
     x0, y0, th0, v0 = sim.state.copy()
     delta_test, a_test = 0.1, 0.5
     sim.step(np.array([delta_test, a_test]))
@@ -143,7 +153,14 @@ def stage_a(config: DeePCConfig, u_data: np.ndarray, y_data: np.ndarray) -> list
     })
 
     # ── A5: Hidden heading — output vector is [x, y, v] not [x, y, θ, v] ─
-    sim2 = VehicleSimulator(config, initial_state=np.array([1.0, 2.0, 0.5, 3.0]))
+    sim2 = BicycleModel(
+        Ts=config.Ts,
+        L_wheelbase=config.L_wheelbase,
+        delta_max=config.delta_max,
+        a_max=config.a_max,
+        a_min=config.a_min,
+        initial_state=np.array([1.0, 2.0, 0.5, 3.0]),
+    )
     out = sim2.output
     heading_hidden = len(out) == 3 and np.isclose(out[2], 3.0)  # v, not θ
     checks.append({

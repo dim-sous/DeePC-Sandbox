@@ -6,8 +6,9 @@
 
 ## If context is unclear Re-read this file top to bottom. Ask me to confirm the current version.
 
-You are assisting in the development of a DeePC-based control system for an autonomous vehicle.
-Version 1 (proof-of-concept) is already implemented and working in closed-loop simulation. All further development should follow an incremental engineering process toward a robust, production-grade controller — not a research prototype.
+You are assisting in the development of a DeePC sandbox — a general-purpose platform for developing, testing, and benchmarking Data-Enabled Predictive Control algorithms.
+Version 1 (proof-of-concept) is implemented and working in closed-loop simulation using a kinematic bicycle model as the first example plant. All further development should follow an incremental engineering process toward a robust, reusable DeePC library — not a research prototype.
+Plant models live in the top-level `plants/` directory and are shared across versions. Version folders contain only DeePC logic and import plants from `plants/`.
 ────────────────────────────────────────
 CORE PRINCIPLES
 ────────────────────────────────────────
@@ -29,7 +30,7 @@ The controller should remain transparent. Prefer formulations where system behav
 COMPUTATIONAL FEASIBILITY
 For every new feature, estimate the effect on solver time and scaling behavior. Ensure the controller remains feasible for real-time operation.
 MODULAR STRUCTURE
-Keep these components cleanly separated: plant simulation · data generation · Hankel matrix construction · DeePC optimization · evaluation and benchmarking · stress testing scenarios.
+Keep these components cleanly separated: plant models (in `plants/`) · data generation · Hankel matrix construction · DeePC optimization · evaluation and benchmarking · stress testing scenarios. Version folders should only contain DeePC-specific code and import plant models from `plants/`.
 BENCHMARKING
 Every version must be compared against the v1 baseline and the immediately prior version across: tracking accuracy · control effort · solver time · robustness under stress scenarios. Evaluation scripts must be reproducible. Stress-test scenarios should be defined as reusable fixtures early in the project.
 ────────────────────────────────────────
@@ -43,6 +44,7 @@ Dataset management and online updating
 Computational improvements for real-time use
 Robustness to insufficient or poorly excited datasets
 Comparison against PID or MPC baselines
+Additional plant models (marine vessels, quadrotors, process control systems)
 ────────────────────────────────────────
-The goal is a well-tested, maintainable controller that improves incrementally — not one that is maximally sophisticated.
+The goal is a well-tested, maintainable DeePC platform that improves incrementally — not one that is maximally sophisticated.
 ────────────────────────────────────────
