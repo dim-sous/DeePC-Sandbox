@@ -96,7 +96,6 @@ def main() -> None:
     # ---- Bar chart comparison ----
     plot_keys = [
         ("rmse_position", "RMSE Position [m]"),
-        ("rmse_y", "RMSE Lateral [m]"),
         ("rmse_v", "RMSE Velocity [m/s]"),
         ("total_control_effort", "Total Control Effort"),
         ("avg_solve_time_s", "Avg Solve Time [s]"),

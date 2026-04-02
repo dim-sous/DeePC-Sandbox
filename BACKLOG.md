@@ -180,16 +180,17 @@ Proposed approach for v4:
 | K3 | No disturbance compensation; persistent disturbances cause tracking bias | Medium | v1_baseline |
 | K4 | T_data=200 is only ~1.9x the PE minimum; marginal for nonlinear regimes | Low | v1_baseline |
 | K5 | ~~No rate constraints on inputs~~ — resolved in v2 | ~~Low~~ | ~~v1_baseline~~ |
-| K7 | First few control steps show larger tracking error (warm-up transient from zero-input init) | Low | v1, v2 |
-| K8 | Poor QP conditioning from condensed form (Hessian cond~823k). v3 std-scaling fixes solve time but degrades tracking — wrong tradeoff. Root fix: sparse QP form (1.4) | High | v1, v2, v3 |
-| K9 | High measurement noise (10x) degrades tracking; no robust DeePC formulation | Medium | v1, v2, v3 |
-| K10 | v2 solve time ~2x v1 due to condensed form + more constraints. v3 scaling fixes speed but at cost of tracking | High | v2, v3 |
-| K11 | L1/L1 regularization unreliable with OSQP in condensed form. Sparse form should fix this | Medium | v2, v3 |
-| K12 | Optimal solve rate: v1=91%, v2=70%, v3=100% (but v3 tracking regressed) | High | v1, v2 |
+| K7 | Startup transient: first ~3s show 0.5-1.0m tracking error from zero-input buffer initialization. Reference blending (v4) reduces peak from 1.0 to 0.55m but does not eliminate it. P-controller warm-up and extended DeePC warm-up both made it worse. Root cause: zero-input buffers are inconsistent with Hankel data. Needs structural fix (e.g. replay training data segment through sim) | Medium | all |
+| K8 | ~~Poor QP conditioning from condensed form~~ — resolved in v4 (sparse QP form, block-diagonal Hessian) | ~~High~~ | ~~v1, v2, v3~~ |
+| K9 | High measurement noise (10x) degrades tracking; no robust DeePC formulation | Medium | all |
+| K10 | ~~v2 solve time regression~~ — resolved in v4 (7ms avg) | ~~High~~ | ~~v2, v3~~ |
+| K11 | ~~L1 unreliable in condensed form~~ — resolved in v4 (sparse form, L2/L1 default, 100% optimal) | ~~Medium~~ | ~~v2, v3~~ |
+| K12 | ~~Low optimal solve rate~~ — resolved in v4 (100% optimal) | ~~High~~ | ~~v1, v2~~ |
 | K13 | Tracking degrades when simulation visits speed regimes outside training data. Error accumulates and persists even after returning to known regime | High | v3 |
 | K14 | Increasing T_data alone does not improve tracking; wider excitation amplitude is needed for data coverage | Medium | v3 |
-| K15 | Nonlinear regime (v=10) stress test fails — bicycle model dynamics at high speed are far from LTI assumption | Medium | v3 |
-| K16 | v3 output scaling distorts Q weighting — position RMSE regressed from 0.36 (v1) to 0.92 (v3) on identical scenario. Scaling x by std=27 makes x-errors invisible to optimizer | High | v3 |
+| K15 | Nonlinear regime (v=10) stress test fails — bicycle model dynamics at high speed are far from LTI assumption | Medium | v3, v4 |
+| K16 | v3 output scaling distorts Q weighting — position RMSE regressed from 0.36 (v1) to 0.92 (v3). Fixed in v4 by using sparse form instead of scaling | ~~High~~ | ~~v3~~ |
+| K17 | L1 on g causes erratic control signals (bang-bang-like input switching). L2 on g with L1 on sigma_y (v4 default) gives smooth control | Low | v4 |
 
 ---
 
@@ -220,3 +221,10 @@ Proposed approach for v4:
 | v3 | 8-phase challenging reference (lane changes, speed sweeps, slalom, braking) |
 | v3 | Horizon/parameter sweep: Tini=3, N=15, lambda_g=10, a_amp=3.0 confirmed optimal |
 | v3 | Gate: A 13/13, B 12/12, C 7/9 in 71s (v2: 725s) |
+| v4 | Sparse QP form per original DeePC paper (u, y as explicit decision variables) |
+| v4 | L2 on g + L1 on sigma_y (paper-recommended, smooth control) |
+| v4 | Block-diagonal Hessian — conditioning independent of output scale |
+| v4 | Best tracking: pos RMSE 0.288 (v1: 0.358), 7ms solve, 100% optimal |
+| v4 | sigma_y near-zero (L1 exact penalty working as designed) |
+| v4 | Reference blending for smooth startup (partial fix for K7) |
+| v4 | Parameter sweep: lambda_g=5, L2/L1 norms, d_delta=0.1, da=0.5 confirmed |

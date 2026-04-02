@@ -1,8 +1,8 @@
 ## Current State
-- Completed: v1
-- Active: v1 (gated)
-- Next: v2
-- Frozen (do not modify): None
+- Completed: v1, v2, v3, v4
+- Active: v4 (gating pending)
+- Next: v5
+- Frozen (do not modify): v1_baseline, v2, v3
 
 ## If context is unclear Re-read this file top to bottom. Ask me to confirm the current version.
 
@@ -18,13 +18,13 @@ Plants live in `plants/`, shared across versions. Version folders contain only D
 - **Interpretability**: transparent optimization structure, diagnostics that explain behavior
 - **Modular**: plants · data generation · data matrices · optimization · evaluation · stress testing
 - **Benchmarking**: every version compared against v1 and prior version
+- **Do not git commit or push unless explicitly asked**
 
 ## Candidate Upgrades
-- Regularized / robust DeePC formulations
-- Output scaling and QP conditioning
-- Noise handling improvements
-- Constraint handling (output constraints, input rate constraints)
+- Startup initialization fix (K7 — buffer/sim consistency at arbitrary initial conditions)
+- Online sliding Hankel window for regime adaptation
+- Noise handling / robust DeePC formulations
+- Low-rank SVD approximation of Hankel matrix
 - Dataset management and online updating
-- Computational improvements for real-time use
 - PID / MPC baselines
 - Additional plant models
