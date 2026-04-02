@@ -40,6 +40,17 @@ need different regularization strength.
 
 ---
 
+### 1.4 Output Scaling / QP Conditioning (v3 candidate)
+**Why:** Unscaled outputs (x grows to ~95m, y oscillates ±5m, v stays ~5) cause Yf cond~31k
+and QP Hessian cond~823k. This is the root cause of K8, K10, K11, K12.
+
+- Normalize each output channel by its std before building Hankel matrices
+- Denormalize predicted outputs after solving
+- Alternative: sparse QP form (keep u, y as separate decision variables)
+- Expected: solve time drops to single-digit ms, optimal rate near 100%, L1 becomes viable
+
+---
+
 ## Priority 2 -- Computational Performance
 
 ### 2.1 Sparse Hankel Exploitation
@@ -157,10 +168,13 @@ need different regularization strength.
 | K2 | Willems' lemma assumes LTI; bicycle model is nonlinear | Medium | v1_baseline |
 | K3 | No disturbance compensation; persistent disturbances cause tracking bias | Medium | v1_baseline |
 | K4 | T_data=200 is only ~1.9x the PE minimum; marginal for nonlinear regimes | Low | v1_baseline |
-| K5 | No rate constraints on inputs; actuator wear risk on hardware | Low | v1_baseline |
-| K7 | First few control steps show larger tracking error (warm-up transient from zero-input init) | Low | v1_baseline |
-| K8 | Unscaled outputs cause poor Hankel conditioning (Yf cond~31k, QP Hessian cond~823k); OSQP hits max_iter on many steps | High | v1_baseline |
-| K9 | High measurement noise (10x) degrades tracking beyond acceptable bounds; no robust DeePC formulation | Medium | v1_baseline |
+| K5 | ~~No rate constraints on inputs~~ — resolved in v2 | ~~Low~~ | ~~v1_baseline~~ |
+| K7 | First few control steps show larger tracking error (warm-up transient from zero-input init) | Low | v1, v2 |
+| K8 | Unscaled outputs cause poor Hankel conditioning (Yf cond~31k, QP Hessian cond~823k); OSQP hits max_iter on many steps | High | v1, v2 |
+| K9 | High measurement noise (10x) degrades tracking beyond acceptable bounds; no robust DeePC formulation | Medium | v1, v2 |
+| K10 | v2 solve time ~2x v1 (~760ms vs 325ms avg) due to additional constraints compounding K8 conditioning issue | High | v2 |
+| K11 | L1 regularization unusable at current conditioning — 11% optimal solve rate, tracking degrades significantly. Needs output scaling first | Medium | v2 |
+| K12 | Optimal solve rate dropped from 91% (v1) to 70% (v2 L2) due to larger constrained QP hitting OSQP max_iter | High | v2 |
 
 ---
 
@@ -179,3 +193,8 @@ need different regularization strength.
 | v1 | Sinusoidal reference tracking |
 | v1 | Three-stage validation gate (A: 10/10, B: 9/10, C: 7/8) |
 | v1 | Swapped CLARABEL -> OSQP for solver performance |
+| v2 | Input rate constraints (hard) with cross-solve continuity |
+| v2 | Soft output constraints via slack (sigma_out) |
+| v2 | Configurable L1/L2 regularization on g and sigma_y |
+| v2 | Hard/soft constraint audit formalized |
+| v2 | L1 tested — unusable without conditioning fix (K11) |
