@@ -170,11 +170,14 @@ and QP Hessian cond~823k. This is the root cause of K8, K10, K11, K12.
 | K4 | T_data=200 is only ~1.9x the PE minimum; marginal for nonlinear regimes | Low | v1_baseline |
 | K5 | ~~No rate constraints on inputs~~ — resolved in v2 | ~~Low~~ | ~~v1_baseline~~ |
 | K7 | First few control steps show larger tracking error (warm-up transient from zero-input init) | Low | v1, v2 |
-| K8 | Unscaled outputs cause poor Hankel conditioning (Yf cond~31k, QP Hessian cond~823k); OSQP hits max_iter on many steps | High | v1, v2 |
-| K9 | High measurement noise (10x) degrades tracking beyond acceptable bounds; no robust DeePC formulation | Medium | v1, v2 |
-| K10 | v2 solve time ~2x v1 (~760ms vs 325ms avg) due to additional constraints compounding K8 conditioning issue | High | v2 |
-| K11 | L1 regularization unusable at current conditioning — 11% optimal solve rate, tracking degrades significantly. Needs output scaling first | Medium | v2 |
-| K12 | Optimal solve rate dropped from 91% (v1) to 70% (v2 L2) due to larger constrained QP hitting OSQP max_iter | High | v2 |
+| K8 | ~~Unscaled outputs cause poor Hankel conditioning~~ — resolved in v3 (Hessian cond 823k → 16k, 100% optimal, 24ms avg) | ~~High~~ | ~~v1, v2~~ |
+| K9 | High measurement noise (10x) degrades tracking; no robust DeePC formulation | Medium | v1, v2, v3 |
+| K10 | ~~v2 solve time regression~~ — resolved in v3 (24ms avg vs v2's 760ms) | ~~High~~ | ~~v2~~ |
+| K11 | L1/L1 regularization unreliable with OSQP (L1/L2 works, full L1/L1 hits max_iter) | Low | v2, v3 |
+| K12 | ~~Low optimal solve rate~~ — resolved in v3 (100% optimal) | ~~High~~ | ~~v2~~ |
+| K13 | Tracking degrades when simulation visits speed regimes outside training data (v=3 or v=7 vs training v=[4.6,6.0]). Error accumulates and persists even after returning to known regime | High | v3 |
+| K14 | Increasing T_data alone does not improve tracking; wider excitation amplitude is needed for data coverage | Medium | v3 |
+| K15 | Nonlinear regime (v=10) stress test fails — bicycle model dynamics at high speed are far from LTI assumption | Medium | v3 |
 
 ---
 
@@ -198,3 +201,10 @@ and QP Hessian cond~823k. This is the root cause of K8, K10, K11, K12.
 | v2 | Configurable L1/L2 regularization on g and sigma_y |
 | v2 | Hard/soft constraint audit formalized |
 | v2 | L1 tested — unusable without conditioning fix (K11) |
+| v3 | Output scaling (y_std normalization before Hankel construction) |
+| v3 | QP Hessian conditioning 823k → 16k, solve time 760ms → 24ms |
+| v3 | 100% optimal solve rate across all L2 configurations |
+| v3 | Phased data generation (PRBS + chirp + multisine) for wider regime coverage |
+| v3 | 8-phase challenging reference (lane changes, speed sweeps, slalom, braking) |
+| v3 | Horizon/parameter sweep: Tini=3, N=15, lambda_g=10, a_amp=3.0 confirmed optimal |
+| v3 | Gate: A 13/13, B 12/12, C 7/9 in 71s (v2: 725s) |

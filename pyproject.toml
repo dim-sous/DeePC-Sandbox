@@ -16,4 +16,6 @@ dependencies = [
 "v1_baseline/gate.py" = ["E402"]
 "v2/main.py" = ["E402"]
 "v2/gate.py" = ["E402"]
+"v3/main.py" = ["E402"]
+"v3/gate.py" = ["E402"]
 "comparison/process_results.py" = ["E402"]
