@@ -1,4 +1,8 @@
-"""Data generation using persistently exciting input signals."""
+"""Data generation using persistently exciting input signals.
+
+Same PRBS/multisine approach as v1-v3 but with wider excitation
+amplitudes and more data to cover a broader operating envelope.
+"""
 
 import numpy as np
 
@@ -16,15 +20,6 @@ def generate_prbs(
 
     Switches between +amplitude and -amplitude with random hold times
     drawn uniformly from [min_period, 2 * min_period].
-
-    Args:
-        length: Number of samples to generate.
-        amplitude: Signal amplitude (switches between +/- amplitude).
-        min_period: Minimum number of samples before switching.
-        rng: NumPy random generator instance.
-
-    Returns:
-        Signal array of shape (length,).
     """
     signal = np.empty(length)
     idx = 0
@@ -50,16 +45,6 @@ def generate_multisine(
 
     Sum of sinusoids at random frequencies with random phases,
     normalized to the requested peak amplitude.
-
-    Args:
-        length: Number of samples.
-        amplitude: Desired peak amplitude.
-        n_freqs: Number of frequency components.
-        Ts: Sampling period [s].
-        rng: NumPy random generator instance.
-
-    Returns:
-        Signal array of shape (length,).
     """
     t = np.arange(length) * Ts
     nyquist = 0.5 / Ts
@@ -70,7 +55,6 @@ def generate_multisine(
     for f, phi in zip(freqs, phases):
         signal += np.sin(2 * np.pi * f * t + phi)
 
-    # Normalize to desired peak amplitude
     peak = np.max(np.abs(signal))
     if peak > 0:
         signal *= amplitude / peak
@@ -86,14 +70,6 @@ def collect_data(
 
     The vehicle starts at a steady state (straight-line, constant velocity)
     and is driven with PRBS steering and multi-sine acceleration excitation.
-
-    Args:
-        config: Experiment configuration.
-        seed: Random seed for reproducibility.
-
-    Returns:
-        u_data: Input trajectory, shape (T_data, m).
-        y_data: Output trajectory, shape (T_data, p).
     """
     rng = np.random.default_rng(seed)
     sim = BicycleModel(

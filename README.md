@@ -80,33 +80,33 @@ deepc-sandbox/
 |   +-- bicycle_model.py           #   Nonlinear kinematic bicycle model
 |
 |-- v1_baseline/                   # Version 1: baseline DeePC controller
-|   |-- main.py                    #   Entry point with timing instrumentation
-|   |-- stress_test.py             #   8-test stress suite with plots
-|   |-- gate_v1.py                 #   Three-stage validation gate
+|-- v2/                            # Version 2: rate constraints, output slack, L1/L2
+|-- v3/                            # Version 3: output scaling, phased data generation
+|-- v4/                            # Version 4: sparse QP form, L1 regularization
+|   |-- main.py                    #   Entry point (--scenario default|hard|circle|square|zigzag)
+|   |-- gate.py                    #   Three-stage validation gate
 |   |-- config/parameters.py       #   All tunable parameters (DeePCConfig dataclass)
 |   |-- data/data_generation.py    #   PRBS + multisine excitation and data collection
 |   |-- deepc/                     #   Core DeePC implementation
-|   |   |-- deepc_controller.py    #     Parametric CVXPY QP with warm-starting
+|   |   |-- deepc_controller.py    #     Sparse QP with u, y as decision variables
 |   |   |-- hankel.py              #     Block-Hankel matrix construction
 |   |   +-- regularization.py      #     Persistent excitation verification
 |   +-- visualization/             #   Result plotting
-|       +-- plot_results.py        #     Combined 6-panel figure
+|       +-- plot_results.py        #     Combined 4-panel figure
 |
 |-- comparison/                    # Cross-version comparison infrastructure
 |   |-- metrics.py                 #   Metric computation from simulation results
+|   |-- stress_configs.py          #   Shared stress test configs (all versions)
 |   |-- process_results.py         #   Load .npz files and produce metrics JSON
 |   +-- compare_versions.py        #   Side-by-side table, CSV, and bar chart
 |
 |-- BACKLOG.md                     # Planned features and known issues
 |
 +-- results/                       # Simulation outputs (auto-generated)
-    |-- v*_results.npz             #   Raw time series per version
-    |-- v*_scalars.json            #   Scalar/list data per version
-    |-- v*_metrics.json            #   Computed metrics per version
-    |-- v*_results.png             #   6-panel result visualization
-    |-- v*_stress_tests.png        #   Stress test visualizations
-    |-- version_comparison.csv     #   All versions side-by-side
-    +-- version_comparison.png     #   Comparison bar charts
+    |-- v1_baseline/               #   v1 results
+    |-- v2/                        #   v2 results
+    |-- v3/                        #   v3 results
+    +-- v4/                        #   v4 results
 ```
 
 Plant models are shared across all versions. Each version folder contains only DeePC-specific logic and imports plants from `plants/`.
@@ -130,17 +130,21 @@ uv sync
 Each version is independently runnable from the repository root:
 
 ```bash
-# Run the baseline
+# Run any version
 uv run python -m v1_baseline.main
+uv run python -m v4.main
 
-# Run stress tests
-uv run python -m v1_baseline.stress_test
+# Run v4 with optional scenarios
+uv run python -m v4.main --scenario hard      # driving course
+uv run python -m v4.main --scenario circle     # circular trajectory
+uv run python -m v4.main --scenario square     # square with 90° turns
+uv run python -m v4.main --scenario zigzag     # alternating diagonals
 
 # Run the three-stage gate
-uv run python -m v1_baseline.gate_v1
+uv run python -m v4.gate
 ```
 
-Results (`.npz` time series, `.json` metrics, `.png` plots) are saved to `results/`.
+Results are saved to `results/<version>/`.
 
 ### Comparing Versions
 
@@ -178,20 +182,25 @@ Adding a new plant: create a class in `plants/` with `step(u) -> y`, `output`, a
 
 ## Version History
 
-| Version | Key Addition |
-|---------|-------------|
-| **v1** (`v1_baseline`) | Core DeePC with L2 regularization, sinusoidal tracking, 8-test stress suite, 3-stage gate |
-| v2 | _(planned)_ | See BACKLOG.md |
+| Version | Key Addition | Gate |
+|---------|-------------|------|
+| **v1** (`v1_baseline`) | Core DeePC with L2 regularization, sinusoidal tracking, 9-test stress suite, 3-stage gate | A 10/10, B 8/8, C pass |
+| **v2** | Input rate constraints, soft output constraints, configurable L1/L2 regularization | A 13/13, B 10/10, C pass |
+| **v3** | Output scaling for QP conditioning, phased data generation | A 13/13, B 10/10, C 7/9 |
+| **v4** (active) | Sparse QP form per original paper, L1 regularization, optional scenarios | A 13/13, B 15/15, C 5/9 |
+
+Frozen versions (v1, v2, v3) are not modified. Active development is on v4.
 
 ---
 
-## Typical Results (v1, bicycle model)
+## Typical Results (v4, bicycle model)
 
-- **Position RMSE**: ~0.36 m
-- **Lateral RMSE**: ~0.16 m
-- **Velocity RMSE**: ~0.23 m/s
-- **Solver success rate**: 100% optimal solves
-- **Constraint satisfaction**: All inputs within bounds
+- **Position RMSE**: 0.63 m
+- **Lateral RMSE**: 0.45 m
+- **Velocity RMSE**: 0.14 m/s
+- **Solver success rate**: 100% optimal solves (13ms avg)
+- **Constraint satisfaction**: All input box and rate constraints satisfied
+- **Known issues**: C1 (high noise), C2/C9 (aggressive reference), C4 (tight constraints) — see BACKLOG.md
 
 ---
 

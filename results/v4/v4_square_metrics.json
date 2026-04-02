@@ -1,0 +1,17 @@
+{
+  "version": "v4_square",
+  "rmse_x": 18.265201913924027,
+  "rmse_y": 15.030554075344192,
+  "rmse_v": 1.8438627651856723,
+  "rmse_position": 23.654495487502153,
+  "max_position_error": 43.28731626352492,
+  "mean_abs_steering": 0.3930312834660853,
+  "mean_abs_acceleration": 0.3625088534986706,
+  "total_control_effort": 141.17431374469572,
+  "avg_solve_time_s": 0.012407424231409355,
+  "max_solve_time_s": 0.11055876099999296,
+  "total_solve_time_s": 4.342598480993274,
+  "optimal_solve_pct": 100.0,
+  "mean_sigma_y_norm": 9.09305143086526e-06,
+  "max_sigma_y_norm": 0.00015583234758645396
+}

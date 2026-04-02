@@ -95,8 +95,6 @@ def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
     ax = axes[0, 1]
     ax.plot(times, y_ref[:, 2], color=_C_REF, linestyle="--", linewidth=1.0, label="Reference")
     ax.plot(times, y_hist[:, 2], color=_C_ACT, linewidth=1.2, label="Actual")
-    ax.fill_between(times, y_ref[:, 2] - np.abs(vel_err), y_ref[:, 2] + np.abs(vel_err),
-                     color=_C_ERR, alpha=0.15, label="Error band")
     # Output constraint bands for velocity (channel 2)
     if np.isfinite(config.y_lb[2]):
         ax.axhline(config.y_lb[2], color=_C_BAND, linestyle="-.", linewidth=0.8, label=f"v_lb={config.y_lb[2]}")
@@ -109,7 +107,6 @@ def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
 
     # ── [1,0] Position Tracking Error ─────────────────────────────
     ax = axes[1, 0]
-    ax.fill_between(times, 0, pos_err, color=_C_ERR, alpha=0.3)
     ax.plot(times, pos_err, color=_C_ERR, linewidth=1.0)
     ax.axhline(rmse_pos, color=_C_ERR, linestyle=":", linewidth=0.8, alpha=0.7, label=f"RMSE = {rmse_pos:.3f} m")
     ax.set_xlabel("Time [s]")

@@ -26,13 +26,16 @@ REPO_ROOT = PROJECT_ROOT.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-RESULTS_DIR = REPO_ROOT / "results"
+RESULTS_DIR = REPO_ROOT / "results" / "v1_baseline"
 
 from config.parameters import DeePCConfig
 from data.data_generation import collect_data
 from deepc.deepc_controller import DeePCController
 from deepc.hankel import build_hankel_matrix, build_data_matrices
 from plants.bicycle_model import BicycleModel
+
+sys.path.insert(0, str(REPO_ROOT))
+from comparison import stress_configs
 
 # ── colour helpers ──────────────────────────────────────────────────
 PASS = "\033[92mPASS\033[0m"
@@ -383,6 +386,26 @@ def stage_b(config: DeePCConfig) -> tuple[list[dict], dict]:
         "detail": f"1st_half={rmse_first:.4f}, 2nd_half={rmse_second:.4f}",
     })
 
+    # B6-B8: Hard scenario (run via main simulation loop)
+    hard_results = results
+    hard_metrics = metrics
+
+    checks.append({
+        "name": "B6  [hard] Lateral RMSE < 3.0 m",
+        "passed": hard_metrics["rmse_y"] < 3.0,
+        "detail": f"rmse_y={hard_metrics['rmse_y']:.4f} m",
+    })
+    checks.append({
+        "name": "B7  [hard] Optimal solve rate >= 80%",
+        "passed": hard_metrics["optimal_solve_pct"] >= 80.0,
+        "detail": f"optimal_pct={hard_metrics['optimal_solve_pct']:.1f}%",
+    })
+    checks.append({
+        "name": "B8  [hard] Avg solve time < 2.0 s",
+        "passed": hard_metrics["avg_solve_time_s"] < 2.0,
+        "detail": f"avg_solve={hard_metrics['avg_solve_time_s']:.4f} s",
+    })
+
     return checks, metrics
 
 
@@ -394,7 +417,7 @@ _plot_data: dict[str, dict] = {}
 
 
 def _test_high_noise() -> bool:
-    config = DeePCConfig(noise_std_output=0.1)
+    config = DeePCConfig(**stress_configs.high_noise())
     y_ref = _generate_ref(config)
     results = _run_closed_loop(config, y_ref)
     rmse = _compute_rmse_position(results)
@@ -412,7 +435,7 @@ def _test_high_noise() -> bool:
 
 
 def _test_aggressive_reference() -> bool:
-    config = DeePCConfig(ref_amplitude=10.0, ref_frequency=0.1)
+    config = DeePCConfig(**stress_configs.aggressive_reference())
     y_ref = _generate_ref(config)
     results = _run_closed_loop(config, y_ref)
     rmse = _compute_rmse_position(results)
@@ -430,7 +453,7 @@ def _test_aggressive_reference() -> bool:
 
 
 def _test_reduced_data() -> bool:
-    config = DeePCConfig(T_data=50, sim_steps=50)
+    config = DeePCConfig(**stress_configs.reduced_data())
     y_ref = _generate_ref(config)
     results = _run_closed_loop(config, y_ref)
     rmse = _compute_rmse_position(results)
@@ -448,7 +471,7 @@ def _test_reduced_data() -> bool:
 
 
 def _test_tight_constraints() -> bool:
-    config = DeePCConfig(delta_max=0.1, a_max=1.0, a_min=-1.0)
+    config = DeePCConfig(**stress_configs.tight_constraints())
     y_ref = _generate_ref(config)
     results = _run_closed_loop(config, y_ref)
     u_hist = results["u_history"]
@@ -464,7 +487,7 @@ def _test_tight_constraints() -> bool:
 
 
 def _test_nonlinear_regime() -> bool:
-    config = DeePCConfig(v_ref=10.0, ref_amplitude=8.0)
+    config = DeePCConfig(**stress_configs.nonlinear_regime())
     y_ref = _generate_ref(config)
     results = _run_closed_loop(config, y_ref)
     rmse = _compute_rmse_position(results)
@@ -482,7 +505,7 @@ def _test_nonlinear_regime() -> bool:
 
 
 def _test_step_reference() -> bool:
-    config = DeePCConfig(ref_amplitude=0.0)
+    config = DeePCConfig(**stress_configs.step_reference())
     total = config.Tini + config.sim_steps + config.N
     y_ref = np.zeros((total, config.p))
     for k in range(total):
@@ -509,7 +532,7 @@ def _test_step_reference() -> bool:
 
 
 def _test_disturbance_rejection() -> bool:
-    config = DeePCConfig()
+    config = DeePCConfig(**stress_configs.disturbance_rejection())
     y_ref = _generate_ref(config)
 
     def disturbance(k, u_opt, sim):
@@ -528,7 +551,7 @@ def _test_disturbance_rejection() -> bool:
 
 
 def _test_long_horizon() -> bool:
-    config = DeePCConfig(sim_steps=200, T_data=200)
+    config = DeePCConfig(**stress_configs.long_horizon())
     y_ref = _generate_ref(config)
     results = _run_closed_loop(config, y_ref)
     rmse = _compute_rmse_position(results)
@@ -541,8 +564,25 @@ def _test_long_horizon() -> bool:
     return rmse < 3.0 and max_solve < 2.0
 
 
+def _test_rate_constrained_aggressive() -> bool:
+    """Aggressive reference with rate constraints — verify actuator rates stay bounded."""
+    config = DeePCConfig(**stress_configs.rate_constrained_aggressive())
+    y_ref = _generate_ref(config)
+    results = _run_closed_loop(config, y_ref)
+    u_hist = results["u_history"]
+    du = np.diff(u_hist, axis=0)
+    rate_steer = bool(np.all(np.abs(du[:, 0]) <= config.d_delta_max + 1e-4))
+    rate_accel = bool(np.all(np.abs(du[:, 1]) <= config.da_max + 1e-4))
+    _plot_data["rate_aggressive"] = {
+        "y_hist": results["y_history"],
+        "y_ref": results["y_ref_history"],
+        "title": "C9: Rate-Constrained Aggressive",
+    }
+    return rate_steer and rate_accel
+
+
 def stage_c() -> list[dict]:
-    """Run the 8-scenario stress suite."""
+    """Run the 9-scenario stress suite."""
     tests = [
         ("C1  High measurement noise (10x)", _test_high_noise),
         ("C2  Aggressive reference", _test_aggressive_reference),
@@ -552,6 +592,7 @@ def stage_c() -> list[dict]:
         ("C6  Step reference change", _test_step_reference),
         ("C7  Disturbance rejection", _test_disturbance_rejection),
         ("C8  Long horizon (200 steps)", _test_long_horizon),
+        ("C9  Rate-constrained aggressive ref", _test_rate_constrained_aggressive),
     ]
 
     checks: list[dict] = []

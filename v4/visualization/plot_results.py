@@ -44,6 +44,7 @@ def plot_all(
     results: dict,
     config: DeePCConfig,
     save_dir: str = ".",
+    tag: str = "v4",
 ) -> None:
     """Generate v2 combined figure (3x2 layout).
 
@@ -52,10 +53,10 @@ def plot_all(
     Row 2: input rates with constraint bands, output constraint bands
     """
     with plt.rc_context(_STYLE):
-        _plot_impl(results, config, save_dir)
+        _plot_impl(results, config, save_dir, tag)
 
 
-def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
+def _plot_impl(results: dict, config: DeePCConfig, save_dir: str, tag: str = "v4") -> None:
     y_hist = np.asarray(results["y_history"])
     y_ref = np.asarray(results["y_ref_history"])
     u_hist = np.asarray(results["u_history"])
@@ -95,8 +96,6 @@ def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
     ax = axes[0, 1]
     ax.plot(times, y_ref[:, 2], color=_C_REF, linestyle="--", linewidth=1.0, label="Reference")
     ax.plot(times, y_hist[:, 2], color=_C_ACT, linewidth=1.2, label="Actual")
-    ax.fill_between(times, y_ref[:, 2] - np.abs(vel_err), y_ref[:, 2] + np.abs(vel_err),
-                     color=_C_ERR, alpha=0.15, label="Error band")
     # Output constraint bands for velocity (channel 2)
     if np.isfinite(config.y_lb[2]):
         ax.axhline(config.y_lb[2], color=_C_BAND, linestyle="-.", linewidth=0.8, label=f"v_lb={config.y_lb[2]}")
@@ -109,7 +108,6 @@ def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
 
     # ── [1,0] Position Tracking Error ─────────────────────────────
     ax = axes[1, 0]
-    ax.fill_between(times, 0, pos_err, color=_C_ERR, alpha=0.3)
     ax.plot(times, pos_err, color=_C_ERR, linewidth=1.0)
     ax.axhline(rmse_pos, color=_C_ERR, linestyle=":", linewidth=0.8, alpha=0.7, label=f"RMSE = {rmse_pos:.3f} m")
     ax.set_xlabel("Time [s]")
@@ -139,7 +137,7 @@ def _plot_impl(results: dict, config: DeePCConfig, save_dir: str) -> None:
     ax.legend(lines1 + lines2, labels1 + labels2, loc="upper right")
 
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    path = f"{save_dir}/v4_results.png"
+    path = f"{save_dir}/{tag}_results.png"
     fig.savefig(path)
     plt.close(fig)
     print(f"Plot saved to {path}")

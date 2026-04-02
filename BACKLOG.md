@@ -191,6 +191,10 @@ Proposed approach for v4:
 | K15 | Nonlinear regime (v=10) stress test fails — bicycle model dynamics at high speed are far from LTI assumption | Medium | v3, v4 |
 | K16 | v3 output scaling distorts Q weighting — position RMSE regressed from 0.36 (v1) to 0.92 (v3). Fixed in v4 by using sparse form instead of scaling | ~~High~~ | ~~v3~~ |
 | K17 | L1 on g causes erratic control signals (bang-bang-like input switching). L2 on g with L1 on sigma_y (v4 default) gives smooth control | Low | v4 |
+| K18 | C1 (high noise) stress test fails — no robust/noise-aware DeePC formulation. Raw noisy measurements go directly into Hankel-based prediction | Medium | v4 |
+| K19 | C4 (tight constraints) stress test fails — v4's tight rate limits (d_delta=0.1, da=0.5) leave no room to maneuver when input box constraints are also tight (delta_max=0.1). Rate and box constraints interact adversely | Medium | v4 |
+| K20 | C2/C9 (aggressive reference) stress tests fail — aggressive sinusoidal (amp=10, freq=0.1) operates far outside the linear regime covered by training data. Fundamental DeePC linearity limitation | Medium | v4 |
+| K21 | Wider excitation amplitude in data collection (δ=0.5 vs 0.3) does not improve tracking on hard scenarios — pushes plant into nonlinear regimes during training, degrading Hankel matrix quality for the linear assumption | Low | v4 |
 
 ---
 

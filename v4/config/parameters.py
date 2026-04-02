@@ -20,9 +20,9 @@ class DeePCConfig:
     v_ref: float = 5.0  # reference forward velocity [m/s]
 
     # --- Data collection ---
-    T_data: int = 200  # number of data samples
+    T_data: int = 400  # number of data samples
     noise_std_output: float = 0.01  # measurement noise std
-    input_amplitude_delta: float = 0.3  # steering excitation amplitude [rad]
+    input_amplitude_delta: float = 0.5  # steering excitation amplitude [rad]
     input_amplitude_a: float = 1.0  # acceleration excitation amplitude [m/s^2]
     prbs_min_period: int = 3  # min hold time for PRBS
 

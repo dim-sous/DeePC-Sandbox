@@ -26,7 +26,7 @@ REPO_ROOT = PROJECT_ROOT.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-RESULTS_DIR = REPO_ROOT / "results"
+RESULTS_DIR = REPO_ROOT / "results" / "v3"
 
 from config.parameters import DeePCConfig
 from data.data_generation import collect_data
