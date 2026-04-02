@@ -1,8 +1,8 @@
 ## Current State
-- Completed: v1, v2, v3, v4
-- Active: v4 (gating pending)
-- Next: v5
-- Frozen (do not modify): v1_baseline, v2, v3
+- Completed: v1, v2, v3, v4, v5
+- Active: v5 (gated — A 15/15, B 15/15, C 4/9)
+- Next: v6
+- Frozen (do not modify): v1_baseline, v2, v3, v4, v5
 
 ## If context is unclear Re-read this file top to bottom. Ask me to confirm the current version.
 
@@ -23,8 +23,9 @@ Plants live in `plants/`, shared across versions. Version folders contain only D
 ## Candidate Upgrades
 - Startup initialization fix (K7 — buffer/sim consistency at arbitrary initial conditions)
 - Online sliding Hankel window for regime adaptation
-- Noise handling / robust DeePC formulations
+- ~~Noise handling / robust DeePC formulations~~ — implemented in v5 (noise-adaptive regularization)
 - Low-rank SVD approximation of Hankel matrix
 - Dataset management and online updating
+- Data denoising before Hankel construction
 - PID / MPC baselines
 - Additional plant models

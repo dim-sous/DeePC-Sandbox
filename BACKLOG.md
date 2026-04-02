@@ -30,13 +30,11 @@ change, the Hankel matrix must track the current regime.
 - Inject the estimated disturbance as a known offset into the QP reference trajectory
 - Validate against simulated persistent disturbances
 
-### 1.3 Regime-Aware Regularization Scheduling
-**Why:** A single `lambda_g` value is a blunt instrument. Different operating regimes
-need different regularization strength.
-
-- Define operating regimes by relevant state variables (e.g. speed, turning rate)
-- Schedule `lambda_g` and `lambda_y` as lookup tables over the operating point
-- Compare RMSE vs. fixed regularization across stress tests
+### ~~1.3 Regime-Aware Regularization Scheduling~~ — resolved in v5
+Implemented as noise-adaptive regularization: lambda_g and lambda_y scale online
+proportional to estimated prediction residual variance (Wasserstein ball radius
+per Coulson/Lygeros/Dörfler arXiv:1903.06804). Cuts C2 RMSE by 47% (23.2 → 12.2m)
+but cannot compensate for fundamentally corrupted or insufficient Hankel data.
 
 ---
 
@@ -182,7 +180,7 @@ Proposed approach for v4:
 | K5 | ~~No rate constraints on inputs~~ — resolved in v2 | ~~Low~~ | ~~v1_baseline~~ |
 | K7 | Startup transient: first ~3s show 0.5-1.0m tracking error from zero-input buffer initialization. Reference blending (v4) reduces peak from 1.0 to 0.55m but does not eliminate it. P-controller warm-up and extended DeePC warm-up both made it worse. Root cause: zero-input buffers are inconsistent with Hankel data. Needs structural fix (e.g. replay training data segment through sim) | Medium | all |
 | K8 | ~~Poor QP conditioning from condensed form~~ — resolved in v4 (sparse QP form, block-diagonal Hessian) | ~~High~~ | ~~v1, v2, v3~~ |
-| K9 | High measurement noise (10x) degrades tracking; no robust DeePC formulation | Medium | all |
+| K9 | High measurement noise (10x) degrades tracking. v5 adds noise-adaptive regularization (Wasserstein ball scaling) but the root cause is corrupted Hankel training data, not online estimation. RMSE=36m under 10x noise — regularization cannot fix a fundamentally wrong implicit model. Needs data denoising or sliding Hankel window | High | all |
 | K10 | ~~v2 solve time regression~~ — resolved in v4 (7ms avg) | ~~High~~ | ~~v2, v3~~ |
 | K11 | ~~L1 unreliable in condensed form~~ — resolved in v4 (sparse form, L2/L1 default, 100% optimal) | ~~Medium~~ | ~~v2, v3~~ |
 | K12 | ~~Low optimal solve rate~~ — resolved in v4 (100% optimal) | ~~High~~ | ~~v1, v2~~ |
@@ -191,10 +189,12 @@ Proposed approach for v4:
 | K15 | Nonlinear regime (v=10) stress test fails — bicycle model dynamics at high speed are far from LTI assumption | Medium | v3, v4 |
 | K16 | v3 output scaling distorts Q weighting — position RMSE regressed from 0.36 (v1) to 0.92 (v3). Fixed in v4 by using sparse form instead of scaling | ~~High~~ | ~~v3~~ |
 | K17 | L1 on g causes erratic control signals (bang-bang-like input switching). L2 on g with L1 on sigma_y (v4 default) gives smooth control | Low | v4 |
-| K18 | C1 (high noise) stress test fails — no robust/noise-aware DeePC formulation. Raw noisy measurements go directly into Hankel-based prediction | Medium | v4 |
-| K19 | C4 (tight constraints) stress test fails — v4's tight rate limits (d_delta=0.1, da=0.5) leave no room to maneuver when input box constraints are also tight (delta_max=0.1). Rate and box constraints interact adversely | Medium | v4 |
-| K20 | C2/C9 (aggressive reference) stress tests fail — aggressive sinusoidal (amp=10, freq=0.1) operates far outside the linear regime covered by training data. Fundamental DeePC linearity limitation | Medium | v4 |
+| K18 | C1 (high noise) stress test fails — v5 adds noise-adaptive regularization but RMSE=36m persists. Root cause: 10x noise corrupts the offline Hankel matrix itself. Online lambda scaling reaches cap (10x) by step 6 but prediction residuals compound tracking error into the noise estimate. Needs structural fix: data denoising before Hankel construction or sliding Hankel window | High | all |
+| K19 | C4 (tight constraints) stress test fails — delta_max=0.1 with rate limits d_delta=0.1 leaves zero maneuvering room. RMSE=3.2m, trajectory barely tracks. Constraint satisfaction also violated at solver tolerance boundary. Not a regularization issue — fundamental actuation limit | Medium | v4, v5 |
+| K20 | C2/C9 (aggressive reference) stress tests fail — aggressive sinusoidal (amp=10, freq=0.1) operates far outside the linear regime covered by training data. v5 adaptive lambda improves C2 RMSE 23.2→12.2m (47% reduction) but 12.2m is still not production-grade tracking. Fundamental: offline Hankel matrix does not contain information about these operating regimes | High | all |
 | K21 | Wider excitation amplitude in data collection (δ=0.5 vs 0.3) does not improve tracking on hard scenarios — pushes plant into nonlinear regimes during training, degrading Hankel matrix quality for the linear assumption | Low | v4 |
+| K22 | v5 noise estimator conflates measurement noise with tracking error. Prediction residuals grow to 3.4m under high noise (vs 0.1m actual noise) because tracking error dominates. A separate noise/mismatch decomposition would improve the Wasserstein ball calibration | Medium | v5 |
+| K23 | v5 gate thresholds tightened to production-grade (RMSE<2m for most C-tests, opt>90%, solve<0.5s). All 5 C-stage failures trace to the same root cause: offline Hankel matrix does not represent the operating regime (noise, data scarcity, nonlinearity, constraint mismatch) | — | v5 |
 
 ---
 
@@ -232,3 +232,10 @@ Proposed approach for v4:
 | v4 | sigma_y near-zero (L1 exact penalty working as designed) |
 | v4 | Reference blending for smooth startup (partial fix for K7) |
 | v4 | Parameter sweep: lambda_g=5, L2/L1 norms, d_delta=0.1, da=0.5 confirmed |
+| v5 | Noise-adaptive regularization per Coulson/Lygeros/Dörfler (arXiv:1903.06804) |
+| v5 | lambda_g, lambda_y as cp.Parameter — updated online based on prediction residual variance |
+| v5 | NoiseEstimator: rolling window residual variance, Wasserstein ball radius scaling |
+| v5 | Output constraint tightening proportional to estimated noise |
+| v5 | C2 RMSE improved 47% (23.2→12.2m) via adaptive regularization |
+| v5 | Production-grade gate thresholds: RMSE<2m, opt>90%, solve<0.5s |
+| v5 | Gate: A 15/15, B 15/15, C 4/9 — 5 failures all trace to LTI assumption (K9/K18/K19/K20) |
