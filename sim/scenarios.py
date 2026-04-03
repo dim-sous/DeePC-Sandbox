@@ -42,9 +42,38 @@ def generate_reference_path(config: DeePCConfig) -> np.ndarray:
     return path
 
 
+def generate_lissajous_path(config: DeePCConfig) -> np.ndarray:
+    """Generate a Lissajous figure-8 reference path.
+
+    x = A * sin(f * t),  y = A * sin(2f * t).
+    A closed curve — the vehicle must manage its own speed.
+    """
+    total = config.Tini + config.sim_steps + config.N
+    dt = config.Ts
+    A = config.ref_amplitude
+    f = config.ref_frequency
+
+    path = np.zeros((total, 4))
+    for k in range(total):
+        t = k * dt
+        path[k, 0] = A * np.sin(2 * np.pi * f * t)
+        path[k, 1] = A * np.sin(2 * np.pi * 2 * f * t)
+
+    for k in range(total - 1):
+        dx = path[k + 1, 0] - path[k, 0]
+        dy = path[k + 1, 1] - path[k, 1]
+        path[k, 2] = np.arctan2(dy, dx)
+        path[k, 3] = np.sqrt(dx ** 2 + dy ** 2) / dt
+    path[-1, 2] = path[-2, 2]
+    path[-1, 3] = path[-2, 3]
+
+    return path
+
+
 def get_reference(scenario: str, config: DeePCConfig) -> np.ndarray:
     """Dispatch to the appropriate path generator."""
     generators = {
         "default": generate_reference_path,
+        "lissajous": generate_lissajous_path,
     }
     return generators[scenario](config)
