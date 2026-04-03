@@ -66,7 +66,10 @@ class DeePCController:
         self.u_var = cp.Variable(cfg.N * cfg.m)
         self.y_var = cp.Variable(cfg.N * cfg.p)
         self.sigma_y = cp.Variable(cfg.Tini * cfg.p)
-        self.sigma_out = cp.Variable(cfg.N * cfg.p, nonneg=True)
+        if cfg.lambda_out > 0:
+            self.sigma_out = cp.Variable(cfg.N * cfg.p, nonneg=True)
+        else:
+            self.sigma_out = None
 
         # Scalar / vector parameters
         self.u_ini_param = cp.Parameter(cfg.Tini * cfg.m)
@@ -112,7 +115,10 @@ class DeePCController:
         else:
             reg_sigma = self.lambda_y_param * cp.sum_squares(self.sigma_y)
 
-        reg_out = cfg.lambda_out * cp.sum_squares(self.sigma_out)
+        if self.sigma_out is not None:
+            reg_out = cfg.lambda_out * cp.sum_squares(self.sigma_out)
+        else:
+            reg_out = 0.0
 
         objective = cp.Minimize(
             tracking_cost + input_cost + reg_g + reg_sigma + reg_out
@@ -145,23 +151,24 @@ class DeePCController:
         constraints += [du_first >= du_first_lb, du_first <= du_first_ub]
 
         # Output constraints (soft via sigma_out, with noise-adaptive tightening)
-        y_lb_vec = np.tile(cfg.y_lb, cfg.N)
-        y_ub_vec = np.tile(cfg.y_ub, cfg.N)
+        if self.sigma_out is not None:
+            y_lb_vec = np.tile(cfg.y_lb, cfg.N)
+            y_ub_vec = np.tile(cfg.y_ub, cfg.N)
 
-        finite_lb = np.isfinite(y_lb_vec)
-        finite_ub = np.isfinite(y_ub_vec)
-        if np.any(finite_lb):
-            constraints.append(
-                self.y_var[finite_lb] >= y_lb_vec[finite_lb]
-                + self.y_tightening_param[finite_lb]
-                - self.sigma_out[finite_lb]
-            )
-        if np.any(finite_ub):
-            constraints.append(
-                self.y_var[finite_ub] <= y_ub_vec[finite_ub]
-                - self.y_tightening_param[finite_ub]
-                + self.sigma_out[finite_ub]
-            )
+            finite_lb = np.isfinite(y_lb_vec)
+            finite_ub = np.isfinite(y_ub_vec)
+            if np.any(finite_lb):
+                constraints.append(
+                    self.y_var[finite_lb] >= y_lb_vec[finite_lb]
+                    + self.y_tightening_param[finite_lb]
+                    - self.sigma_out[finite_lb]
+                )
+            if np.any(finite_ub):
+                constraints.append(
+                    self.y_var[finite_ub] <= y_ub_vec[finite_ub]
+                    - self.y_tightening_param[finite_ub]
+                    + self.sigma_out[finite_ub]
+                )
 
         self.problem = cp.Problem(objective, constraints)
 
@@ -246,7 +253,8 @@ class DeePCController:
 
         info["g_norm"] = float(np.linalg.norm(self.g.value))
         info["sigma_y_norm"] = float(np.linalg.norm(self.sigma_y.value))
-        info["sigma_out_norm"] = float(np.linalg.norm(self.sigma_out.value))
+        if self.sigma_out is not None:
+            info["sigma_out_norm"] = float(np.linalg.norm(self.sigma_out.value))
 
         u_predicted = self.u_var.value.reshape(cfg.N, cfg.m)
         y_predicted = self.y_var.value.reshape(cfg.N, cfg.p)

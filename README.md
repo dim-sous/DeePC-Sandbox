@@ -1,162 +1,96 @@
 # DeePC Sandbox
 
-A general-purpose Python platform for developing, testing, and benchmarking **Data-Enabled Predictive Control (DeePC)** algorithms. The controller uses pre-collected input-output data to predict and optimize future system behaviour through Hankel matrix representations — no explicit system model required.
+A Python platform for **Data-Enabled Predictive Control (DeePC)** — a model-free control method that replaces system identification with raw input-output data. This project aims to apply DeePC to various plants, exploring the practical limits and engineering tradeoffs of data-driven predictive control.
 
----
+## The Idea
 
-## What This Platform Does
+Traditional model predictive control (MPC) requires an explicit system model. DeePC replaces it with a single offline dataset: apply persistently exciting inputs to the system, record what happens, and use matrix representation as an implicit model for online optimization. No physics equations, no parameter estimation — just data and a QP solver.
 
-The platform answers the core question in data-driven control: **"Given only recorded input-output data from a system, can we build a controller that tracks a reference trajectory in real time — without ever identifying a model?"**
+The theoretical foundation is **Willems' fundamental lemma**: for a linear time-invariant system, a sufficiently rich input-output trajectory contains all information needed to predict future behavior. DeePC builds on this to formulate a receding-horizon controller that solves a quadratic program at each time step.
 
-It does this through Data-Enabled Predictive Control (DeePC):
-
-| Step | What Happens |
-|------|-------------|
-| **Offline data collection** | Drive the plant with persistently exciting inputs to capture system dynamics |
-| **Hankel matrix construction** | Encode the collected data into block-Hankel matrices that implicitly represent all possible system trajectories |
-| **Online optimization** | At each control step, solve a QP to find the optimal future input sequence that tracks the reference while respecting constraints |
-| **Receding-horizon execution** | Apply only the first optimal input, measure the new output, and re-optimize |
-
----
-
-## Project Structure
+## Architecture
 
 ```
-deepc/
-├── control/                       # DeePC control logic (pure algorithm)
-│   ├── config.py                  #   DeePCConfig dataclass (all tunable parameters)
-│   ├── controller.py              #   Sparse QP controller with online Hankel + noise-adaptive params
-│   ├── hankel.py                  #   Block-Hankel matrix construction
-│   ├── regularization.py          #   Persistent excitation verification
-│   ├── noise_estimator.py         #   Rolling prediction-residual noise estimator
-│   └── online_hankel.py           #   Sliding Hankel window (append-then-slide)
-│
-├── sim/                           # Simulation, evaluation, comparison
-│   ├── __main__.py                #   CLI entry point
-│   ├── gate.py                    #   Gate entry point
-│   ├── eval/
-│   │   ├── scenarios.py           #     Reference trajectory generators
-│   │   ├── simulation.py          #     Closed-loop simulation runner
-│   │   ├── data_generation.py     #     PRBS + multisine data collection
-│   │   ├── visualization.py       #     Result plotting
-│   │   └── gate.py                #     Three-stage gate (A/B/C)
-│   └── comparison/
-│       ├── metrics.py             #     Metric computation
-│       ├── stress_configs.py      #     Shared stress test scenarios
-│       ├── process_results.py     #     Load results and compute metrics
-│       └── compare_versions.py    #     Side-by-side table, CSV, bar chart
-│
-├── plants/                        # Shared plant models
-│   └── bicycle_model.py           #   Nonlinear kinematic bicycle model
-│
-└── results/                       # Simulation outputs (auto-generated)
-```
+run.py                  Experiment runner (data collection, simulation, HTML report)
+tune.py                 Bayesian hyperparameter optimization (Optuna)
 
----
+control/
+    config.py           All tunable parameters in one dataclass
+    controller.py       Sparse QP controller (CVXPY + OSQP)
+    hankel.py           Block-Hankel matrix construction
+    noise_estimator.py  Online prediction-residual noise estimation
+    online_hankel.py    Sliding Hankel window for online adaptation
+    regularization.py   Persistent excitation verification
+
+plants/
+    bicycle_model.py    Kinematic bicycle model + path error computation
+
+sim/
+    data_generation.py  Multi-episode stabilized data collection (PRBS + multisine)
+    scenarios.py        Reference path generators
+    simulation.py       Closed-loop simulation with error-based DeePC
+```
 
 ## Quick Start
 
-### Prerequisites
-
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
-
-### Install and Run
-
 ```bash
+# Install
 uv sync
+
+# Run an experiment (60s simulation, generates HTML report)
+uv run python run.py
+
+# Customize parameters
+uv run python run.py --Ts 0.039 --N 8 --Tini 4 --T-data 600 --lambda-g 32
+
+# Bayesian parameter tuning (100 trials)
+uv run python tune.py --n-trials 100 --sim-duration 10
+
+# See all options
+uv run python run.py --help
 ```
 
-### Running Simulations
+Reports are saved to `results/` as self-contained HTML files with interactive Plotly charts.
 
-```bash
-# Base DeePC (sparse QP form)
-uv run python -m sim
+## DeePC Formulation
 
-# With noise-adaptive regularization
-uv run python -m sim --noise-adaptive
+The controller solves at each time step:
 
-# With online sliding Hankel window
-uv run python -m sim --online-hankel
-
-# Both features
-uv run python -m sim --noise-adaptive --online-hankel
-
-# With scenario selection
-uv run python -m sim --scenario hard
-uv run python -m sim --scenario circle
-uv run python -m sim --scenario square
-uv run python -m sim --scenario zigzag
+```
+minimize    (y - y_ref)' Q (y - y_ref) + u' R u + lambda_g ||g|| + lambda_y ||sigma_y||
+subject to  [Up; Yp; Uf; Yf] g = [u_ini; y_ini + sigma_y; u; y]
+            u_min <= u <= u_max
+            |du| <= du_max
 ```
 
-### Running the Gate
+Where:
+- `g` is the Hankel combination vector (selects a trajectory from the data)
+- `sigma_y` is a slack variable for past-data consistency (handles noise/nonlinearity)
+- `Up, Yp, Uf, Yf` are block-Hankel matrices from offline data
+- The reference `y_ref` is always zero (minimize tracking errors)
 
-```bash
-# Run all feature combos (base, na, oh, na+oh)
-uv run python -m sim.gate
+## Key Results (Bicycle Model)
 
-# Run a specific combo
-uv run python -m sim.gate --combo base
-uv run python -m sim.gate --combo na+oh
-```
-
-### Comparing Results
-
-```bash
-uv run python -m sim.comparison.process_results
-uv run python -m sim.comparison.compare_versions
-```
-
-Results are saved to `results/<tag>/` where tag is `base`, `na`, `oh`, `na+oh` (with optional scenario suffix like `na_hard`).
-
----
-
-## Features
-
-The platform uses a single controller class with optional features enabled via CLI flags:
-
-| Flag | Feature | Origin |
-|------|---------|--------|
-| *(base)* | Sparse QP form with L2/L1 regularization, input rate constraints, soft output constraints | — |
-| `--noise-adaptive` | Online noise estimation with adaptive lambda scaling and constraint tightening | Coulson/Lygeros/Dörfler (arXiv:1903.06804) |
-| `--online-hankel` | Sliding Hankel window that adapts implicit model with closed-loop data | arXiv:2407.16066 |
-
-Features compose independently — both can be enabled simultaneously.
-
----
-
-## Configuration
-
-All parameters are centralized in `control/config.py` via a `DeePCConfig` dataclass. The noise-adaptive and online-Hankel parameters have safe defaults that are inert when the corresponding features are not activated.
-
----
-
-## Plant Models
-
-Plant models live in `plants/` and are decoupled from DeePC configuration. Each plant accepts its own physical parameters directly.
-
-| Plant | File | Description |
-|-------|------|-------------|
-| Kinematic bicycle | `plants/bicycle_model.py` | 2-D vehicle with steering and acceleration inputs. Nonlinear, discrete-time. |
-
-Adding a new plant: create a class in `plants/` with `step(u) -> y`, `output`, and `reset()` methods.
-
----
+| Metric | Value |
+|--------|-------|
+| Lateral error RMSE | 0.54 m (60s simulation) |
+| Heading error RMSE | 0.21 rad |
+| Velocity error RMSE | 1.04 m/s |
+| Solver | 100% optimal, ~150ms avg |
+| Hankel conditioning | ~200 (error-based) vs ~55,000 (position-based) |
 
 ## Technical Stack
 
 | Component | Library |
 |-----------|---------|
-| Optimization modeling | CVXPY |
-| QP solver | OSQP (with SCS fallback) |
-| Numerics | NumPy |
-| Linear algebra | SciPy |
-| Visualization | Matplotlib |
-
----
+| Optimization | CVXPY |
+| QP solver | OSQP |
+| Parameter tuning | Optuna (TPE sampler) |
+| Visualization | Plotly |
+| Numerics | NumPy, SciPy |
 
 ## References
 
-- J. Coulson, J. Lygeros, F. Dorfler. *Data-Enabled Predictive Control: In the Shallows of the DeePC*. European Journal of Control, 2019.
-- J. Coulson, J. Lygeros, F. Dörfler. *Distributionally Robust Chance Constrained Data-Enabled Predictive Control*. arXiv:1903.06804, 2019.
-- J.C. Willems, P. Rapisarda, I. Markovsky, B.L.M. De Moor. *A note on persistency of excitation*. Systems & Control Letters, 2005.
+- Coulson, Lygeros, Dorfler. *Data-Enabled Predictive Control: In the Shallows of the DeePC.* European Journal of Control, 2019.
+- Willems, Rapisarda, Markovsky, De Moor. *A note on persistency of excitation.* Systems & Control Letters, 2005.
+- Berberich, Koch, Scherer, Allgower. *Robust data-driven state-feedback design.* ACC, 2020.

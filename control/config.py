@@ -16,14 +16,14 @@ class DeePCConfig:
     # --- Simulation ---
     Ts: float = 0.1  # sampling time [s]
     L_wheelbase: float = 2.5  # vehicle wheelbase [m]
-    sim_steps: int = 150  # closed-loop control steps
+    sim_duration: float = 60.0  # simulation duration [s] (fixed, not a tuning knob)
     v_ref: float = 5.0  # reference forward velocity [m/s]
 
     # --- Data collection ---
     T_data: int = 400  # number of data samples
     noise_std_output: float = 0.01  # measurement noise std
     input_amplitude_delta: float = 0.5  # steering excitation amplitude [rad]
-    input_amplitude_a: float = 1.0  # acceleration excitation amplitude [m/s^2]
+    input_amplitude_a: float = 2.5  # acceleration excitation amplitude [m/s^2]
     prbs_min_period: int = 3  # min hold time for PRBS
 
     # --- DeePC horizons ---
@@ -31,7 +31,7 @@ class DeePCConfig:
     N: int = 15  # prediction / future horizon
 
     # --- Cost weights (diagonal entries) ---
-    Q_diag: list[float] = field(default_factory=lambda: [10.0, 10.0, 1.0])
+    Q_diag: list[float] = field(default_factory=lambda: [10.0, 10.0, 0.0])
     R_diag: list[float] = field(default_factory=lambda: [0.1, 0.1])
 
     # --- Regularization ---
@@ -42,35 +42,47 @@ class DeePCConfig:
 
     # --- Input constraints (hard) ---
     delta_max: float = 0.5  # max steering angle [rad]
-    a_max: float = 3.0  # max acceleration [m/s^2]
-    a_min: float = -5.0  # max braking deceleration [m/s^2]
+    a_max: float = 1.0  # max acceleration [m/s^2]
+    a_min: float = -1.0  # max braking deceleration [m/s^2]
 
     # --- Input rate constraints (hard) ---
-    d_delta_max: float = 0.1  # max steering rate [rad/step]
+    d_delta_max: float = 0.3  # max steering rate [rad/step]
     da_max: float = 0.5  # max acceleration rate (jerk) [m/s^2/step]
 
     # --- Output constraints (soft) ---
-    y_lb: list[float] = field(default_factory=lambda: [float("-inf"), float("-inf"), 0.0])
-    y_ub: list[float] = field(default_factory=lambda: [float("inf"), float("inf"), 15.0])
-    lambda_out: float = 1e3  # penalty on output slack sigma_out
+    y_lb: list[float] = field(
+        default_factory=lambda: [float("-inf"), float("-inf"), 0.0]
+    )
+    y_ub: list[float] = field(
+        default_factory=lambda: [float("inf"), float("inf"), 10.0]
+    )
+    lambda_out: float = 0.0  # penalty on output slack sigma_out (0 = disabled)
 
     # --- Reference trajectory ---
-    ref_amplitude: float = 5.0  # sinusoidal lateral amplitude [m]
+    ref_amplitude: float = 5.0  # sinusoidal amplitude [m]
     ref_frequency: float = 0.05  # sinusoidal frequency [Hz]
 
     # --- Robust DeePC (noise-adaptive regularization) ---
     noise_estimation_window: int = 10  # rolling window for residual variance
     baseline_noise_std: float = 0.01  # nominal noise level (matches data collection)
     max_lambda_scaling: float = 10.0  # cap on lambda scaling factor
-    constraint_tightening_factor: float = 2.0  # output bounds tightened by factor * noise_std
+    constraint_tightening_factor: float = (
+        2.0  # output bounds tightened by factor * noise_std
+    )
 
     # --- Online Hankel window ---
     hankel_window_size: int = 0  # 0 = use all offline columns + grow with online data
-    hankel_warmup_steps: int = 100  # steps before online updates begin (let controller settle)
+    hankel_warmup_steps: int = (
+        100  # steps before online updates begin (let controller settle)
+    )
 
     # --- Solver ---
     solver: str = "OSQP"
     solver_verbose: bool = False
+
+    @property
+    def sim_steps(self) -> int:
+        return int(self.sim_duration / self.Ts)
 
     @property
     def L(self) -> int:

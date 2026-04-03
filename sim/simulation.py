@@ -12,9 +12,9 @@ import numpy as np
 from control.config import DeePCConfig
 from control.controller import DeePCController
 from control.noise_estimator import NoiseEstimator
-from sim.eval.data_generation import collect_data
-from sim.eval.scenarios import generate_reference_trajectory
-from plants.bicycle_model import BicycleModel
+from sim.data_generation import collect_data
+from sim.scenarios import generate_reference_path
+from plants.bicycle_model import BicycleModel, compute_path_errors
 
 
 @dataclass
@@ -28,9 +28,15 @@ class FeatureFlags:
 def run_simulation(
     config: DeePCConfig,
     features: FeatureFlags,
-    y_ref_override: np.ndarray | None = None,
+    path_override: np.ndarray | None = None,
 ) -> dict:
-    """Execute the full DeePC closed-loop experiment."""
+    """Execute the full DeePC closed-loop experiment.
+
+    Parameters
+    ----------
+    path_override : (total, 4) array of [x, y, heading, v] waypoints.
+        If None, generates the default reference path.
+    """
     print("Collecting multi-regime training data...")
     u_data, y_data = collect_data(config, seed=42)
     print(f"  Data collected: u {u_data.shape}, y {y_data.shape}")
@@ -39,26 +45,34 @@ def run_simulation(
     controller = DeePCController(config, u_data, y_data)
     print("  Controller ready.")
 
-    y_ref_full = y_ref_override if y_ref_override is not None else generate_reference_trajectory(config)
+    path = path_override if path_override is not None else generate_reference_path(config)
 
-    x0 = y_ref_full[0, 0]
-    y0 = y_ref_full[0, 1]
+    # Initialize vehicle at start of reference path
+    x0, y0, heading0, v0 = path[0]
     sim = BicycleModel(
         Ts=config.Ts,
         L_wheelbase=config.L_wheelbase,
         delta_max=config.delta_max,
         a_max=config.a_max,
         a_min=config.a_min,
-        initial_state=np.array([x0, y0, 0.0, config.v_ref]),
+        initial_state=np.array([x0, y0, heading0, v0]),
     )
 
+    # DeePC reference is always zero error
+    zero_ref = np.zeros(config.p)
+
+    # Tini warm-up: drive with zero input, record errors
     u_buffer: list[np.ndarray] = []
     y_buffer: list[np.ndarray] = []
-    for _ in range(config.Tini):
+    pos_history: list[np.ndarray] = [sim.position]
+
+    for k in range(config.Tini):
         u_k = np.zeros(config.m)
-        y_k = sim.step(u_k)
+        sim.step(u_k)
+        errors = compute_path_errors(sim.state, *path[k])
         u_buffer.append(u_k)
-        y_buffer.append(y_k)
+        y_buffer.append(errors)
+        pos_history.append(sim.position)
 
     y_history = list(y_buffer)
     u_history = list(u_buffer)
@@ -76,7 +90,7 @@ def run_simulation(
     for k in range(config.sim_steps):
         step_idx = k + config.Tini
 
-        # Noise-adaptive regularization (v5 feature)
+        # Noise-adaptive regularization
         if features.noise_adaptive and y_predicted_prev is not None:
             y_actual = y_buffer[-1]
             noise_est.update(y_predicted_prev, y_actual)
@@ -95,7 +109,9 @@ def run_simulation(
 
         u_ini = np.array(u_buffer[-config.Tini:])
         y_ini = np.array(y_buffer[-config.Tini:])
-        y_ref_horizon = y_ref_full[step_idx : step_idx + config.N]
+
+        # Zero-error reference for the whole horizon
+        y_ref_horizon = np.tile(zero_ref, (config.N, 1))
 
         u_prev = u_buffer[-1]
 
@@ -103,26 +119,29 @@ def run_simulation(
         u_opt, info = controller.solve(u_ini, y_ini, y_ref_horizon, u_prev=u_prev)
         t_solve = time.perf_counter() - t_start
 
-        # Store one-step-ahead prediction for next noise update
         if info["y_predicted"] is not None:
             y_predicted_prev = info["y_predicted"][0]
         else:
             y_predicted_prev = None
 
-        y_new = sim.step(u_opt)
+        sim.step(u_opt)
 
-        # Online Hankel update (v6 feature)
+        # Compute errors relative to reference path
+        errors = compute_path_errors(sim.state, *path[step_idx])
+
+        # Online Hankel update
         if features.online_hankel and k >= config.hankel_warmup_steps:
             noise_std = noise_est.get_noise_std()
             mean_residual = float(np.mean(noise_std))
             if mean_residual < 1.0:
-                controller.update_hankel(u_opt, y_new)
+                controller.update_hankel(u_opt, errors)
 
         u_buffer.append(u_opt)
-        y_buffer.append(y_new)
+        y_buffer.append(errors)
+        pos_history.append(sim.position)
 
         u_history.append(u_opt)
-        y_history.append(y_new)
+        y_history.append(errors)
         costs.append(info["cost"])
         sigma_norms.append(info["sigma_y_norm"])
         sigma_out_norms.append(info["sigma_out_norm"])
@@ -136,16 +155,22 @@ def run_simulation(
                 f"status={info['status']}  "
                 f"cost={info['cost']:.2f}  "
                 f"solve={t_solve * 1000:.1f}ms  "
-                f"lambda_g={info['lambda_g']:.1f}  "
-                f"H_upd={info['hankel_updates']}"
+                f"e_lat={errors[0]:.3f}  "
+                f"e_head={errors[1]:.3f}"
             )
 
     total = config.Tini + config.sim_steps
+
+    # Reference absolute positions for plotting
+    ref_pos = path[:total, :2]
+
     results = {
         "times": np.arange(total) * config.Ts,
-        "y_history": np.array(y_history),
+        "y_history": np.array(y_history),       # errors [e_lat, e_head, e_v]
         "u_history": np.array(u_history),
-        "y_ref_history": y_ref_full[:total],
+        "pos_history": np.array(pos_history),   # absolute [x, y] per step
+        "ref_pos_history": ref_pos,             # reference [x, y]
+        "ref_path": path[:total],               # full [x, y, heading, v]
         "costs": costs,
         "sigma_norms": sigma_norms,
         "sigma_out_norms": sigma_out_norms,
@@ -160,30 +185,3 @@ def run_simulation(
         f"({100 * optimal_count / len(statuses):.0f}%)"
     )
     return results
-
-
-def save_results(results: dict, tag: str, results_dir: pathlib.Path) -> None:
-    """Save simulation results to results/ directory."""
-    results_dir.mkdir(parents=True, exist_ok=True)
-
-    array_keys = ["times", "y_history", "u_history", "y_ref_history"]
-    np.savez(
-        results_dir / f"{tag}_results.npz",
-        **{k: results[k] for k in array_keys},
-    )
-
-    scalars = {
-        "costs": results["costs"],
-        "sigma_norms": [
-            float(s) if s is not None else None for s in results["sigma_norms"]
-        ],
-        "sigma_out_norms": [
-            float(s) if s is not None else None for s in results["sigma_out_norms"]
-        ],
-        "statuses": results["statuses"],
-        "solve_times": results["solve_times"],
-    }
-    with open(results_dir / f"{tag}_scalars.json", "w") as f:
-        json.dump(scalars, f, indent=2)
-
-    print(f"Results saved to {results_dir}/")
