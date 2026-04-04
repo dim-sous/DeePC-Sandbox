@@ -1,14 +1,18 @@
 """Data generation using persistently exciting input signals.
 
-Collects error-based outputs [e_lat, e_heading, e_v] relative to a
-straight-line nominal at v_ref.  Multiple episodes at different initial
-speeds and headings ensure output diversity.
+Collects error-based outputs relative to a plant-defined nominal
+reference.  Multiple episodes at different initial conditions ensure
+output diversity.  The plant provides excitation signals, a stabilizing
+baseline controller, and episode initial conditions via its
+``get_data_collection_config`` method.
 """
+
+from __future__ import annotations
 
 import numpy as np
 
 from control.config import DeePCConfig
-from plants.bicycle_model import BicycleModel, compute_path_errors
+from plants.base import PlantBase
 
 
 def generate_prbs(
@@ -56,89 +60,50 @@ def generate_multisine(
 
 
 def collect_data(
+    plant: PlantBase,
     config: DeePCConfig,
     seed: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Collect persistently exciting input-output data.
 
-    Outputs are [e_lat, e_heading, e_v] relative to a straight-line
-    nominal trajectory at v_ref heading=0.  Multiple episodes at
-    different initial speeds and headings ensure output diversity.
+    Uses the plant's data-collection config for episode initial
+    conditions, excitation signals, stabilizing controller, and
+    nominal reference trajectory.
     """
     rng = np.random.default_rng(seed)
+    dc = plant.get_data_collection_config()
 
-    speed_offsets = [0.0, -0.4, 0.4, -0.7, 0.7]
-    n_episodes = len(speed_offsets)
+    n_episodes = len(dc.initial_conditions)
     T_per = config.T_data // n_episodes
     remainder = config.T_data - T_per * n_episodes
 
     u_parts: list[np.ndarray] = []
     y_parts: list[np.ndarray] = []
 
-    # Stabilizing gains for baseline controller during data collection.
-    # These keep errors bounded near zero; excitation is added on top.
-    K_lat = 0.3     # steering correction per meter of lateral error
-    K_head = 1.0    # steering correction per radian of heading error
-    K_v = 0.5       # acceleration correction per m/s of velocity error
-
-    for i, dv in enumerate(speed_offsets):
+    for i, condition in enumerate(dc.initial_conditions):
         T_ep = T_per + (1 if i < remainder else 0)
-        v_init = max(config.v_ref + dv * config.v_ref, 0.5)
-        heading_init = rng.uniform(-0.3, 0.3)
 
-        sim = BicycleModel(
-            Ts=config.Ts,
-            L_wheelbase=config.L_wheelbase,
-            delta_max=config.delta_max,
-            a_max=config.a_max,
-            a_min=config.a_min,
-            initial_state=np.array([0.0, 0.0, heading_init, v_init]),
-        )
+        # Plant-specific initial state for this episode
+        initial_state = plant.make_episode_initial_state(condition, rng)
+        plant.reset(initial_state)
 
-        # Excitation signals
-        delta_prbs = generate_prbs(
-            T_ep, config.input_amplitude_delta, config.prbs_min_period, rng
-        )
-        delta_rand = rng.uniform(
-            -config.input_amplitude_delta,
-            config.input_amplitude_delta,
-            size=T_ep,
-        )
-        delta_exc = 0.5 * delta_prbs + 0.5 * delta_rand
+        # Plant-specific excitation
+        excitation = dc.excitation_fn(T_ep, rng)
 
-        a_sine = generate_multisine(
-            T_ep, config.input_amplitude_a, n_freqs=10, Ts=config.Ts, rng=rng
-        )
-        a_rand = rng.uniform(
-            -config.input_amplitude_a, config.input_amplitude_a, size=T_ep
-        )
-        a_exc = 0.5 * a_sine + 0.5 * a_rand
-
-        u_ep = np.zeros((T_ep, config.m))
-        y_ep = np.zeros((T_ep, config.p))
-
-        # Nominal straight-line reference: heading=0, v=v_ref
-        nom_x = 0.0
+        u_ep = np.zeros((T_ep, plant.m))
+        y_ep = np.zeros((T_ep, plant.p))
 
         for k in range(T_ep):
-            nom_x += config.v_ref * config.Ts
-            errors = compute_path_errors(
-                sim.state, nom_x, 0.0, 0.0, config.v_ref
-            )
+            ref_k = dc.nominal_reference(k, plant.Ts)
+            errors = plant.get_output(plant.state, ref_k)
 
-            # Stabilizing baseline + excitation
-            u_stab = np.array([
-                -K_lat * errors[0] - K_head * errors[1],
-                -K_v * errors[2],
-            ])
-            u_k = u_stab + np.array([delta_exc[k], a_exc[k]])
+            u_stab = dc.stabilizing_controller(errors)
+            u_k = u_stab + excitation[k]
 
-            sim.step(u_k)
-            # Re-compute errors after stepping
-            errors = compute_path_errors(
-                sim.state, nom_x, 0.0, 0.0, config.v_ref
-            )
-            errors += rng.normal(0, config.noise_std_output, size=config.p)
+            plant.step(u_k)
+
+            errors = plant.get_output(plant.state, ref_k)
+            errors = errors + rng.normal(0, config.noise_std_output, size=plant.p)
 
             u_ep[k] = u_k
             y_ep[k] = errors

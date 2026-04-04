@@ -14,6 +14,25 @@ import cvxpy as cp
 from control.config import DeePCConfig
 from control.online_hankel import SlidingHankelWindow
 from control.regularization import check_persistent_excitation
+from plants.base import Constraints
+
+
+def constraints_to_arrays(
+    constraints: Constraints,
+    input_names: list[str],
+    output_names: list[str],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Convert named constraint dicts to numpy arrays in channel order.
+
+    Returns (u_lb, u_ub, du_min, du_max, y_lb, y_ub) each as 1-D arrays.
+    """
+    u_lb = np.array([constraints.u_lb.get(n, float("-inf")) for n in input_names])
+    u_ub = np.array([constraints.u_ub.get(n, float("inf")) for n in input_names])
+    du_min = np.array([constraints.du_min.get(n, float("-inf")) for n in input_names])
+    du_max = np.array([constraints.du_max.get(n, float("inf")) for n in input_names])
+    y_lb = np.array([constraints.y_lb.get(n, float("-inf")) for n in output_names])
+    y_ub = np.array([constraints.y_ub.get(n, float("inf")) for n in output_names])
+    return u_lb, u_ub, du_min, du_max, y_lb, y_ub
 
 
 def _build_diff_matrix(N: int, m: int) -> np.ndarray:
@@ -37,8 +56,20 @@ class DeePCController:
         config: DeePCConfig,
         u_data: np.ndarray,
         y_data: np.ndarray,
+        u_lb: np.ndarray,
+        u_ub: np.ndarray,
+        du_min: np.ndarray,
+        du_max: np.ndarray,
+        y_lb: np.ndarray,
+        y_ub: np.ndarray,
     ) -> None:
         self.config = config
+        self._u_lb = np.asarray(u_lb, dtype=float)
+        self._u_ub = np.asarray(u_ub, dtype=float)
+        self._du_min = np.asarray(du_min, dtype=float)
+        self._du_max = np.asarray(du_max, dtype=float)
+        self._y_lb = np.asarray(y_lb, dtype=float)
+        self._y_ub = np.asarray(y_ub, dtype=float)
 
         u_data = np.atleast_2d(u_data)
         is_pe = check_persistent_excitation(u_data, config.L, config.m)
@@ -133,27 +164,25 @@ class DeePCController:
         ]
 
         # Input box constraints (hard)
-        u_lb = np.tile([-cfg.delta_max, cfg.a_min], cfg.N)
-        u_ub = np.tile([cfg.delta_max, cfg.a_max], cfg.N)
-        constraints += [self.u_var >= u_lb, self.u_var <= u_ub]
+        u_lb_vec = np.tile(self._u_lb, cfg.N)
+        u_ub_vec = np.tile(self._u_ub, cfg.N)
+        constraints += [self.u_var >= u_lb_vec, self.u_var <= u_ub_vec]
 
         # Input rate constraints (hard)
         D = _build_diff_matrix(cfg.N, cfg.m)
         du = D @ self.u_var
-        du_lb = np.tile([-cfg.d_delta_max, -cfg.da_max], cfg.N - 1)
-        du_ub = np.tile([cfg.d_delta_max, cfg.da_max], cfg.N - 1)
-        constraints += [du >= du_lb, du <= du_ub]
+        du_lb_vec = np.tile(self._du_min, cfg.N - 1)
+        du_ub_vec = np.tile(self._du_max, cfg.N - 1)
+        constraints += [du >= du_lb_vec, du <= du_ub_vec]
 
         # Cross-solve rate constraint
         du_first = self.u_var[:cfg.m] - self.u_prev_param
-        du_first_lb = np.array([-cfg.d_delta_max, -cfg.da_max])
-        du_first_ub = np.array([cfg.d_delta_max, cfg.da_max])
-        constraints += [du_first >= du_first_lb, du_first <= du_first_ub]
+        constraints += [du_first >= self._du_min, du_first <= self._du_max]
 
         # Output constraints (soft via sigma_out, with noise-adaptive tightening)
         if self.sigma_out is not None:
-            y_lb_vec = np.tile(cfg.y_lb, cfg.N)
-            y_ub_vec = np.tile(cfg.y_ub, cfg.N)
+            y_lb_vec = np.tile(self._y_lb, cfg.N)
+            y_ub_vec = np.tile(self._y_ub, cfg.N)
 
             finite_lb = np.isfinite(y_lb_vec)
             finite_ub = np.isfinite(y_ub_vec)

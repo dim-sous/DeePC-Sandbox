@@ -1,80 +1,63 @@
-"""Centralized configuration for the DeePC experiment."""
+"""Centralized configuration for the DeePC algorithm.
+
+Contains only algorithm-level parameters.  Plant-specific settings
+(dimensions, constraints, reference params) live on the plant object
+and flow into the config via ``build_deepc_config``.
+"""
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from plants.base import PlantBase
 
 
 @dataclass
 class DeePCConfig:
-    """All tunable parameters for the DeePC experiment."""
+    """All tunable parameters for the DeePC algorithm."""
 
-    # --- System dimensions ---
-    m: int = 2  # number of inputs: [steering angle, acceleration]
-    p: int = 3  # number of outputs: [x, y, velocity]
+    # --- System dimensions (set from plant at construction) ---
+    m: int = 2
+    p: int = 3
+    Ts: float = 0.1
 
     # --- Simulation ---
-    Ts: float = 0.1  # sampling time [s]
-    L_wheelbase: float = 2.5  # vehicle wheelbase [m]
-    sim_duration: float = 60.0  # simulation duration [s] (fixed, not a tuning knob)
-    v_ref: float = 5.0  # reference forward velocity [m/s]
+    sim_duration: float = 60.0
 
-    # --- Data collection ---
-    T_data: int = 400  # number of data samples
-    noise_std_output: float = 0.01  # measurement noise std
-    input_amplitude_delta: float = 0.5  # steering excitation amplitude [rad]
-    input_amplitude_a: float = 2.5  # acceleration excitation amplitude [m/s^2]
-    prbs_min_period: int = 3  # min hold time for PRBS
+    # --- Data collection (algorithm-level) ---
+    T_data: int = 400
+    noise_std_output: float = 0.01
 
     # --- DeePC horizons ---
-    Tini: int = 3  # past / initialization window length
-    N: int = 15  # prediction / future horizon
+    Tini: int = 3
+    N: int = 15
 
     # --- Cost weights (diagonal entries) ---
     Q_diag: list[float] = field(default_factory=lambda: [10.0, 10.0, 0.0])
     R_diag: list[float] = field(default_factory=lambda: [0.1, 0.1])
 
     # --- Regularization ---
-    lambda_g: float = 5.0  # penalty on g
-    lambda_y: float = 1e4  # penalty on output slack sigma_y
-    reg_norm_g: str = "L2"  # "L1" or "L2" for g regularization
-    reg_norm_sigma_y: str = "L1"  # "L1" or "L2" for sigma_y regularization
+    lambda_g: float = 5.0
+    lambda_y: float = 1e4
+    reg_norm_g: str = "L2"
+    reg_norm_sigma_y: str = "L1"
 
-    # --- Input constraints (hard) ---
-    delta_max: float = 0.5  # max steering angle [rad]
-    a_max: float = 1.0  # max acceleration [m/s^2]
-    a_min: float = -1.0  # max braking deceleration [m/s^2]
-
-    # --- Input rate constraints (hard) ---
-    d_delta_max: float = 0.3  # max steering rate [rad/step]
-    da_max: float = 0.5  # max acceleration rate (jerk) [m/s^2/step]
-
-    # --- Output constraints (soft) ---
-    y_lb: list[float] = field(
-        default_factory=lambda: [float("-inf"), float("-inf"), 0.0]
-    )
-    y_ub: list[float] = field(
-        default_factory=lambda: [float("inf"), float("inf"), 10.0]
-    )
-    lambda_out: float = 0.0  # penalty on output slack sigma_out (0 = disabled)
-
-    # --- Reference trajectory ---
-    ref_amplitude: float = 5.0  # sinusoidal amplitude [m]
-    ref_frequency: float = 0.05  # sinusoidal frequency [Hz]
+    # --- Output constraint slack ---
+    lambda_out: float = 0.0
 
     # --- Robust DeePC (noise-adaptive regularization) ---
-    noise_estimation_window: int = 10  # rolling window for residual variance
-    baseline_noise_std: float = 0.01  # nominal noise level (matches data collection)
-    max_lambda_scaling: float = 10.0  # cap on lambda scaling factor
-    constraint_tightening_factor: float = (
-        2.0  # output bounds tightened by factor * noise_std
-    )
+    noise_estimation_window: int = 10
+    baseline_noise_std: float = 0.01
+    max_lambda_scaling: float = 10.0
+    constraint_tightening_factor: float = 2.0
 
     # --- Online Hankel window ---
-    hankel_window_size: int = 0  # 0 = use all offline columns + grow with online data
-    hankel_warmup_steps: int = (
-        100  # steps before online updates begin (let controller settle)
-    )
+    hankel_window_size: int = 0
+    hankel_warmup_steps: int = 100
 
     # --- Solver ---
     solver: str = "OSQP"
@@ -95,3 +78,17 @@ class DeePCConfig:
     @property
     def R(self) -> np.ndarray:
         return np.array(self.R_diag * self.N)
+
+
+def build_deepc_config(plant: PlantBase, **overrides: Any) -> DeePCConfig:
+    """Build a DeePCConfig from a plant's defaults + user overrides.
+
+    Plant defaults are applied first, then ``m``, ``p``, ``Ts`` from the
+    plant object, then any explicit *overrides* (e.g. from CLI args).
+    """
+    defaults = plant.get_default_config_overrides()
+    defaults["m"] = plant.m
+    defaults["p"] = plant.p
+    defaults["Ts"] = plant.Ts
+    defaults.update({k: v for k, v in overrides.items() if v is not None})
+    return DeePCConfig(**defaults)

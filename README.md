@@ -1,6 +1,6 @@
 # DeePC Sandbox
 
-A Python platform for **Data-Enabled Predictive Control (DeePC)** — a model-free control method that replaces system identification with raw input-output data. This project aims to apply DeePC to various plants, exploring the practical limits and engineering tradeoffs of data-driven predictive control.
+A Python platform for **Data-Enabled Predictive Control (DeePC)** — a model-free control method that replaces system identification with raw input-output data. This project applies DeePC to various plant models, exploring the practical limits and engineering tradeoffs of data-driven predictive control.
 
 ## The Idea
 
@@ -15,7 +15,7 @@ run.py                  Experiment runner (data collection, simulation, HTML rep
 tune.py                 Bayesian hyperparameter optimization (Optuna)
 
 control/
-    config.py           All tunable parameters in one dataclass
+    config.py           Algorithm parameters + build_deepc_config factory
     controller.py       Sparse QP controller (CVXPY + OSQP)
     hankel.py           Block-Hankel matrix construction
     noise_estimator.py  Online prediction-residual noise estimation
@@ -23,11 +23,13 @@ control/
     regularization.py   Persistent excitation verification
 
 plants/
-    bicycle_model.py    Kinematic bicycle model + path error computation
+    base.py             PlantBase ABC + Constraints + DataCollectionConfig
+    bicycle_model.py    Kinematic bicycle model (nonlinear, 2in/3out)
+    coupled_masses.py   Coupled two-mass spring-damper (LTI MIMO, 2in/4out)
 
 sim/
     data_generation.py  Multi-episode stabilized data collection (PRBS + multisine)
-    scenarios.py        Reference path generators
+    scenarios.py        Reference scenario dispatcher
     simulation.py       Closed-loop simulation with error-based DeePC
 ```
 
@@ -37,20 +39,52 @@ sim/
 # Install
 uv sync
 
-# Run an experiment (60s simulation, generates HTML report)
+# Run an experiment (default: bicycle model)
 uv run python run.py
 
-# Customize parameters
+# Select a plant and scenario
+uv run python run.py --plant bicycle --scenario lissajous
+uv run python run.py --plant coupled_masses --scenario sinusoidal
+
+# Customize algorithm parameters
 uv run python run.py --Ts 0.039 --N 8 --Tini 4 --T-data 600 --lambda-g 32
 
-# Bayesian parameter tuning (100 trials)
-uv run python tune.py --n-trials 100 --sim-duration 10
+# Run without constraints
+uv run python run.py --plant coupled_masses --no-constraints
+
+# Bayesian parameter tuning
+uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
 
 # See all options
 uv run python run.py --help
 ```
 
 Reports are saved to `results/` as self-contained HTML files with interactive Plotly charts.
+
+## Adding a New Plant
+
+Implement `PlantBase` from `plants/base.py`:
+
+```python
+from plants.base import PlantBase, Constraints, DataCollectionConfig
+
+class MyPlant(PlantBase):
+    # Implement: m, p, Ts, input_names, output_names, state
+    # Implement: step(), reset(), get_output(), get_constraints()
+    # Implement: get_default_config_overrides(), get_scenarios()
+    # Implement: get_data_collection_config(), make_episode_initial_state()
+    # Optional:  plot_training_data(), plot_simulation_results(), compute_custom_metrics()
+    ...
+```
+
+Then add it to `PLANT_REGISTRY` in `run.py` and run with `--plant my_plant`.
+
+## Available Plants
+
+| Plant | Type | Inputs | Outputs | Scenarios |
+|-------|------|--------|---------|-----------|
+| `bicycle` | Nonlinear | steering, acceleration | lateral/heading/velocity errors | default (sinusoidal), lissajous |
+| `coupled_masses` | LTI MIMO | F1, F2 (forces) | position/velocity errors (x2) | default (step sequence), sinusoidal |
 
 ## DeePC Formulation
 
@@ -60,7 +94,7 @@ The controller solves at each time step:
 minimize    (y - y_ref)' Q (y - y_ref) + u' R u + lambda_g ||g|| + lambda_y ||sigma_y||
 subject to  [Up; Yp; Uf; Yf] g = [u_ini; y_ini + sigma_y; u; y]
             u_min <= u <= u_max
-            |du| <= du_max
+            du_min <= du <= du_max
 ```
 
 Where:
@@ -68,16 +102,6 @@ Where:
 - `sigma_y` is a slack variable for past-data consistency (handles noise/nonlinearity)
 - `Up, Yp, Uf, Yf` are block-Hankel matrices from offline data
 - The reference `y_ref` is always zero (minimize tracking errors)
-
-## Key Results (Bicycle Model)
-
-| Metric | Value |
-|--------|-------|
-| Lateral error RMSE | 0.54 m (60s simulation) |
-| Heading error RMSE | 0.21 rad |
-| Velocity error RMSE | 1.04 m/s |
-| Solver | 100% optimal, ~150ms avg |
-| Hankel conditioning | ~200 (error-based) vs ~55,000 (position-based) |
 
 ## Technical Stack
 

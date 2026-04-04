@@ -1,10 +1,11 @@
 """Bayesian optimization of DeePC tuning parameters using Optuna.
 
-Searches the joint parameter space to minimize position tracking RMSE.
+Searches the joint parameter space to minimize a plant-specific
+tracking metric.
 
 Usage:
     uv run python tune.py
-    uv run python tune.py --n-trials 200
+    uv run python tune.py --plant bicycle --n-trials 200
     uv run python tune.py --n-trials 50 --sim-duration 5
 """
 
@@ -23,29 +24,40 @@ import optuna
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from control.config import DeePCConfig
+from control.config import build_deepc_config
+from plants.base import PlantBase
+from plants.bicycle_model import BicycleModel
+from sim.data_generation import collect_data
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation
-from run import compute_metrics
+from run import PLANT_REGISTRY, compute_metrics
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = REPO_ROOT / "results" / "tune"
 
 
-def run_trial(config: DeePCConfig) -> dict:
+def run_trial(plant: PlantBase, config, scenario: str) -> dict:
     """Run one simulation silently and return metrics."""
     old_stdout = sys.stdout
     sys.stdout = io.StringIO()
     try:
-        path = get_reference("default", config)
-        results = run_simulation(config, FeatureFlags(), path_override=path)
-        return compute_metrics(results, "trial")
+        path = get_reference(plant, scenario, config)
+        u_data, y_data = collect_data(plant, config, seed=42)
+        results = run_simulation(
+            plant, config, FeatureFlags(), u_data, y_data, path,
+        )
+        return compute_metrics(results, plant, "trial")
     finally:
         sys.stdout = old_stdout
 
 
-def objective(trial: optuna.Trial, sim_duration: float) -> float:
-    """Optuna objective: minimize position RMSE."""
+def objective(
+    trial: optuna.Trial,
+    plant: PlantBase,
+    sim_duration: float,
+    scenario: str,
+) -> float:
+    """Optuna objective: minimize plant's tuning metric."""
     params = {
         "sim_duration": sim_duration,
         "Ts": trial.suggest_float("Ts", 0.02, 0.2, log=True),
@@ -58,38 +70,49 @@ def objective(trial: optuna.Trial, sim_duration: float) -> float:
         "reg_norm_sigma_y": trial.suggest_categorical("reg_norm_sigma_y", ["L1", "L2"]),
     }
 
+    objective_key = plant.get_tuning_objective_key()
+
     try:
-        config = DeePCConfig(**params)
-        metrics = run_trial(config)
-        rmse = metrics["rmse_position"]
-        if np.isnan(rmse) or np.isinf(rmse):
+        config = build_deepc_config(plant, **params)
+        metrics = run_trial(plant, config, scenario)
+
+        val = metrics.get(objective_key)
+        if val is None:
+            # Fall back to mean of per-channel RMSE
+            rmse_vals = [v for k, v in metrics.items()
+                         if k.startswith("rmse_") and isinstance(v, (int, float))]
+            val = float(np.mean(rmse_vals)) if rmse_vals else 1e6
+
+        if np.isnan(val) or np.isinf(val):
             return 1e6
 
-        # Log individual metrics for analysis
-        trial.set_user_attr("rmse_lateral", metrics["rmse_lateral"])
-        trial.set_user_attr("rmse_heading", metrics["rmse_heading"])
-        trial.set_user_attr("rmse_v", metrics["rmse_v"])
-        trial.set_user_attr("rmse_position", rmse)
-        trial.set_user_attr("optimal_solve_pct", metrics.get("optimal_solve_pct", 0))
+        # Log metrics for analysis
+        for k, v in metrics.items():
+            if isinstance(v, (int, float)) and k != "version":
+                trial.set_user_attr(k, v)
 
-        return rmse
+        return val
 
     except Exception as e:
         trial.set_user_attr("error", str(e))
         return 1e6
 
 
-# ── HTML report ───────────────────────────────────────────────────────
+# ── HTML report ──────────────────────────────────────────────────────
 
 PARAM_NAMES = ["Ts", "Tini", "N", "T_data", "lambda_g", "lambda_y",
                "reg_norm_g", "reg_norm_sigma_y"]
 
 
-def build_report(study: optuna.Study, wall_time: float) -> str:
+def build_report(
+    study: optuna.Study,
+    plant: PlantBase,
+    wall_time: float,
+) -> str:
     """Build HTML report with optimization results."""
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    objective_key = plant.get_tuning_objective_key()
 
-    # Best trial summary
     best = study.best_trial
     best_params_rows = ""
     for k, v in best.params.items():
@@ -97,8 +120,16 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
             best_params_rows += f"<tr><td>{k}</td><td>{v:.6g}</td></tr>\n"
         else:
             best_params_rows += f"<tr><td>{k}</td><td>{v}</td></tr>\n"
+
     best_metrics_rows = ""
-    for k in ["rmse_position", "rmse_lateral", "rmse_heading", "rmse_v", "optimal_solve_pct"]:
+    metric_keys = [f"rmse_{n}" for n in plant.output_names]
+    metric_keys.append(objective_key)
+    metric_keys.append("optimal_solve_pct")
+    seen = set()
+    for k in metric_keys:
+        if k in seen:
+            continue
+        seen.add(k)
         v = best.user_attrs.get(k)
         if v is not None:
             best_metrics_rows += f"<tr><td>{k}</td><td>{v:.4f}</td></tr>\n"
@@ -125,13 +156,14 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
     fig_history.update_layout(
         template="plotly_white", height=350,
         title="Optimization History",
-        xaxis_title="Trial", yaxis_title="Position RMSE [m]",
+        xaxis_title="Trial", yaxis_title=f"{objective_key}",
         margin=dict(l=50, r=30, t=40, b=40),
     )
     history_div = fig_history.to_html(full_html=False, include_plotlyjs=False)
 
-    # Parameter importance via scatter plots
-    numeric_params = [p for p in PARAM_NAMES if p not in ("reg_norm_g", "reg_norm_sigma_y")]
+    # Parameter scatter plots
+    numeric_params = [p for p in PARAM_NAMES
+                      if p not in ("reg_norm_g", "reg_norm_sigma_y")]
     n_params = len(numeric_params)
     fig_params = make_subplots(
         rows=2, cols=3,
@@ -152,7 +184,7 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
             title_text=pname, row=row, col=col,
             type="log" if pname in ("Ts", "lambda_g", "lambda_y") else "linear",
         )
-        fig_params.update_yaxes(title_text="RMSE [m]", row=row, col=col)
+        fig_params.update_yaxes(title_text=objective_key, row=row, col=col)
 
     fig_params.update_layout(
         template="plotly_white", height=500,
@@ -161,7 +193,7 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
     )
     params_div = fig_params.to_html(full_html=False, include_plotlyjs=False)
 
-    # Categorical params: box plots
+    # Categorical params box plots
     fig_cat = make_subplots(rows=1, cols=2,
                             subplot_titles=["reg_norm_g", "reg_norm_sigma_y"])
     for i, pname in enumerate(["reg_norm_g", "reg_norm_sigma_y"]):
@@ -170,7 +202,7 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
             fig_cat.add_trace(go.Box(
                 y=vals, name=cat, showlegend=False,
             ), row=1, col=i + 1)
-        fig_cat.update_yaxes(title_text="RMSE [m]", row=1, col=i + 1)
+        fig_cat.update_yaxes(title_text=objective_key, row=1, col=i + 1)
 
     fig_cat.update_layout(
         template="plotly_white", height=300,
@@ -241,7 +273,7 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
       <span>{timestamp}</span>
       <span>{len(study.trials)} trials</span>
       <span>{wall_time:.0f}s total</span>
-      <span>Best RMSE: {best.value:.4f} m</span>
+      <span>Best {objective_key}: {best.value:.4f}</span>
     </div>
   </header>
 
@@ -275,10 +307,17 @@ def build_report(study: optuna.Study, wall_time: float) -> str:
 </html>"""
 
 
-# ── Main ──────────────────────────────────────────────────────────────
+# ── Main ─────────────────────────────────────────────────────────────
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Bayesian optimization for DeePC tuning")
+    p = argparse.ArgumentParser(
+        description="Bayesian optimization for DeePC tuning",
+    )
+    p.add_argument("--plant", type=str, default="bicycle",
+                   choices=list(PLANT_REGISTRY.keys()),
+                   help="Plant model (default: bicycle)")
+    p.add_argument("--scenario", type=str, default="default",
+                   help="Reference scenario (default: default)")
     p.add_argument("--n-trials", type=int, default=100,
                    help="Number of optimization trials (default: 100)")
     p.add_argument("--sim-duration", type=float, default=10.0,
@@ -289,8 +328,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    plant_cls = PLANT_REGISTRY[args.plant]
+    plant = plant_cls()
+
+    objective_key = plant.get_tuning_objective_key()
+
     print(f"=== DeePC Bayesian Optimization ===")
+    print(f"  plant={args.plant}, scenario={args.scenario}")
     print(f"  trials={args.n_trials}, sim_duration={args.sim_duration}s")
+    print(f"  objective: minimize {objective_key}")
     print()
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -302,29 +348,26 @@ def main() -> None:
     t_wall = time.perf_counter()
 
     def obj(trial):
-        return objective(trial, args.sim_duration)
+        return objective(trial, plant, args.sim_duration, args.scenario)
 
     study.optimize(obj, n_trials=args.n_trials, show_progress_bar=True)
 
     wall_time = time.perf_counter() - t_wall
 
-    # Print summary
     best = study.best_trial
     print(f"\n{'=' * 50}")
-    print(f"  Best trial #{best.number}: RMSE = {best.value:.4f} m")
+    print(f"  Best trial #{best.number}: {objective_key} = {best.value:.4f}")
     print(f"{'=' * 50}")
     for k, v in best.params.items():
         print(f"  {k:25s}  {v}")
     print()
 
-    # Save report
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    html = build_report(study, wall_time)
+    html = build_report(study, plant, wall_time)
     report_path = RESULTS_DIR / "tune.html"
     report_path.write_text(html)
 
-    # Save best params as JSON
     best_data = {
         "best_value": best.value,
         "best_params": best.params,
