@@ -1,6 +1,6 @@
 # DeePC Sandbox
 
-A Python platform for **Data-Enabled Predictive Control (DeePC)** — a model-free control method that replaces system identification with raw input-output data. This project applies DeePC to various plant models, exploring the practical limits and engineering tradeoffs of data-driven predictive control.
+A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** — a model-free control method that replaces system identification with raw input-output data. It applies DeePC to a couple of plant models to explore the practical behavior and engineering tradeoffs of data-driven predictive control. This is an active personal project, not a library or product.
 
 ## The Idea
 
@@ -18,8 +18,8 @@ control/
     config.py           Algorithm parameters + build_deepc_config factory
     controller.py       Sparse QP controller (CVXPY + OSQP)
     hankel.py           Block-Hankel matrix construction
-    noise_estimator.py  Online prediction-residual noise estimation
-    online_hankel.py    Sliding Hankel window for online adaptation
+    noise_estimator.py  Online prediction-residual noise estimation (optional, --noise-adaptive)
+    online_hankel.py    Sliding Hankel window for online adaptation (optional, --online-hankel)
     regularization.py   Persistent excitation verification
 
 plants/
@@ -51,6 +51,10 @@ uv run python run.py --Ts 0.039 --N 8 --Tini 4 --T-data 600 --lambda-g 32
 
 # Run without constraints
 uv run python run.py --plant coupled_masses --no-constraints
+
+# Optional / experimental features (both off by default)
+uv run python run.py --online-hankel    # slide the Hankel window using closed-loop data
+uv run python run.py --noise-adaptive   # scale regularization from estimated noise
 
 # Bayesian parameter tuning
 uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
@@ -102,6 +106,8 @@ Where:
 - `sigma_y` is a slack variable for past-data consistency (handles noise/nonlinearity)
 - `Up, Yp, Uf, Yf` are block-Hankel matrices from offline data
 - The reference `y_ref` is always zero (minimize tracking errors)
+
+Input and input-rate constraints are hard. Output constraints, when enabled, are enforced softly via an extra slack term (`lambda_out`), omitted above for clarity.
 
 ## Technical Stack
 
