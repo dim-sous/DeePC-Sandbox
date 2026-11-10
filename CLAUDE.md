@@ -26,7 +26,7 @@ or a test. When in doubt, the rules win.
 
 - One branch per gap (group similar ones), landed through a GitHub PR — merge commit, never
   squash/rebase. Merge only after the suite is green LOCALLY. Branch deleted on merge; the
-  clean read of `main` is `git log --oneline --first-parent`.
+  clean read of `master` is `git log --oneline --first-parent`.
 - **Pause before git on something the developer can JUDGE:** run the code review yourself
   (`/code-review`; say so in the PR), then hand off IN THE LAB — the address with its runs and
   charts open, what to click, what each chart shows; never an image file — or say plainly there
