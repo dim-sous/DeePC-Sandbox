@@ -1,0 +1,12 @@
+{
+  "version": "bicycle_default",
+  "rmse_e_lateral": 0.6295730930927643,
+  "rmse_e_heading": 0.030992078411375808,
+  "rmse_e_velocity": 0.781607222206655,
+  "rmse_x": 0.819224093509513,
+  "rmse_y": 0.5184659045545114,
+  "rmse_position": 0.9695024546498121,
+  "optimal_solve_pct": 100.0,
+  "mean_sigma_y_norm": 1.7145524959925854e-11,
+  "max_sigma_y_norm": 1.9511533839444478e-10
+}

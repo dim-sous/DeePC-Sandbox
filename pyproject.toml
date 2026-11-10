@@ -11,3 +11,14 @@ dependencies = [
     "plotly>=6.6.0",
     "scipy>=1.17.1",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The code is imported from the repository root (`import run`, `from control.config import …`)
+# until the three roots land with an editable install.
+pythonpath = ["."]
