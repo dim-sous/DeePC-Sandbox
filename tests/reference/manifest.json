@@ -1,0 +1,618 @@
+{
+  "made": {
+    "git_sha": "45dc91b",
+    "git_dirty": true,
+    "code_changed": [],
+    "code_sha256": "1ab4c3012ef4f019538c7346f6b86e1fdd28a95d81ceca31c2bf7928b276bbb9",
+    "date": "2026-11-10T12:28:59+00:00",
+    "versions": {
+      "numpy": "2.4.2",
+      "scipy": "1.17.1",
+      "cvxpy": "1.8.1",
+      "osqp": "1.1.1",
+      "clarabel": "0.11.1",
+      "scs": "3.2.11"
+    }
+  },
+  "cases": {
+    "bicycle-data": {
+      "plant": "bicycle",
+      "scenario": null,
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 60.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "bicycle-reference-default": {
+      "plant": "bicycle",
+      "scenario": "default",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 60.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "bicycle-reference-lissajous": {
+      "plant": "bicycle",
+      "scenario": "lissajous",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 60.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "coupled_masses-data": {
+      "plant": "coupled_masses",
+      "scenario": null,
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 30.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "coupled_masses-reference-default": {
+      "plant": "coupled_masses",
+      "scenario": "default",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 30.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "coupled_masses-reference-sinusoidal": {
+      "plant": "coupled_masses",
+      "scenario": "sinusoidal",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 30.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "bicycle-default": {
+      "plant": "bicycle",
+      "scenario": "default",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 5.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "bicycle-online-hankel": {
+      "plant": "bicycle",
+      "scenario": "default",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": true,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 5.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 20,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "bicycle-noise-adaptive": {
+      "plant": "bicycle",
+      "scenario": "default",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": true,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 5.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "coupled_masses-sinusoidal": {
+      "plant": "coupled_masses",
+      "scenario": "sinusoidal",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 3.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "coupled_masses-default-no-constraints": {
+      "plant": "coupled_masses",
+      "scenario": "default",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": true
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 8.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    }
+  },
+  "run_py": {
+    "run-py-bicycle": {
+      "argv": [
+        "run.py",
+        "--plant",
+        "bicycle",
+        "--sim-duration",
+        "3"
+      ],
+      "options": {
+        "plant": "bicycle",
+        "scenario": "default",
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": false,
+        "T_data": null,
+        "noise_std_output": null,
+        "seed": 42,
+        "Tini": null,
+        "N": null,
+        "sim_duration": 3.0,
+        "Ts": null,
+        "Q_diag": null,
+        "R_diag": null,
+        "lambda_g": null,
+        "lambda_y": null,
+        "lambda_out": null,
+        "reg_norm_g": null,
+        "reg_norm_sigma_y": null
+      },
+      "config": {
+        "m": 2,
+        "p": 3,
+        "Ts": 0.1,
+        "sim_duration": 3.0,
+        "T_data": 400,
+        "noise_std_output": 0.01,
+        "Tini": 3,
+        "N": 15,
+        "Q_diag": [
+          10.0,
+          10.0,
+          0.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 5.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      },
+      "dropped": "every *solve_time_s metric (wall clock)"
+    },
+    "run-py-coupled_masses": {
+      "argv": [
+        "run.py",
+        "--plant",
+        "coupled_masses",
+        "--scenario",
+        "sinusoidal",
+        "--no-constraints",
+        "--sim-duration",
+        "3"
+      ],
+      "options": {
+        "plant": "coupled_masses",
+        "scenario": "sinusoidal",
+        "noise_adaptive": false,
+        "online_hankel": false,
+        "no_constraints": true,
+        "T_data": null,
+        "noise_std_output": null,
+        "seed": 42,
+        "Tini": null,
+        "N": null,
+        "sim_duration": 3.0,
+        "Ts": null,
+        "Q_diag": null,
+        "R_diag": null,
+        "lambda_g": null,
+        "lambda_y": null,
+        "lambda_out": null,
+        "reg_norm_g": null,
+        "reg_norm_sigma_y": null
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 3.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 100,
+        "solver": "OSQP",
+        "solver_verbose": false
+      },
+      "dropped": "every *solve_time_s metric (wall clock)"
+    }
+  }
+}

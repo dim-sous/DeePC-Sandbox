@@ -1,0 +1,4 @@
+# Frozen arrays of the safety net: never convert, never diff as text
+*.npz binary
+# Notes and docs edited from two computers keep one line ending
+*.md text eol=lf

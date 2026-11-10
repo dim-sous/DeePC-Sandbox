@@ -31,6 +31,14 @@ sim/
     data_generation.py  Multi-episode stabilized data collection (PRBS + multisine)
     scenarios.py        Reference scenario dispatcher
     simulation.py       Closed-loop simulation with error-based DeePC
+
+tests/
+    reference/          The safety net: today's numbers, frozen (cases.py, make.py, *.npz)
+    test_reference.py   Today's code against the frozen numbers, bit for bit
+    test_conventions.py CLAUDE.md's heft budget
+
+docs/project/
+    failures.md         The incidents the rules in CLAUDE.md were written after (D1-D8)
 ```
 
 ## Quick Start
@@ -46,7 +54,7 @@ uv run python run.py
 uv run python run.py --plant bicycle --scenario lissajous
 uv run python run.py --plant coupled_masses --scenario sinusoidal
 
-# Customize algorithm parameters
+# Customize algorithm parameters (--Ts does not reach the plant: docs/project/failures.md, D1)
 uv run python run.py --Ts 0.039 --N 8 --Tini 4 --T-data 600 --lambda-g 32
 
 # Run without constraints
@@ -57,10 +65,14 @@ uv run python run.py --online-hankel    # slide the Hankel window using closed-l
 uv run python run.py --noise-adaptive   # scale regularization from estimated noise
 
 # Bayesian parameter tuning
+# (set aside: its Ts search runs through D1, docs/project/failures.md)
 uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
 
 # See all options
 uv run python run.py --help
+
+# The test suite: CLAUDE.md's heft budget and the safety net
+uv run pytest
 ```
 
 Reports are saved to `results/` as self-contained HTML files with interactive Plotly charts.
@@ -118,6 +130,24 @@ Input and input-rate constraints are hard. Output constraints, when enabled, are
 | Parameter tuning | Optuna (TPE sampler) |
 | Visualization | Plotly |
 | Numerics | NumPy, SciPy |
+
+## Claims from before the rebuild, not re-measured
+
+Written into the old CLAUDE.md before any run was recorded. No record backs them; each stays
+unverified until one re-measures it.
+
+- Absolute or monotonic outputs destroy Hankel conditioning; error-based or shift-invariant
+  outputs are used instead.
+- Open-loop data collection produces drifted, asymmetric output distributions; a stabilising
+  baseline during collection keeps the errors centred.
+- Tuning on short simulations and evaluating on long ones exposes drift.
+- Sampling time (Ts) dominates tracking accuracy more than any regularisation parameter. The
+  runs behind it went through `--Ts`, which never reaches the plant (`docs/project/failures.md`,
+  D1).
+- One-at-a-time parameter sweeps miss interactions; a Bayesian joint search finds better
+  configurations.
+- Training data quality matters more than algorithm complexity: a well-conditioned Hankel
+  matrix with good coverage beats any amount of regularisation tuning.
 
 ## References
 
