@@ -5,13 +5,14 @@ incident degrades into a slogan** — every rule tagged `[D…]` was written aft
 was found in this repository. Rules taken from the sibling repositories cite theirs (BESS
 `[B…]`, RCWS `[A…]`).
 
-Referenced from `CLAUDE.md` as `[D1]`–`[D8]`. The labels are stable: add new ones, do not
+Referenced from `CLAUDE.md` as `[D1]`–`[D12]`. The labels are stable: add new ones, do not
 renumber. Each entry states what was observed, with the lines; what it means is the rule's job.
 
 D1–D8 were found on 2026-11-10, reading the code at `45dc91b` (untouched since 2026-05-29) and
-running its own functions; their line numbers are that commit's. **None is fixed**: the safety net (`tests/reference/`) freezes each
-as it behaves, and each waits for the Lab to show it before a branch fixes it and moves the
-frozen numbers on purpose.
+running its own functions; their line numbers are that commit's. D9–D12 were found the same day
+while writing `METHODS.md` from the code at `3067d03` (the same code), D12 by its code review. **None is fixed**: the
+safety net (`tests/reference/`) freezes each as it behaves, and each waits for the Lab to show
+it before a branch fixes it and moves the frozen numbers on purpose.
 
 ---
 
@@ -132,3 +133,66 @@ repository for each name's callers.
 
 Rules: no code stays that the developer cannot explain; one variant, one file, and the
 registry is the only place that knows which exist.
+
+## D9 — Hankel columns that join two runs
+
+- The training data is collected in episodes, each starting from its own reset state
+  (`sim/data_generation.py:88`), and the episodes are stacked end to end into one record
+  (`:114`). The Hankel matrix is built over the stacked record
+  (`control/online_hankel.py:49-50`, through `control/hankel.py:6-37`), so a column whose window
+  spans an episode boundary holds samples from two episodes.
+- Counted at the plants' defaults (5 episodes; bicycle `T_data` 400, $L$ = 18; coupled masses
+  `T_data` 600, $L$ = 24): 68 of the bicycle's 383 columns and 92 of the masses' 577 span a
+  boundary.
+- The same holds for the online window (`--online-hankel`): its buffer is seeded with the last
+  $L - 1$ training samples (`control/online_hankel.py:79-82`) and then receives the loop's
+  samples from step `hankel_warmup_steps` on (default 100), so its first $L - 1$ online columns
+  join the end of the training data to the loop.
+
+Rules: literature-grounded — several datasets are combined the way the literature does it
+(the established construction is to be found and cited, `METHODS.md` §3); a data matrix states
+what each of its columns holds.
+
+## D10 — the loop and the data align the reference differently
+
+- Closed loop: after step $i$ the state, at time $(i+1)T_s$, is compared with waypoint $r_i$,
+  computed at time $iT_s$ (`sim/simulation.py:78-85`, `:139-141`; the scenarios'
+  $t_k = kT_s$, `plants/bicycle_model.py:285-327`).
+- Data collection (bicycle): after step $k$ the state is compared with the nominal waypoint at
+  $(k+1)\,v_{ref}T_s$ (`plants/bicycle_model.py:371-374`, `sim/data_generation.py:97-105`), the
+  same instant.
+- The bicycle's position RMSE compares positions at equal times
+  (`sim/simulation.py:76`, `:193`; `plants/bicycle_model.py:274-275`).
+- Not measured.
+
+Rules: one quantity, one formula — the output the data holds and the output the loop gives the
+controller come from one function, or the divergence is declared where it lives.
+
+## D11 — a tightening that enters no constraint
+
+- Under `--noise-adaptive` the loop computes an output-bound tightening from the noise estimate
+  and passes it to the controller every step (`sim/simulation.py:118-121`).
+- The tightening enters only the soft output bounds, which the QP holds only when
+  `lambda_out > 0` (`control/controller.py:182-199`), and only on outputs with a finite bound
+  (`:187-188`). Every plant's default is 0, so at the defaults it enters no constraint; only the
+  scaling of `lambda_g` and `lambda_y` acts. The coupled masses have no output bounds
+  (`plants/coupled_masses.py:135-136`), so for them it enters no constraint at any `lambda_out`.
+
+Rules: a setting the run did not use is refused or recorded as unused, never accepted.
+
+## D12 — training inputs the plant never applied
+
+- During data collection the input $u_k$ = baseline + excitation is passed to the plant
+  (`sim/data_generation.py:101-102`) and recorded as it was passed (`:108`). The bicycle clips
+  its inputs inside its step (`plants/bicycle_model.py:178-179`) to $|\delta| \le 0.5$ rad and
+  $a \in [-1, 1]$ m/s²; its excitation alone reaches ±0.5 rad and ±2.5 m/s²
+  (`plants/bicycle_model.py:335-358`).
+- In the frozen bicycle training data (`tests/reference/bicycle-data.npz`; seed 42, plant
+  defaults, `T_data` 400) 12.0 % of the steering samples and 33.8 % of the acceleration samples
+  lie outside the clip. In the coupled masses' (`tests/reference/coupled_masses-data.npz`) none
+  do.
+- The Hankel input blocks are built from the recorded inputs (`control/online_hankel.py:49`).
+
+Rules: one quantity, one formula — the input the data records is the input the plant applied,
+or the divergence is declared where it lives.
+

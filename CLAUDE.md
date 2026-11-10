@@ -7,7 +7,7 @@ then the fixes. What it is and how it runs: `README.md`. This file holds the wor
 
 **Only advisory rules live here** — the ones no test can catch. A checked rule lives in the
 test that checks it, and that test's docstring carries its incident tag. Each rule points at
-what holds it: an incident in `docs/project/failures.md` (`[D1]`–`[D8]`; a rule without its
+what holds it: an incident in `docs/project/failures.md` (`[D1]`–`[D12]`; a rule without its
 incident degrades into a slogan), a sibling repository's incident (BESS `[B…]`, RCWS `[A…]`),
 or a test. When in doubt, the rules win.
 
@@ -45,12 +45,14 @@ or a test. When in doubt, the rules win.
   duration, and every setting off its default, stated in full; a default config is a posture,
   not a neutral one; a run at one condition is that condition, not a capability. `[D1]`
 - Where a change is written down: the RULE here (or in its test), the DESCRIPTION in the
-  README, the INCIDENT in `failures.md`. A measured number belongs at its point of use with
-  what was observed, or in the record that regenerates it — never transcribed into prose,
-  where it goes stale unread. (BESS `[B3, B5]`)
+  README, the METHOD in `METHODS.md` (changed when a method changes, every citation marked
+  until checked against its source), the INCIDENT in `failures.md`. A measured number belongs
+  at its point of use with what was observed, or in the record that regenerates it — never
+  transcribed into prose, where it goes stale unread. (BESS `[B3, B5]`)
 - Heft is enforced: this file by `test_claude_md_stays_within_its_heft_budget`.
 - Explanations start from what the developer can see; the maths keeps its terms. Skill `plain`.
-- Git is the only sync between computers; ignore only regenerable or machine-specific files.
+- Git is the only sync between computers; ignore only regenerable or machine-specific files,
+  and `references/` (the papers): the repository is public.
 
 ## Architecture
 
@@ -71,9 +73,9 @@ The judgment calls no test can make yet:
   class. Today `control/controller.py` imports `plants.base.Constraints`; the move removes it.
 - One block, one package; one file per variant, and the block's registry is the only place
   that knows which exist. Code nothing calls goes. `[D8]`
-- A setting the run did not use is refused or recorded as unused, never accepted. `[D1]`
+- A setting the run did not use is refused or recorded as unused, never accepted. `[D1, D11]`
 - One quantity, one formula: the output the training data holds and the one the loop gives the
-  controller come from one function, or the divergence is declared where it lives. `[D4]`
+  controller come from one function, or the divergence is declared where it lives. `[D4, D10, D12]`
 - A number is stated once, where it is used, with its source; everything else reads it.
 - Any value a block computes is surfaced with one line — kept by the record, plotted by the
   Lab, with no other edit (RCWS `dd18796` took ten files).
@@ -121,6 +123,6 @@ its observed consequence. State what was observed, never what it means.
   record, not a footnote.
 - Literature-grounded: when the thing exists in the literature (regularised DeePC, online
   Hankel updates, persistency of excitation), find the established method BEFORE designing;
-  cite it where it is used.
+  cite it where it is used. `[D9]`
 - Every guard makes a failure less legible: a new clip, fallback, threshold or relaxation must
   earn its place, states its source, and defaults to reporting, not acting. `[D3, D5]`

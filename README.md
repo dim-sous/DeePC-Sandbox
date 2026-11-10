@@ -1,52 +1,53 @@
 # DeePC Sandbox
 
-A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** — a model-free control method that replaces system identification with raw input-output data. It applies DeePC to a couple of plant models to explore the practical behavior and engineering tradeoffs of data-driven predictive control. This is an active personal project, not a library or product.
+A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** on two simulated plants, a
+kinematic bicycle and a coupled two-mass spring-damper. An active personal project, not a library or product.
 
-## The Idea
+## About
 
-Traditional model predictive control (MPC) requires an explicit system model. DeePC replaces it with a single offline dataset: apply persistently exciting inputs to the system, record what happens, and use matrix representation as an implicit model for online optimization. No physics equations, no parameter estimation — just data and a QP solver.
+Model predictive control needs an explicit model of the system. DeePC replaces it with one offline dataset:
+excite the system with rich inputs, record what happens, and use block-Hankel matrices of the recorded
+trajectories as the model in the quadratic program solved at each step. The foundation the project names is
+Willems' fundamental lemma, in the old README's words: "for a linear time-invariant system, a sufficiently
+rich input-output trajectory contains all information needed to predict future behavior" (not yet checked
+against its source; see [METHODS.md](METHODS.md), §3).
 
-The theoretical foundation is **Willems' fundamental lemma**: for a linear time-invariant system, a sufficiently rich input-output trajectory contains all information needed to predict future behavior. DeePC builds on this to formulate a receding-horizon controller that solves a quadratic program at each time step.
+- **Plants.**
 
-## Architecture
+  | Plant | Type | Inputs | Outputs | Scenarios |
+  |-------|------|--------|---------|-----------|
+  | `bicycle` | Nonlinear | steering, acceleration | lateral, heading and speed errors | `default` (sinusoid along a line), `lissajous` |
+  | `coupled_masses` | LTI MIMO | forces $F_1$, $F_2$ | position and velocity errors of both masses | `default` (steps), `sinusoidal` |
+
+- **Data.** Several episodes per plant, each driven by a proportional baseline controller plus excitation,
+  with Gaussian noise on the recorded outputs.
+- **Controller.** The DeePC quadratic program in sparse form (inputs and outputs as decision variables), with
+  regularisation of the Hankel weights and a slack on the past outputs, hard input and rate bounds, and
+  optional soft output bounds. The outputs are tracking errors and the reference is zero.
+- **Variants**, both off by default: noise-adaptive regularisation (`--noise-adaptive`) and an online
+  Hankel window fed by closed-loop data (`--online-hankel`).
+- **Tuning.** A Bayesian search over the controller's settings with Optuna.
+- **Stack.** CVXPY with OSQP (SCS as the fallback), Optuna's TPE sampler, Plotly for the reports, NumPy
+  and SciPy.
+
+The equations, the data collection, the controller, its variants, the metrics and their sources are in
+[METHODS.md](METHODS.md). The project is being rebuilt, first with the scaffolding that will expose its gaps
+(the rules in [CLAUDE.md](CLAUDE.md), a safety net, then records and a Lab), then the fixes.
+
+## Installation
+
+Needs [uv](https://docs.astral.sh/uv/). From the project folder:
 
 ```
-run.py                  Experiment runner (data collection, simulation, HTML report)
-tune.py                 Bayesian hyperparameter optimization (Optuna)
-
-control/
-    config.py           Algorithm parameters + build_deepc_config factory
-    controller.py       Sparse QP controller (CVXPY + OSQP)
-    hankel.py           Block-Hankel matrix construction
-    noise_estimator.py  Online prediction-residual noise estimation (optional, --noise-adaptive)
-    online_hankel.py    Sliding Hankel window for online adaptation (optional, --online-hankel)
-    regularization.py   Persistent excitation verification
-
-plants/
-    base.py             PlantBase ABC + Constraints + DataCollectionConfig
-    bicycle_model.py    Kinematic bicycle model (nonlinear, 2in/3out)
-    coupled_masses.py   Coupled two-mass spring-damper (LTI MIMO, 2in/4out)
-
-sim/
-    data_generation.py  Multi-episode stabilized data collection (PRBS + multisine)
-    scenarios.py        Reference scenario dispatcher
-    simulation.py       Closed-loop simulation with error-based DeePC
-
-tests/
-    reference/          The safety net: today's numbers, frozen (cases.py, make.py, *.npz)
-    test_reference.py   Today's code against the frozen numbers, bit for bit
-    test_conventions.py CLAUDE.md's heft budget
-
-docs/project/
-    failures.md         The incidents the rules in CLAUDE.md were written after (D1-D8)
+uv sync
 ```
 
-## Quick Start
+This creates `.venv/` with Python 3.13 (pinned in `.python-version`) and the library versions pinned in
+`uv.lock`.
+
+## Usage
 
 ```bash
-# Install
-uv sync
-
 # Run an experiment (default: bicycle model)
 uv run python run.py
 
@@ -70,16 +71,12 @@ uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
 
 # See all options
 uv run python run.py --help
-
-# The test suite: CLAUDE.md's heft budget and the safety net
-uv run pytest
 ```
 
-Reports are saved to `results/` as self-contained HTML files with interactive Plotly charts.
+Each run writes a self-contained HTML report with interactive Plotly charts and a metrics file to
+`results/<tag>/`.
 
-## Adding a New Plant
-
-Implement `PlantBase` from `plants/base.py`:
+**Adding a plant.** Implement `PlantBase` from `plants/base.py`:
 
 ```python
 from plants.base import PlantBase, Constraints, DataCollectionConfig
@@ -95,46 +92,59 @@ class MyPlant(PlantBase):
 
 Then add it to `PLANT_REGISTRY` in `run.py` and run with `--plant my_plant`.
 
-## Available Plants
-
-| Plant | Type | Inputs | Outputs | Scenarios |
-|-------|------|--------|---------|-----------|
-| `bicycle` | Nonlinear | steering, acceleration | lateral/heading/velocity errors | default (sinusoidal), lissajous |
-| `coupled_masses` | LTI MIMO | F1, F2 (forces) | position/velocity errors (x2) | default (step sequence), sinusoidal |
-
-## DeePC Formulation
-
-The controller solves at each time step:
+## Checks
 
 ```
-minimize    (y - y_ref)' Q (y - y_ref) + u' R u + lambda_g ||g|| + lambda_y ||sigma_y||
-subject to  [Up; Yp; Uf; Yf] g = [u_ini; y_ini + sigma_y; u; y]
-            u_min <= u <= u_max
-            du_min <= du <= du_max
+uv run pytest
 ```
 
-Where:
-- `g` is the Hankel combination vector (selects a trajectory from the data)
-- `sigma_y` is a slack variable for past-data consistency (handles noise/nonlinearity)
-- `Up, Yp, Uf, Yf` are block-Hankel matrices from offline data
-- The reference `y_ref` is always zero (minimize tracking errors)
+The suite runs locally and is the gate for every change. It holds:
 
-Input and input-rate constraints are hard. Output constraints, when enabled, are enforced softly via an extra slack term (`lambda_out`), omitted above for clarity.
+- **The safety net** (`tests/reference/`). Today's numbers are frozen: training data, reference paths,
+  five closed loops and `run.py` end to end. The test compares the code against them byte for byte, along
+  with every setting each case ran under.
+- **The document checks.** CLAUDE.md's length budget and METHODS.md's citations. Every folder path and
+  every `file:line` pointer in this README, METHODS.md and failures.md must exist, and each pointer must fall
+  inside its file. Whether a pointer still points at the code it describes is not checked.
 
-## Technical Stack
+The frozen files are remade only by `uv run python -m tests.reference.make`, on a change meant to move the
+numbers.
 
-| Component | Library |
-|-----------|---------|
-| Optimization | CVXPY |
-| QP solver | OSQP |
-| Parameter tuning | Optuna (TPE sampler) |
-| Visualization | Plotly |
-| Numerics | NumPy, SciPy |
+## Project layout
 
-## Claims from before the rebuild, not re-measured
+| Path | Role |
+|---|---|
+| `run.py` | the command: data collection, closed loop, metrics, HTML report; the plant registry |
+| `tune.py` | Bayesian search over the controller's settings (Optuna) |
+| `control/` | the controller: settings (`config.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
+| `plants/` | `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`) |
+| `sim/` | data collection (`data_generation.py`), scenarios (`scenarios.py`), the closed loop (`simulation.py`) |
+| `tests/` | the safety net (`tests/reference/`, `test_reference.py`) and the document checks (`test_conventions.py`) |
+| `METHODS.md` | what the code computes, as equations, with references |
+| `CLAUDE.md` | the working rules |
+| `docs/project/failures.md` | the incidents the rules were written after (D1–D12) |
+| `references/` | the papers, on each computer only (git-ignored: the repository is public) |
 
-Written into the old CLAUDE.md before any run was recorded. No record backs them; each stays
-unverified until one re-measures it.
+## Limitations
+
+Simulation only. The known problems are recorded, none fixed yet, in
+[docs/project/failures.md](docs/project/failures.md):
+
+- **D1** `--Ts`, and the tuner's search over it, never reaches the plant.
+- **D2** an inaccurate solve is counted as optimal.
+- **D3** solver failures are silent: a hidden SCS retry, a zero input applied, warnings that change nothing.
+- **D4** the training outputs are noisy and the closed-loop outputs are not.
+- **D5** the online Hankel gate reads an estimator that only runs under `--noise-adaptive`.
+- **D6** comments that describe other code.
+- **D7** the bicycle's output bounds sit on the speed error.
+- **D8** code nothing calls.
+- **D9** Hankel columns that join two episodes, or the training data and the loop.
+- **D10** the loop and the data align the reference with the state differently.
+- **D11** the noise-adaptive tightening enters no constraint at the defaults.
+- **D12** the bicycle's training data records inputs before the plant clips them.
+
+**Claims from before the rebuild, not re-measured.** These were written into the old CLAUDE.md before any
+run was recorded. No record backs them, and each stays unverified until one re-measures it.
 
 - Absolute or monotonic outputs destroy Hankel conditioning; error-based or shift-invariant
   outputs are used instead.
@@ -142,8 +152,7 @@ unverified until one re-measures it.
   baseline during collection keeps the errors centred.
 - Tuning on short simulations and evaluating on long ones exposes drift.
 - Sampling time (Ts) dominates tracking accuracy more than any regularisation parameter. The
-  runs behind it went through `--Ts`, which never reaches the plant (`docs/project/failures.md`,
-  D1).
+  runs behind it went through `--Ts`, which never reaches the plant (D1).
 - One-at-a-time parameter sweeps miss interactions; a Bayesian joint search finds better
   configurations.
 - Training data quality matters more than algorithm complexity: a well-conditioned Hankel
@@ -151,6 +160,14 @@ unverified until one re-measures it.
 
 ## References
 
-- Coulson, Lygeros, Dorfler. *Data-Enabled Predictive Control: In the Shallows of the DeePC.* European Journal of Control, 2019.
-- Willems, Rapisarda, Markovsky, De Moor. *A note on persistency of excitation.* Systems & Control Letters, 2005.
-- Berberich, Koch, Scherer, Allgower. *Robust data-driven state-feedback design.* ACC, 2020.
+The main sources, none yet checked against its source here; the full list is in
+[METHODS.md](METHODS.md#references).
+
+- J. Coulson, J. Lygeros, F. Dörfler, *Data-Enabled Predictive Control: In the Shallows of the DeePC*,
+  2019 (venue not checked).
+- J. C. Willems, P. Rapisarda, I. Markovsky, B. L. M. De Moor, *A note on persistency of excitation*,
+  *Systems & Control Letters*, 2005.
+
+## License
+
+[MIT](LICENSE)
