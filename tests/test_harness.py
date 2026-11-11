@@ -56,11 +56,17 @@ def test_every_closed_loop_number_is_a_reduction_of_an_array_on_the_record(datas
     rec = LOOP.run(LOOP.Config(dataset_run=datasets["bicycle"], sim_duration=1.0))
     for j, c in enumerate(rec.outputs):
         assert rec.numbers[f"rmse_{c}"] == float(np.sqrt(np.mean(rec.y[:, j] ** 2)))
-    counted = {k[len("solves_"):]: v for k, v in rec.numbers.items() if k.startswith("solves_")}
+    counted = {k[len("solves_"):]: v for k, v in rec.numbers.items()
+               if k.startswith("solves_") and not k.startswith("solves_by_")}
     assert counted == {s: float(n) for s, n in rec.status_counts().items()}
     assert sum(counted.values()) == len(rec.statuses) == len(rec.solve_time_s)
+    by = {k[len("solves_by_"):]: v for k, v in rec.numbers.items() if k.startswith("solves_by_")}
+    assert by == {s: float(n) for s, n in rec.solver_counts().items()}
+    assert sum(by.values()) == len(rec.solvers) == len(rec.statuses)
+    assert rec.numbers["zero_inputs_applied"] == float(sum(rec.zero_input))
     assert rec.numbers["solve_time_max_s"] == float(rec.solve_time_s.max())
     assert rec.constants["plant_Ts_s"] == 0.1 and rec.constants["deepc_config"]["Ts"] == 0.1
+    assert rec.constants["excitation_rank"] == rec.constants["excitation_rank_required"] == 36
 
 
 def test_every_dataset_number_is_a_reduction_of_an_array_on_the_record(datasets) -> None:

@@ -10,11 +10,9 @@ def check_persistent_excitation(
     L: int,
     m: int,
     tol: float = 1e-6,
-) -> bool:
-    """Check whether input data is persistently exciting of order L.
-
-    The input is persistently exciting of order L when the Hankel matrix
-    H_L(u) has full row rank, i.e. rank >= L * m.
+) -> tuple[int, int]:
+    """Rank of the input Hankel matrix H_L(u) and the rank L * m it needs for the input
+    to be persistently exciting of order L (full row rank).
 
     Args:
         u_data: Input trajectory, shape (T, m).
@@ -23,18 +21,10 @@ def check_persistent_excitation(
         tol: Tolerance for the rank computation.
 
     Returns:
-        True if the data satisfies the PE condition.
+        (rank of H_L(u), L * m). The caller records both; nothing is printed (D3).
     """
     if u_data.ndim == 1:
         u_data = u_data.reshape(-1, 1)
 
     Hu = build_hankel_matrix(u_data, L)
-    rank = np.linalg.matrix_rank(Hu, tol=tol)
-    required_rank = L * m
-
-    if rank < required_rank:
-        print(
-            f"WARNING: Hankel rank {rank} < required {required_rank}. "
-            f"Data is NOT persistently exciting of order {L}."
-        )
-    return rank >= required_rank
+    return int(np.linalg.matrix_rank(Hu, tol=tol)), L * m

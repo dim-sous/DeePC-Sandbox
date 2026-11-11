@@ -26,8 +26,10 @@ LIBRARIES = ("numpy", "scipy", "cvxpy", "osqp", "clarabel", "scs")
 
 
 def _git(*args: str) -> str:
-    return subprocess.run(["git", *args], cwd=cases.REFERENCE_DIR, check=True,
-                          capture_output=True, text=True).stdout.strip()
+    # from the repository root: the paths in cases.CODE are the root's (a run from this folder
+    # matched none of them, and the manifest named no changed code whatever had changed)
+    return subprocess.run(["git", *args], cwd=cases.ROOT, check=True,
+                          capture_output=True, text=True).stdout.rstrip("\n")
 
 
 def _code_sha256() -> str:

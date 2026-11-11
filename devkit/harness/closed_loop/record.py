@@ -5,7 +5,9 @@ the outputs, inputs and reference over the warm-up and the loop (``time``), and 
 solve for the solver's own (``statuses``, ``cost``, ``sigma_y_norm``, ``lambda_g``,
 ``solve_time_s``). A value a solve left without one is NaN in its array, never dropped. Every
 number is a reduction of an array on this record. Solves are counted by status, each status its
-own number, so an inaccurate solve is never counted as an optimal one (D2). Every axis carries
+own number, so an inaccurate solve is never counted as an optimal one (D2); by the solver that
+answered, and the solves that left no solution, where zeros were applied, are counted (D3),
+all through ``sim.simulation.solve_counts``. Every axis carries
 its unit, a channel's the plant's own (``input_units``, ``output_units``). The words follow the
 developer's pattern (``docs/project/lab-words.md``). No chart declares a pooling statistic: the
 closed loop holds no seed of its own, so its runs are never replicates of one run.
@@ -38,7 +40,7 @@ class Record(_Record):
     name: str
     config: Config
     provenance: Provenance | None
-    constants: dict                 # the resolved DeePCConfig, the plant's step and the config's, the dataset run
+    constants: dict                 # the resolved DeePCConfig, the plant's step, the rank of H_L(u), the dataset run
     inputs: list                    # input channel names
     outputs: list                   # output channel names
     input_units: list               # the unit of each input, the plant's own
@@ -50,6 +52,8 @@ class Record(_Record):
     y: np.ndarray                   # (T, p) outputs (tracking errors)
     reference: np.ndarray           # (T, ref_dim) the waypoints
     statuses: list                  # (K,) the solver's status per solve
+    solvers: list                   # (K,) the solver that answered per solve (OSQP, or SCS after a SolverError)
+    zero_input: list                # (K,) True where the solve left no solution and zeros were applied
     cost: np.ndarray                # (K,) objective per solve
     sigma_y_norm: np.ndarray        # (K,) 2-norm of the past-output slack per solve
     lambda_g: np.ndarray            # (K,) lambda_g used per solve
@@ -65,6 +69,10 @@ class Record(_Record):
     def status_counts(self) -> dict[str, int]:
         """Solves per status, statuses in the order they first occur."""
         return {s: self.statuses.count(s) for s in dict.fromkeys(self.statuses)}
+
+    def solver_counts(self) -> dict[str, int]:
+        """Solves per solver that answered, solvers in the order they first occur."""
+        return {s: self.solvers.count(s) for s in dict.fromkeys(self.solvers)}
 
     def series(self) -> tuple[Series, ...]:
         t, step = self.time, np.arange(len(self.statuses))
@@ -109,7 +117,14 @@ class Record(_Record):
         out += [Number(f"solves_{s}", f"Solves: {s.replace('_', ' ')}", group=_SOLVER,
                        doc=f"Solves whose status is exactly {s!r}")
                 for s in self.status_counts()]
-        out += [Number("solve_time_mean_s", "Mean solve time", "s", group=_SOLVER,
+        out += [Number(f"solves_by_{s}", f"Solves by {s}", group=_SOLVER,
+                       doc=f"Solves {s} answered" + (", after OSQP raised a SolverError"
+                                                     if s == "SCS" else ""))
+                for s in self.solver_counts()]
+        out += [Number("zero_inputs_applied", "Zero inputs applied", group=_SOLVER,
+                       doc="Solves that left no solution, after which the controller's zero "
+                           "input was applied"),
+                Number("solve_time_mean_s", "Mean solve time", "s", group=_SOLVER,
                        doc="Mean wall-clock time of a solve"),
                 Number("solve_time_max_s", "Max solve time", "s", group=_SOLVER,
                        doc="Longest wall-clock time of a solve"),

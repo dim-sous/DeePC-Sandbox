@@ -14,8 +14,8 @@ while writing `METHODS.md` from the code at `3067d03` (the same code), D12 by it
 D13–D17 were found on 2026-11-11, reading the papers `METHODS.md` cites (its References, arXiv
 versions; numbers in brackets refer to that list). On 2026-11-11 the layout move put the code
 under `src/`, `tools/` and `devkit/`: every path and line number here was re-pointed from
-`c257f5f` to the new files by matching each line's text, so each still names the same code. **D1 is
-fixed** (PR #8, at the end of its entry); **none of the others is yet**: the safety net
+`c257f5f` to the new files by matching each line's text, so each still names the same code. **D1–D3
+are fixed** (PRs #8 and #9, at the end of each entry); **none of the others is yet**: the safety net
 (`tests/reference/`) freezes each as it behaves, and each waits for the Lab to show it before a
 branch fixes it and moves the frozen numbers on purpose.
 
@@ -78,6 +78,16 @@ look right.
 Rules: fail loud — a solver status is counted by its own name in the record, never folded
 into another.
 
+**Fixed 2026-11-11, PR #9**, with D3. The pointers above name the code before the fix (`4d417f9`).
+
+- One function, `solve_counts` (`devkit/sim/simulation.py`), counts every status by its own name;
+  the loop's printed line, the closed-loop piece and `run.py`'s metrics read it. `run.py`'s
+  `optimal_solve_pct` counts `status == "optimal"` only.
+- The safety net moved on purpose: `run-py-bicycle.json`'s `optimal_solve_pct` went from 100 to 90
+  (3 `optimal_inaccurate` of 30 solves), and both `run.py` metrics files gained the counts. No
+  frozen array moved.
+- Held by `tests/test_solve_outcomes.py` (`[D2]`) and the frozen `run.py` metrics.
+
 ## D3 — failures that make no sound
 
 - `src/deepc/controller.py:260` catches every exception from the OSQP solve, `Exception`
@@ -85,12 +95,30 @@ into another.
 - `src/deepc/controller.py:280-281`: when the solve leaves no solution, the controller returns
   an input of zeros and the loop applies it to the plant.
 - The persistent-excitation check prints a warning and the controller is built anyway
-  (`src/deepc/regularization.py:36`, `src/deepc/controller.py:75-77`).
+  (the print at line 36 of `regularization.py` and lines 75-77 of `controller.py`, at `4d417f9`).
 - `tune.py:96-98` turns any exception in a trial into the score 1e6; `tune.py:87` does the
   same for a NaN or infinite score.
 
 Rules: fail loud — no swallowed exception, no stand-in answer for one the code failed to
 compute; a fallback is counted in the record; every guard makes a failure less legible.
+
+**Fixed 2026-11-11, PR #9**, by reporting; the two fallbacks stay. The pointers above name the
+code before the fix (`4d417f9`).
+
+- The controller catches `cvxpy.SolverError` only, retries it with SCS, and names the solver that
+  answered on each solve; any other exception reaches the caller.
+- A solve that leaves no solution is flagged where the zero input is returned. The closed-loop
+  record keeps both per solve (`solvers`, `zero_input`) and counts them (`solves_by_<solver>`,
+  `zero_inputs_applied`), as do `run.py`'s metrics.
+- The excitation check returns its rank; the controller keeps it and $L\,m$, the closed-loop
+  record keeps both in `constants` and `run.py`'s metrics as numbers; the controller prints
+  nothing.
+- `tune.py`: a trial that raises, or scores NaN or infinity, stops the study.
+- Held by `tests/test_solve_outcomes.py` (`[D3]`). Open: whether the SCS retry and the zero input
+  should stay at all, or a failed solve stop the run.
+- Found while remaking the safety net for this fix: `tests/reference/make.py` ran
+  `git status -- src tools devkit run.py` from `tests/reference/`, where those paths match
+  nothing, so every manifest recorded `code_changed: []`. It runs from the root now.
 
 ## D4 — one measurement, two formulas
 
@@ -99,7 +127,7 @@ compute; a fallback is counted in the record; every guard makes a failure less l
 - The baseline controller that runs during data collection reads the error before any noise
   is added (`devkit/sim/data_generation.py:54-56`).
 - Closed loop: the output DeePC receives is the error with no noise
-  (`devkit/sim/simulation.py:81`, `:141`).
+  (`devkit/sim/simulation.py:94`, `:156`).
 
 Rules: one quantity, one formula, or each divergence declared where it lives (`# MISMATCH`);
 the controller receives only what the plant reports.
@@ -107,9 +135,9 @@ the controller receives only what the plant reports.
 ## D5 — the online Hankel gate reads a switch it does not name
 
 - Under `--online-hankel`, a column is added only while the mean of the noise estimator's
-  standard deviations is below `1.0` (`devkit/sim/simulation.py:144-147`); no source states the
+  standard deviations is below `1.0` (`devkit/sim/simulation.py:159-162`); no source states the
   threshold.
-- The estimator is updated only under `--noise-adaptive` (`devkit/sim/simulation.py:107-109`).
+- The estimator is updated only under `--noise-adaptive` (`devkit/sim/simulation.py:122-124`).
   Without it, its standard deviations stay at their initial zeros and the gate passes at
   every step.
 
@@ -121,7 +149,7 @@ to reporting, not acting.
 - `src/deepc/online_hankel.py:53`: "max_cols: 0 means use offline size + sim_steps headroom";
   the lines below use the offline size alone.
 - `tools/plants/bicycle_model.py:30`: the reference point is the "nearest waypoint"; the loop passes
-  the waypoint at the current step's index (`devkit/sim/simulation.py:141`, `path[step_idx]`).
+  the waypoint at the current step's index (`devkit/sim/simulation.py:156`, `path[step_idx]`).
 
 Rules: a comment states what the code does, checked against the lines below it, the day it is
 written.
@@ -179,13 +207,13 @@ Rules: literature-grounded — several datasets are combined the way the literat
 ## D10 — the loop and the data align the reference differently
 
 - Closed loop: after step $i$ the state, at time $(i+1)T_s$, is compared with waypoint $r_i$,
-  computed at time $iT_s$ (`devkit/sim/simulation.py:78-85`, `:139-141`; the scenarios'
+  computed at time $iT_s$ (`devkit/sim/simulation.py:91-98`, `:154-156`; the scenarios'
   $t_k = kT_s$, `tools/plants/bicycle_model.py:285-327`).
 - Data collection (bicycle): after step $k$ the state is compared with the nominal waypoint at
   $(k+1)\,v_{ref}T_s$ (`tools/plants/bicycle_model.py:371-374`, `devkit/sim/data_generation.py:53-61`), the
   same instant.
 - The bicycle's position RMSE compares positions at equal times
-  (`devkit/sim/simulation.py:76`, `:193`; `tools/plants/bicycle_model.py:274-275`).
+  (`devkit/sim/simulation.py:89`, `:214`; `tools/plants/bicycle_model.py:274-275`).
 - Not measured.
 
 Rules: one quantity, one formula — the output the data holds and the output the loop gives the
@@ -194,10 +222,10 @@ controller come from one function, or the divergence is declared where it lives.
 ## D11 — a tightening that enters no constraint
 
 - Under `--noise-adaptive` the loop computes an output-bound tightening from the noise estimate
-  and passes it to the controller every step (`devkit/sim/simulation.py:118-121`).
+  and passes it to the controller every step (`devkit/sim/simulation.py:133-136`).
 - The tightening enters only the soft output bounds, which the QP holds only when
-  `lambda_out > 0` (`src/deepc/controller.py:182-199`), and only on outputs with a finite bound
-  (`:187-188`). Every plant's default is 0, so at the defaults it enters no constraint; only the
+  `lambda_out > 0` (`src/deepc/controller.py:180-197`), and only on outputs with a finite bound
+  (`:185-186`). Every plant's default is 0, so at the defaults it enters no constraint; only the
   scaling of `lambda_g` and `lambda_y` acts. The coupled masses have no output bounds
   (`tools/plants/coupled_masses.py:135-136`), so for them it enters no constraint at any `lambda_out`.
 
@@ -222,7 +250,7 @@ or the divergence is declared where it lives.
 ## D13 — persistency of excitation checked at a lower order than the lemma asks
 
 - The code checks $\mathrm{rank}\, H_L(u) \ge Lm$, order $L = T_{ini} + N$
-  (`src/deepc/regularization.py:32-33`, called at `src/deepc/controller.py:75`).
+  (`src/deepc/regularization.py:29-30`, called at `src/deepc/controller.py:77-78`).
 - [1, §V-A] assumes the input "persistently exciting of order $T_{ini} + N + n(\mathcal B)$";
   [1, Lemma 4.2] and [6, Theorem 1] state the lemma under order $t + n(\mathcal B)$ and $n + L$.
 - Measured on the frozen training data (`tests/reference/*-data.npz`; seed 42, plant defaults),
@@ -236,7 +264,7 @@ Rules: literature-grounded — a condition the method rests on is checked as the
 
 - Both plants default to `reg_norm_g = "L2"` (`tools/plants/bicycle_model.py:220-234`,
   `tools/plants/coupled_masses.py:139-153`), which the QP implements as the squared 2-norm,
-  `cp.sum_squares(self.g)` (`src/deepc/controller.py:139-142`).
+  `cp.sum_squares(self.g)` (`src/deepc/controller.py:137-140`).
 - [1, eq. (8)] regularises with $\lambda_g \lVert g \rVert_1$; [2, Remark 4.3] pairs robustness in
   the 2-norm sense with regularising by the 2-norm itself.
 - [1, eq. (8)] also replaces the data matrix by "a low-rank matrix approximation" of it; the code
@@ -250,10 +278,10 @@ Rules: literature-grounded — a departure from the cited method is declared whe
 - [1, eq. (6)] penalises $\lVert y_k - r_{t+k} \rVert_Q^2$, with $y$ the system's outputs and $r$
   the reference.
 - The code's outputs are errors against a reference (`tools/plants/bicycle_model.py:46-51`,
-  `tools/plants/coupled_masses.py:127`) and its cost reference is zero (`devkit/sim/simulation.py:126`); the
+  `tools/plants/coupled_masses.py:127`) and its cost reference is zero (`devkit/sim/simulation.py:141`); the
   training errors are taken against a nominal reference (bicycle: a straight line at $v_{ref}$,
   `tools/plants/bicycle_model.py:371-374`; coupled masses: zero), the closed-loop errors against the
-  scenario's (`devkit/sim/simulation.py:141`).
+  scenario's (`devkit/sim/simulation.py:156`).
 - The old CLAUDE.md recorded this as a lesson ("use error-based or shift-invariant outputs"),
   backed by no record (README, "Claims from before the rebuild").
 
@@ -266,7 +294,7 @@ re-measured against the method it departs from.
   robustness radius (lambda_g, lambda_y)" from estimated noise. The code multiplies
   `lambda_g` and `lambda_y` at every step by $\mathrm{clip}(\mathrm{mean}(\hat\sigma)/\sigma_0, 1, 10)$,
   $\hat\sigma$ from a window of its own prediction residuals, and tightens the output bounds
-  (`devkit/sim/simulation.py:107-121`, `src/deepc/noise_estimator.py:36-46`).
+  (`devkit/sim/simulation.py:122-136`, `src/deepc/noise_estimator.py:36-46`).
 - [2] relates $\lambda_g$ to the radius $\epsilon$ (after [2, Theorem 4.2]), says to choose
   $\epsilon$ "in a data-driven fashion" ([2, Remark 4.1]), and in [2, §V] fixes $\epsilon$ for a
   run and compares runs over 15 random simulations per $\epsilon$. Its text, searched for

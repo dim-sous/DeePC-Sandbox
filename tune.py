@@ -71,31 +71,21 @@ def objective(
 
     objective_key = plant.get_tuning_objective_key()
 
-    try:
-        trial_plant = type(plant)(Ts=params.pop("Ts"))  # the trial's T_s is the plant's step (D1)
-        config = build_deepc_config(trial_plant, **params)
-        metrics = run_trial(trial_plant, config, scenario)
+    trial_plant = type(plant)(Ts=params.pop("Ts"))  # the trial's T_s is the plant's step (D1)
+    config = build_deepc_config(trial_plant, **params)
+    metrics = run_trial(trial_plant, config, scenario)     # an exception stops the study (D3)
 
-        val = metrics.get(objective_key)
-        if val is None:
-            # Fall back to mean of per-channel RMSE
-            rmse_vals = [v for k, v in metrics.items()
-                         if k.startswith("rmse_") and isinstance(v, (int, float))]
-            val = float(np.mean(rmse_vals)) if rmse_vals else 1e6
+    val = metrics[objective_key]
+    if not np.isfinite(val):
+        raise ValueError(f"trial {trial.number}: {objective_key} = {val}; the study stops "
+                         f"rather than score it (D3)")
 
-        if np.isnan(val) or np.isinf(val):
-            return 1e6
+    # Log metrics for analysis
+    for k, v in metrics.items():
+        if isinstance(v, (int, float)) and k != "version":
+            trial.set_user_attr(k, v)
 
-        # Log metrics for analysis
-        for k, v in metrics.items():
-            if isinstance(v, (int, float)) and k != "version":
-                trial.set_user_attr(k, v)
-
-        return val
-
-    except Exception as e:
-        trial.set_user_attr("error", str(e))
-        return 1e6
+    return val
 
 
 # ── HTML report ──────────────────────────────────────────────────────
