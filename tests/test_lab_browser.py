@@ -161,10 +161,10 @@ def test_what_is_pasted_or_typed_with_tab_at_once_is_what_the_run_would_use(serv
 
 def test_every_chart_in_the_browser_is_exactly_its_records_numbers(served) -> None:
     url, browser, root, out_dir = served
-    page, errors = _page(browser, f"{url}?shown=second,first&open=output-e-lateral,position-x,cost")
+    page, errors = _page(browser, f"{url}?shown=second,first&open=output-e-x1,input-F1,cost")
     try:
         plots = page.evaluate(_PLOTS)
-        assert sorted(p["meta"]["panel"] for p in plots) == ["cost", "output-e-lateral", "position-x"]
+        assert sorted(p["meta"]["panel"] for p in plots) == ["cost", "input-F1", "output-e-x1"]
         records = {name: get_component("closed_loop").Record.load(
             Path(root) / out_dir / "closed_loop" / f"{name}.json") for name in ("first", "second")}
         checked = 0
@@ -197,9 +197,9 @@ def test_every_chart_in_the_browser_is_exactly_its_records_numbers(served) -> No
 
 def test_driving_every_kind_of_card_raises_nothing_in_the_browser(served) -> None:
     url, browser, *_ = served
-    page, errors = _page(browser, f"{url}?shown=second,first&open=position-x")
+    page, errors = _page(browser, f"{url}?shown=second,first&open=input-F1")
     try:
-        page.locator("td", has_text="Position RMSE").first.click()   # a number card
+        page.locator("td", has_text="Position combined RMSE").first.click()   # a number card
         _settle(page, 1500)
         # the closed loop's charts declare no statistic, so Mean and RMS are greyed, no button;
         # a chart card's one control is its runs (the developer's cut, 2026-11-11)
@@ -230,7 +230,7 @@ def _overlapping(boxes: list[list]) -> list[str]:
 @pytest.mark.parametrize("width", [1000, 1440])
 def test_at_half_a_screen_and_at_full_width_nothing_runs_off_or_overprints(served, width) -> None:
     url, browser, *_ = served
-    page, errors = _page(browser, f"{url}?shown=second,first&open=output-e-lateral,position-x",
+    page, errors = _page(browser, f"{url}?shown=second,first&open=output-e-x1,input-F1",
                          width=width)
     try:
         page.locator("button", has_text="Split").first.click()       # the stacked layout

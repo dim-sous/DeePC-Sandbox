@@ -189,9 +189,6 @@ class CoupledMasses(PlantBase):
     ) -> np.ndarray:
         return first_waypoint
 
-    def get_position_from_state(self, state: np.ndarray) -> np.ndarray | None:
-        return None  # not spatial
-
     def get_tuning_objective_key(self) -> str:
         return "rmse_e_x1"
 

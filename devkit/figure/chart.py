@@ -22,7 +22,6 @@ asked for -- left out unsaid, a comparison would read as complete.
 
 from __future__ import annotations
 
-import dataclasses
 from collections.abc import Sequence
 from typing import Any
 
@@ -127,12 +126,6 @@ def _x(s: Series) -> np.ndarray:
     return np.asarray(s.x, dtype=float)
 
 
-def _trace_x(s: Series, j: int, xs: np.ndarray) -> np.ndarray:
-    """Trace ``j``'s abscissa: its own when the panel gives each trace one (``trace_x``), else
-    the panel's ``xs``."""
-    return np.asarray(s.trace_x[j], dtype=float) if s.trace_x else xs
-
-
 def _edge(edge: Any, n: int) -> np.ndarray:
     return np.full(n, float(edge)) if np.ndim(edge) == 0 else np.asarray(edge, dtype=float)
 
@@ -153,7 +146,7 @@ def _alone(s: Series, xs: np.ndarray) -> tuple[tuple, tuple, tuple]:
     """One run's lines, bands and references: colours by position, the i-th trace slot i; a
     band its trace's colour (:func:`_band_owner`), a band about the panel the neutral."""
     n = len(xs)
-    lines = tuple(Line(label, _trace_x(s, i, xs), np.asarray(y, float), series_color(i))
+    lines = tuple(Line(label, xs, np.asarray(y, float), series_color(i))
                   for i, (label, y) in enumerate(s.traces))
     bands = tuple(Band(label, xs, _edge(lo, n), _edge(hi, n),
                        NEUTRAL if (owner := _band_owner(s, label)) is None else series_color(owner))
@@ -173,8 +166,7 @@ def _identical(held: list[tuple[str, Series]], kind: str) -> list[str]:
     def by_label(s: Series) -> dict[str, tuple[np.ndarray, ...]]:
         xs = _x(s)
         if kind == "traces":
-            return {label: (_trace_x(s, j, xs), np.asarray(y, dtype=float))
-                    for j, (label, y) in enumerate(s.traces)}
+            return {label: (xs, np.asarray(y, dtype=float)) for label, y in s.traces}
         return {label: (xs, *(np.asarray(v, dtype=float) for v in rest))
                 for label, *rest in [(b[0], b[1], b[2]) for b in s.bands]}
 
@@ -247,15 +239,14 @@ def chart_of(pairs: Pairs, name: str, *, runs: str = "one") -> Panel:
             n = len(xs)
             own = [label for label, _ in s.traces if label not in same_lines]
             for j, (label, y) in enumerate(s.traces):
-                tx = _trace_x(s, j, xs)
                 if label in same_lines:
                     if k == 0:
-                        lines.append(Line(f"{every} — {label} (identical)", tx,
+                        lines.append(Line(f"{every} — {label} (identical)", xs,
                                           np.asarray(y, float),
                                           series_color(after + same_lines.index(label))))
                     continue
                 # the run's hue in the quantity's shade, the quantity also told by its dash
-                lines.append(Line(run if len(own) == 1 else f"{run} — {label}", tx,
+                lines.append(Line(run if len(own) == 1 else f"{run} — {label}", xs,
                                   np.asarray(y, float), shade(series_color(i), j),
                                   DASHES[j % len(DASHES)]))
             for label, lo, hi in s.bands:
@@ -276,7 +267,7 @@ def chart_of(pairs: Pairs, name: str, *, runs: str = "one") -> Panel:
                      for pre, r in _shared(ref_items, len(held)))
         panel = Panel(name, first.x_label,
                       (Axes(first.y_label, tuple(lines), tuple(bands), refs),), first.doc)
-    return dataclasses.replace(panel, equal_axes=first.equal_axes)
+    return panel
 
 
 # --- a number against a setting --------------------------------------------------------------

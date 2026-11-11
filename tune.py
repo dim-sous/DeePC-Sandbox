@@ -5,8 +5,8 @@ tracking metric.
 
 Usage:
     uv run python tune.py
-    uv run python tune.py --plant bicycle --n-trials 200
-    uv run python tune.py --n-trials 50 --sim-duration 5
+    uv run python tune.py --plant coupled_masses --n-trials 200
+    uv run python tune.py --n-trials 50 --sim-duration 5 --scenario sinusoidal
 """
 
 from __future__ import annotations
@@ -304,9 +304,9 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Bayesian optimization for DeePC tuning",
     )
-    p.add_argument("--plant", type=str, default="bicycle",
+    p.add_argument("--plant", type=str, default="coupled_masses",
                    choices=list(PLANT_REGISTRY.keys()),
-                   help="Plant model (default: bicycle)")
+                   help="Plant model (default: coupled_masses)")
     p.add_argument("--scenario", type=str, default="default",
                    help="Reference scenario (default: default)")
     p.add_argument("--n-trials", type=int, default=100,

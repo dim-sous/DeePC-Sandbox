@@ -43,24 +43,23 @@ CODE = ("src", "tools", "devkit")
 SEED = 42
 #: The closed loops: plant, scenario, duration [s], the feature flags, and the
 #: config fields set off the plant's defaults besides ``sim_duration``. The durations are off
-#: the plants' defaults (bicycle 60 s, coupled masses 30 s) to keep the suite short, and open.
-#: The coupled masses' default steps hold zero for their first 5 s (``_generate_step_sequence``),
-#: so its cases run the sinusoid, or the steps past 5 s.
+#: the plant's default (coupled masses 30 s) to keep the suite short, and open. The coupled
+#: masses' default steps hold zero for their first 5 s (``_generate_step_sequence``), so its
+#: cases run the sinusoid, or the steps past 5 s.
 CLOSED_LOOPS: dict[str, tuple[str, str, float, dict, dict]] = {
-    "bicycle-default": ("bicycle", "default", 5.0, {}, {}),
-    # hankel_warmup_steps 20, off its default 100, so the window slides within the run
-    "bicycle-online-hankel": ("bicycle", "default", 5.0, {"online_hankel": True},
-                              {"hankel_warmup_steps": 20}),
-    "bicycle-noise-adaptive": ("bicycle", "default", 5.0, {"noise_adaptive": True}, {}),
     "coupled_masses-sinusoidal": ("coupled_masses", "sinusoidal", 3.0, {}, {}),
     "coupled_masses-default-no-constraints": ("coupled_masses", "default", 8.0,
                                               {"no_constraints": True}, {}),
+    # hankel_warmup_steps 20, off its default 100, so the window slides within the run
+    "coupled_masses-online-hankel": ("coupled_masses", "sinusoidal", 3.0, {"online_hankel": True},
+                                     {"hankel_warmup_steps": 20}),
+    "coupled_masses-noise-adaptive": ("coupled_masses", "sinusoidal", 3.0,
+                                      {"noise_adaptive": True}, {}),
 }
 #: The metrics ``tune.py`` scores a trial by, one per plant: plant, scenario, duration [s], the
 #: feature flags, and the ``version`` tag the metrics carry (``run.py``'s tag for the same run,
 #: kept so the frozen files are the ``run-py-<plant>`` files unchanged).
 METRICS: dict[str, tuple[str, str, float, dict, str]] = {
-    "metrics-bicycle": ("bicycle", "default", 3.0, {}, "bicycle_default"),
     "metrics-coupled_masses": ("coupled_masses", "sinusoidal", 3.0, {"no_constraints": True},
                                "coupled_masses_sinusoidal_nocon"),
 }
@@ -136,9 +135,6 @@ def produce(name: str) -> dict[str, np.ndarray]:
     # sigma_out_norm is None at every step while lambda_out is 0, which no case here sets off
     if any(v is not None for v in res["sigma_out_norms"]):
         out["sigma_out_norms"] = _floats(name, "sigma_out_norms", res["sigma_out_norms"])
-    for key in ("pos_history", "ref_pos_history"):
-        if key in res:
-            out[key] = np.asarray(res[key])
     return out
 
 

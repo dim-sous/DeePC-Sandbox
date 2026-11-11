@@ -82,7 +82,7 @@ def test_a_pick_list_offers_the_default_first(piece) -> None:
     form = Form(piece)
     by = form.by_name
     assert [(o["value"], o["words"]) for o in form.options(by["scenario"])] == [
-        ("", "default (default)"), ("lissajous", "lissajous"), ("sinusoidal", "sinusoidal")]
+        ("", "default (default)"), ("sinusoidal", "sinusoidal")]
     assert [(o["value"], o["words"]) for o in form.options(by["noise_adaptive"])] == [
         ("", "false (default)"), ("true", "true")]
     assert form.options(by["lambda_g"]) is None
@@ -168,7 +168,7 @@ def test_typing_the_default_leaves_the_field_unset(dataset) -> None:
     assert form.type_or_pick("seed", "42") == [] and form.set == {}
     form.type_or_pick("seed", " 7 ")
     assert form.set == {"seed": "7"} and form.effective("seed") == "7"
-    assert form.effective("plant") == "bicycle"
+    assert form.effective("plant") == "coupled_masses"
 
 
 def test_use_loads_what_a_run_held_away_from_the_defaults_and_clear_empties(piece) -> None:
@@ -207,7 +207,7 @@ def test_a_rail_row_is_the_runs_name_and_why_it_cannot_be_read() -> None:
     assert view.text(None) == "—" and view.text(0.123456) == "0.1235" and view.text(True) == "true"
 
 
-def _run(name: str, numbers: dict, config: dict, panels=("position-x", "cost"),
+def _run(name: str, numbers: dict, config: dict, panels=("input-F1", "cost"),
          specs=None) -> dict:
     """A listed record row, as ``state.records`` hands one over."""
     return {"piece": "closed_loop", "name": name, "config": config, "numbers": numbers,
@@ -215,33 +215,33 @@ def _run(name: str, numbers: dict, config: dict, panels=("position-x", "cost"),
             "provenance": {}, "stale": "", "mtime": 0.0, "path": f"{name}.json"}
 
 
-_SPECS = [{"name": "rmse_position", "label": "Position RMSE", "unit": "m", "headline": True,
+_SPECS = [{"name": "rmse_position_combined", "label": "Position combined RMSE", "unit": "m", "headline": True,
            "doc": "The plant's own metric", "group": "Outputs"},
           {"name": "solve_time_mean_s", "label": "Mean solve time", "unit": "s",
            "headline": False, "doc": "Mean wall-clock time of a solve", "group": "Solver"}]
 
 
 def test_the_chart_list_is_the_panels_the_shown_runs_declare_in_their_own_order() -> None:
-    both = [_run("a", {}, {}), _run("b", {}, {}, panels=("position-x", "cost", "lambda-g"))]
+    both = [_run("a", {}, {}), _run("b", {}, {}, panels=("input-F1", "cost", "lambda-g"))]
     rows = view.chart_rows(both, ["cost"])
     assert [(r["name"], r["open"], r["sub"]) for r in rows] == [
-        ("position-x", False, ""), ("cost", True, ""), ("lambda-g", False, "1 of 2 runs")]
+        ("input-F1", False, ""), ("cost", True, ""), ("lambda-g", False, "1 of 2 runs")]
     assert view.chart_rows([], []) == []
 
 
 def test_the_compare_table_puts_the_numbers_first_and_the_settings_by_group(piece) -> None:
-    runs = [_run("a", {"rmse_position": 0.00267, "solve_time_mean_s": 3.0},
+    runs = [_run("a", {"rmse_position_combined": 0.00267, "solve_time_mean_s": 3.0},
                  {"lambda_g": 1.0, "sim_duration": 1.0, "scenario": "default"}),
-            _run("b", {"rmse_position": 0.00412},
+            _run("b", {"rmse_position_combined": 0.00412},
                  {"lambda_g": 5.0, "sim_duration": 1.0, "scenario": "default"})]
     rows = view.compare_rows(runs, piece["fields"], settings="all")
 
     assert rows[0] == {"kind": "head", "group": "Outputs", "key": "", "term": "Outputs",
                        "hover": "", "values": [], "differs": False}
     numbers = [r for r in rows if r["kind"] == "number"]
-    assert [r["key"] for r in numbers] == ["rmse_position", "solve_time_mean_s"], \
+    assert [r["key"] for r in numbers] == ["rmse_position_combined", "solve_time_mean_s"], \
         "a row opens its card"
-    assert [r["term"] for r in numbers] == ["Position RMSE [m]", "Mean solve time [s]"]
+    assert [r["term"] for r in numbers] == ["Position combined RMSE [m]", "Mean solve time [s]"]
     assert numbers[0]["values"] == ["0.00267", "0.00412"] and numbers[0]["differs"]
     assert numbers[0]["hover"] == "The plant's own metric"
     assert numbers[1]["values"] == ["3", "—"], "a number a run does not carry is an em dash"
@@ -267,8 +267,8 @@ def test_the_compare_table_puts_the_numbers_first_and_the_settings_by_group(piec
 
 
 def test_only_the_settings_that_differ_keeps_every_number_and_drops_the_rest(piece) -> None:
-    runs = [_run("a", {"rmse_position": 1.0}, {"lambda_g": 1.0, "scenario": "default"}),
-            _run("b", {"rmse_position": 2.0}, {"lambda_g": 5.0, "scenario": "default"})]
+    runs = [_run("a", {"rmse_position_combined": 1.0}, {"lambda_g": 1.0, "scenario": "default"}),
+            _run("b", {"rmse_position_combined": 2.0}, {"lambda_g": 5.0, "scenario": "default"})]
     rows = view.compare_rows(runs, piece["fields"], settings="differ")
     settings = [r for r in rows if r["kind"] == "setting"]
     assert [r["values"] for r in settings] == [["1", "5"]]
@@ -282,21 +282,21 @@ def test_only_the_settings_that_differ_keeps_every_number_and_drops_the_rest(pie
 
 
 def test_the_count_says_what_differs_and_never_compares_one_run_with_itself(piece) -> None:
-    one = [_run("a", {"rmse_position": 1.0}, {})]
+    one = [_run("a", {"rmse_position_combined": 1.0}, {})]
     alone = view.compare_rows(one, piece["fields"])
     assert view.compare_count(alone, one, piece["fields"]) == "2 numbers; tick another run to compare"
-    pair = [_run("a", {"rmse_position": 1.0}, {"scenario": "default"}),
-            _run("b", {"rmse_position": 1.0}, {"scenario": "default"})]
+    pair = [_run("a", {"rmse_position_combined": 1.0}, {"scenario": "default"}),
+            _run("b", {"rmse_position_combined": 1.0}, {"scenario": "default"})]
     same = view.compare_rows(pair, piece["fields"])
     assert view.compare_count(same, pair, piece["fields"]) == "2 numbers, none of them differs"
     assert view.varying([_run("a", {}, {"scenario": "default"}),
-                         _run("b", {}, {"scenario": "lissajous"})], piece["fields"]) == ["scenario"]
+                         _run("b", {}, {"scenario": "sinusoidal"})], piece["fields"]) == ["scenario"]
 
 
 def test_a_row_differs_on_the_saved_values_not_on_the_words_they_are_shown_by(piece) -> None:
     """Four digits hide the sixth, and this table is where a refactor's numbers are checked."""
-    runs = [_run("a", {"rmse_position": 0.00267124}, {}),
-            _run("b", {"rmse_position": 0.00267139}, {})]
+    runs = [_run("a", {"rmse_position_combined": 0.00267124}, {}),
+            _run("b", {"rmse_position_combined": 0.00267139}, {})]
     rows = view.compare_rows(runs, piece["fields"])
     row = next(r for r in rows if r["kind"] == "number")
     assert row["values"] == ["0.002671", "0.002671"] and row["differs"]
@@ -304,17 +304,17 @@ def test_a_row_differs_on_the_saved_values_not_on_the_words_they_are_shown_by(pi
 
 
 def test_a_chart_already_open_keeps_a_row_even_when_no_shown_run_draws_it() -> None:
-    rows = view.chart_rows([_run("a", {}, {}, panels=("position-x",))], ["position-x", "cost"])
+    rows = view.chart_rows([_run("a", {}, {}, panels=("input-F1",))], ["input-F1", "cost"])
     assert [(r["name"], r["open"], r["sub"]) for r in rows] == [
-        ("position-x", True, ""), ("cost", True, "No shown run draws it")]
+        ("input-F1", True, ""), ("cost", True, "No shown run draws it")]
 
 
 def test_the_chart_list_is_in_the_groups_the_records_declare() -> None:
-    a = dict(_run("a", {}, {}, panels=("position-x", "cost", "lambda-g")),
-             panel_groups={"position-x": "Position", "cost": "Solver", "lambda-g": "Solver"})
+    a = dict(_run("a", {}, {}, panels=("input-F1", "cost", "lambda-g")),
+             panel_groups={"input-F1": "Inputs", "cost": "Solver", "lambda-g": "Solver"})
     rows = view.chart_rows([a], [])
     assert [(g, [r["name"] for r in rs]) for g, rs in view.grouped(rows)] == [
-        ("Position", ["position-x"]), ("Solver", ["cost", "lambda-g"])]
+        ("Inputs", ["input-F1"]), ("Solver", ["cost", "lambda-g"])]
     assert [r["group"] for r in view.chart_rows([_run("old", {}, {})], [])] == ["", ""], \
         "a file written before groups lists ungrouped"
 

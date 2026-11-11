@@ -21,7 +21,7 @@ class Config(Settings):
     """The dataset piece's settings; see the module."""
 
     plant = param.Selector(
-        default="bicycle", objects=list(PLANT_REGISTRY), label="Plant",
+        default="coupled_masses", objects=list(PLANT_REGISTRY), label="Plant",
         doc="The simulated plant the data is collected from",
         metadata={"group": PLANT})
     Ts = param.Number(

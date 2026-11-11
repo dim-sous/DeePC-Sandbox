@@ -82,8 +82,8 @@ class PlantBase(ABC):
     def get_output(self, state: np.ndarray, reference: np.ndarray) -> np.ndarray:
         """Compute p-dimensional output given state and a reference waypoint.
 
-        The reference format is plant-defined (e.g. bicycle uses
-        ``[x, y, heading, v]``).  Returns p output channels, typically
+        The reference format is plant-defined (e.g. the coupled masses use
+        ``[x1, v1, x2, v2]``).  Returns p output channels, typically
         tracking errors relative to the reference.
         """
 
@@ -134,13 +134,6 @@ class PlantBase(ABC):
         Default implementation returns *first_waypoint* as-is.
         """
         return first_waypoint
-
-    def get_position_from_state(self, state: np.ndarray) -> np.ndarray | None:
-        """Return ``[x, y]`` position: the loop records it for the position metrics and the Path chart.
-
-        Return ``None`` if the plant has no spatial position concept.
-        """
-        return None
 
     def compute_custom_metrics(self, results: dict) -> dict[str, float]:
         """Optional extra metrics beyond generic per-channel RMSE."""

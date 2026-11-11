@@ -19,11 +19,11 @@ from tests.reference import cases
 
 
 def _controller():
-    """A controller on the frozen bicycle training data at the plant's defaults, and one solve
-    of it from rest."""
-    plant = PLANT_REGISTRY["bicycle"]()
+    """A controller on the frozen coupled-masses training data at the plant's defaults, and one
+    solve of it from rest."""
+    plant = PLANT_REGISTRY["coupled_masses"]()
     cfg = build_deepc_config(plant)
-    data = np.load(cases.REFERENCE_DIR / "bicycle-data.npz")
+    data = np.load(cases.REFERENCE_DIR / "coupled_masses-data.npz")
     bounds = constraints_to_arrays(plant.get_constraints(), plant.input_names, plant.output_names)
     ctrl = DeePCController(cfg, data["u_data"], data["y_data"], *bounds)
     return ctrl, lambda: ctrl.solve(np.zeros((cfg.Tini, cfg.m)), np.zeros((cfg.Tini, cfg.p)),
@@ -83,9 +83,10 @@ def test_a_solve_that_leaves_no_solution_is_flagged_where_zeros_are_applied(monk
 def test_the_excitation_rank_is_kept_not_printed(capsys) -> None:
     """[D3] The excitation check printed a warning and the controller was built anyway; inside
     the pieces the print was swallowed with the loop's output. The rank and the rank it needs
-    are kept on the controller for the record (36 of 36 on the frozen bicycle data, D13)."""
+    are kept on the controller for the record (48 of 48 on the frozen coupled-masses data at the
+    plant's defaults, seed 42, D13)."""
     ctrl, _solve = _controller()
-    assert (ctrl.excitation_rank, ctrl.excitation_rank_required) == (36, 36)
+    assert (ctrl.excitation_rank, ctrl.excitation_rank_required) == (48, 48)
     assert capsys.readouterr().out == ""
 
 
@@ -95,12 +96,12 @@ def test_a_failed_tuning_trial_stops_the_study_rather_than_score_1e6(monkeypatch
     def trial_run(*_a, **_k):
         if outcome == "raises":
             raise RuntimeError("probe")
-        return {"rmse_position": math.nan}
+        return {"rmse_e_x1": math.nan}
 
     monkeypatch.setattr(tune, "run_trial", trial_run)
-    trial = optuna.trial.FixedTrial({"Ts": 0.1, "Tini": 3, "N": 15, "T_data": 400,
-                                     "lambda_g": 5.0, "lambda_y": 1e4, "reg_norm_g": "L2",
+    trial = optuna.trial.FixedTrial({"Ts": 0.05, "Tini": 4, "N": 20, "T_data": 600,
+                                     "lambda_g": 10.0, "lambda_y": 1e4, "reg_norm_g": "L2",
                                      "reg_norm_sigma_y": "L1"})
     expected = (RuntimeError, "probe") if outcome == "raises" else (ValueError, "the study stops")
     with pytest.raises(expected[0], match=expected[1]):
-        tune.objective(trial, PLANT_REGISTRY["bicycle"](), 1.0, "default")
+        tune.objective(trial, PLANT_REGISTRY["coupled_masses"](), 1.0, "sinusoidal")

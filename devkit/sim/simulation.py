@@ -81,21 +81,12 @@ def run_simulation(
     u_buffer: list[np.ndarray] = []
     y_buffer: list[np.ndarray] = []
 
-    # Track position if the plant is spatial
-    pos_sample = plant.get_position_from_state(plant.state)
-    has_position = pos_sample is not None
-    pos_history: list[np.ndarray] = []
-    if has_position:
-        pos_history.append(pos_sample)
-
     for k in range(config.Tini):
         u_k = np.zeros(config.m)
         plant.step(u_k)
         errors = plant.get_output(plant.state, path[k])
         u_buffer.append(u_k)
         y_buffer.append(errors)
-        if has_position:
-            pos_history.append(plant.get_position_from_state(plant.state))
 
     y_history = list(y_buffer)
     u_history = list(u_buffer)
@@ -164,8 +155,6 @@ def run_simulation(
 
         u_buffer.append(u_opt)
         y_buffer.append(errors)
-        if has_position:
-            pos_history.append(plant.get_position_from_state(plant.state))
 
         u_history.append(u_opt)
         y_history.append(errors)
@@ -208,10 +197,6 @@ def run_simulation(
         "solve_times": solve_times,
         "lambda_g_history": lambda_g_history,
     }
-
-    if has_position:
-        results["pos_history"] = np.array(pos_history)
-        results["ref_pos_history"] = path[:total, :2]
 
     print(f"\nDone. {len(statuses)} solves: "
           + ", ".join(f"{k} {v}" for k, v in solve_counts(results).items()))

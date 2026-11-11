@@ -20,7 +20,7 @@ def compute_metrics(
     for i, name in enumerate(plant.output_names):
         metrics[f"rmse_{name}"] = float(np.sqrt(np.mean(errors[:, i] ** 2)))
 
-    # Plant-specific custom metrics (e.g. position RMSE for bicycle)
+    # Plant-specific custom metrics (compute_custom_metrics)
     metrics.update(plant.compute_custom_metrics(results))
 
     # Solver stats

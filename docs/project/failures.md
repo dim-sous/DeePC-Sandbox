@@ -20,19 +20,27 @@ are fixed** (PRs #8 and #9, at the end of each entry); **none of the others is y
 branch fixes it and moves the frozen numbers on purpose. `run.py` and its HTML report were retired
 in PR #10; a line of `run.py` named here is a line of it as it was.
 
+The kinematic bicycle was deleted on 2026-11-11 (branch `delete-bicycle`; the developer: "i do not
+remember where i found the model and i dont trust it"), and with it the loop's position lines,
+which only it used, and its frozen files. A pointer into any of them names a commit that held
+it, `<commit>:<path>:<line>` (read it with `git show c71826d:tools/plants/bicycle_model.py`): in
+D1–D3, the commit before each fix their pointers already named; elsewhere `c71826d`, the last. A
+number measured on the bicycle is a number of it as it was. The pointers of D4 on were re-pointed
+to the branch's files by matching each line's text. **D7 is closed** by the deletion.
+
 ---
 
 ## D1 — `--Ts` never reaches the plant
 
 - Line 558 of `run.py` and `tune.py:331` build the plant with no arguments, so it integrates at its
-  constructor's default step: bicycle `Ts = 0.1` (`tools/plants/bicycle_model.py:95`, used at `:182`),
+  constructor's default step: bicycle `Ts = 0.1` (`768612f:tools/plants/bicycle_model.py:95`, used at `:182`),
   coupled masses `Ts = 0.05` (`tools/plants/coupled_masses.py:38`, discretised at `:73`).
 - `build_deepc_config` sets the config's `Ts` from the plant, then lets the override replace it
   (`devkit/sim/config.py:22-23`). What reads the config's `Ts`: the step count
   (`src/deepc/config.py:63`), the reference's spacing (`devkit/sim/scenarios.py:31`), the results' time
   axis (`devkit/sim/simulation.py:179`) and the report's plots (lines 113 and 586 of `run.py`,
   line 480 of `bicycle_model.py`). What reads the plant's: its own step, the excitation signals
-  (`tools/plants/bicycle_model.py:352`, `tools/plants/coupled_masses.py:268`) and the data-collection
+  (`768612f:tools/plants/bicycle_model.py:352`, `tools/plants/coupled_masses.py:268`) and the data-collection
   reference (`devkit/sim/data_generation.py:53`).
 - `tune.py:62` searches `Ts` over [0.02, 0.2] through this path; the README's example runs
   `--Ts 0.039` (README, Quick Start); the old CLAUDE.md held the lesson "Sampling time (Ts)
@@ -70,7 +78,7 @@ look right.
 
 - Line 85 of `run.py` and `devkit/sim/simulation.py:195` count a status as optimal when it contains the word
   `"optimal"`, so OSQP's `optimal_inaccurate` counts.
-- The frozen `bicycle-default` loop (`tests/reference/bicycle-default.npz`, 5 s) holds 3
+- The frozen `bicycle-default` loop (`4d417f9:tests/reference/bicycle-default.npz`, 5 s) holds 3
   `optimal_inaccurate` of 50 statuses; `bicycle-noise-adaptive` 4 of 50,
   `bicycle-online-hankel` 3 of 50. `compute_metrics` reports each as 100 % optimal.
 - Measured at 10 s (conditions as D1): bicycle 3 of 100, coupled masses 1 of 200, both
@@ -129,7 +137,7 @@ code before the fix (`4d417f9`).
 - The baseline controller that runs during data collection reads the error before any noise
   is added (`devkit/sim/data_generation.py:54-56`).
 - Closed loop: the output DeePC receives is the error with no noise
-  (`devkit/sim/simulation.py:94`, `:156`).
+  (`devkit/sim/simulation.py:87`, `:147`).
 
 Rules: one quantity, one formula, or each divergence declared where it lives (`# MISMATCH`);
 the controller receives only what the plant reports.
@@ -137,9 +145,9 @@ the controller receives only what the plant reports.
 ## D5 — the online Hankel gate reads a switch it does not name
 
 - Under `online_hankel`, a column is added only while the mean of the noise estimator's
-  standard deviations is below `1.0` (`devkit/sim/simulation.py:159-162`); no source states the
+  standard deviations is below `1.0` (`devkit/sim/simulation.py:150-153`); no source states the
   threshold.
-- The estimator is updated only under `noise_adaptive` (`devkit/sim/simulation.py:122-124`).
+- The estimator is updated only under `noise_adaptive` (`devkit/sim/simulation.py:113-115`).
   Without it, its standard deviations stay at their initial zeros and the gate passes at
   every step.
 
@@ -150,15 +158,15 @@ to reporting, not acting.
 
 - `src/deepc/online_hankel.py:53`: "max_cols: 0 means use offline size + sim_steps headroom";
   the lines below use the offline size alone.
-- `tools/plants/bicycle_model.py:28`: the reference point is the "nearest waypoint"; the loop passes
-  the waypoint at the current step's index (`devkit/sim/simulation.py:156`, `path[step_idx]`).
+- `c71826d:tools/plants/bicycle_model.py:28`: the reference point is the "nearest waypoint"; the loop passes
+  the waypoint at the current step's index (`devkit/sim/simulation.py:147`, `path[step_idx]`).
 
 Rules: a comment states what the code does, checked against the lines below it, the day it is
 written.
 
 ## D7 — the bicycle's output bounds sit on the speed error
 
-- `tools/plants/bicycle_model.py:197-199` bounds `e_velocity` (speed minus reference speed) to
+- `c71826d:tools/plants/bicycle_model.py:197-199` bounds `e_velocity` (speed minus reference speed) to
   [0, 10], so with the bounds active the controller is asked to keep the speed at or above the
   reference speed.
 - They are active only while `lambda_out > 0` (`src/deepc/controller.py`, the output-constraint
@@ -167,6 +175,9 @@ written.
 Whether bounds on the speed itself were meant is the developer's question; the code does not
 say.
 
+**Closed 2026-11-11, branch `delete-bicycle`:** the bicycle was deleted, unanswered. The plant left,
+the coupled masses, declares no output bounds (`tools/plants/coupled_masses.py:135-136`).
+
 Rules: a bound names the quantity it bounds, with its unit.
 
 ## D8 — code nothing calls
@@ -174,9 +185,10 @@ Rules: a bound names the quantity it bounds, with its unit.
 `DeePCConfig.Q` and `.R` (`src/deepc/config.py:70`, `:74`), `build_data_matrices`
 (`src/deepc/hankel.py:40`; `src/deepc/online_hankel.py` splits the blocks itself),
 `SlidingHankelWindow.get_pe_rank` and `.get_sigma_min` (`src/deepc/online_hankel.py:145`,
-`:148`), `BicycleModel.position`, `.heading`, `.speed` (`tools/plants/bicycle_model.py:144-153`), and
-the locals `rmse_x1`, `rmse_x2` (`tools/plants/coupled_masses.py:200-201`). Found by searching the
-repository for each name's callers.
+`:148`), `BicycleModel.position`, `.heading`, `.speed` (`c71826d:tools/plants/bicycle_model.py:144-153`), and
+the locals `rmse_x1`, `rmse_x2` (`tools/plants/coupled_masses.py:197-198`). Found by searching the
+repository for each name's callers. The `BicycleModel` properties went with the bicycle (branch
+`delete-bicycle`); the rest stand.
 
 Rules: no code stays that the developer cannot explain; one variant, one file, and the
 registry is the only place that knows which exist.
@@ -209,13 +221,13 @@ Rules: literature-grounded — several datasets are combined the way the literat
 ## D10 — the loop and the data align the reference differently
 
 - Closed loop: after step $i$ the state, at time $(i+1)T_s$, is compared with waypoint $r_i$,
-  computed at time $iT_s$ (`devkit/sim/simulation.py:91-98`, `:154-156`; the scenarios'
-  $t_k = kT_s$, `tools/plants/bicycle_model.py:267-309`).
+  computed at time $iT_s$ (`devkit/sim/simulation.py:84-89`, `:145-147`; the scenarios'
+  $t_k = kT_s$, `c71826d:tools/plants/bicycle_model.py:267-309`).
 - Data collection (bicycle): after step $k$ the state is compared with the nominal waypoint at
-  $(k+1)\,v_{ref}T_s$ (`tools/plants/bicycle_model.py:353-356`, `devkit/sim/data_generation.py:53-61`), the
+  $(k+1)\,v_{ref}T_s$ (`c71826d:tools/plants/bicycle_model.py:353-356`, `devkit/sim/data_generation.py:53-61`), the
   same instant.
 - The bicycle's position RMSE compares positions at equal times
-  (`devkit/sim/simulation.py:89`, `:214`; `tools/plants/bicycle_model.py:256-257`).
+  (`c71826d:devkit/sim/simulation.py:89`, `:214`; `c71826d:tools/plants/bicycle_model.py:256-257`).
 - Not measured.
 
 Rules: one quantity, one formula — the output the data holds and the output the loop gives the
@@ -224,7 +236,7 @@ controller come from one function, or the divergence is declared where it lives.
 ## D11 — a tightening that enters no constraint
 
 - Under `noise_adaptive` the loop computes an output-bound tightening from the noise estimate
-  and passes it to the controller every step (`devkit/sim/simulation.py:133-136`).
+  and passes it to the controller every step (`devkit/sim/simulation.py:124-127`).
 - The tightening enters only the soft output bounds, which the QP holds only when
   `lambda_out > 0` (`src/deepc/controller.py:180-197`), and only on outputs with a finite bound
   (`:185-186`). Every plant's default is 0, so at the defaults it enters no constraint; only the
@@ -237,10 +249,10 @@ Rules: a setting the run did not use is refused or recorded as unused, never acc
 
 - During data collection the input $u_k$ = baseline + excitation is passed to the plant
   (`devkit/sim/data_generation.py:57-58`) and recorded as it was passed (`:64`). The bicycle clips
-  its inputs inside its step (`tools/plants/bicycle_model.py:160-161`) to $|\delta| \le 0.5$ rad and
+  its inputs inside its step (`c71826d:tools/plants/bicycle_model.py:160-161`) to $|\delta| \le 0.5$ rad and
   $a \in [-1, 1]$ m/s²; its excitation alone reaches ±0.5 rad and ±2.5 m/s²
-  (`tools/plants/bicycle_model.py:317-340`).
-- In the frozen bicycle training data (`tests/reference/bicycle-data.npz`; seed 42, plant
+  (`c71826d:tools/plants/bicycle_model.py:317-340`).
+- In the frozen bicycle training data (`c71826d:tests/reference/bicycle-data.npz`; seed 42, plant
   defaults, `T_data` 400) 12.0 % of the steering samples and 33.8 % of the acceleration samples
   lie outside the clip. In the coupled masses' (`tests/reference/coupled_masses-data.npz`) none
   do.
@@ -264,7 +276,7 @@ Rules: literature-grounded — a condition the method rests on is checked as the
 
 ## D14 — the regulariser on $g$, and no low-rank step
 
-- Both plants default to `reg_norm_g = "L2"` (`tools/plants/bicycle_model.py:202-216`,
+- Both plants default to `reg_norm_g = "L2"` (`c71826d:tools/plants/bicycle_model.py:202-216`,
   `tools/plants/coupled_masses.py:139-153`), which the QP implements as the squared 2-norm,
   `cp.sum_squares(self.g)` (`src/deepc/controller.py:137-140`).
 - [1, eq. (8)] regularises with $\lambda_g \lVert g \rVert_1$; [2, Remark 4.3] pairs robustness in
@@ -279,11 +291,11 @@ Rules: literature-grounded — a departure from the cited method is declared whe
 
 - [1, eq. (6)] penalises $\lVert y_k - r_{t+k} \rVert_Q^2$, with $y$ the system's outputs and $r$
   the reference.
-- The code's outputs are errors against a reference (`tools/plants/bicycle_model.py:44-49`,
-  `tools/plants/coupled_masses.py:127`) and its cost reference is zero (`devkit/sim/simulation.py:141`); the
+- The code's outputs are errors against a reference (`c71826d:tools/plants/bicycle_model.py:44-49`,
+  `tools/plants/coupled_masses.py:127`) and its cost reference is zero (`devkit/sim/simulation.py:132`); the
   training errors are taken against a nominal reference (bicycle: a straight line at $v_{ref}$,
-  `tools/plants/bicycle_model.py:353-356`; coupled masses: zero), the closed-loop errors against the
-  scenario's (`devkit/sim/simulation.py:156`).
+  `c71826d:tools/plants/bicycle_model.py:353-356`; coupled masses: zero), the closed-loop errors against the
+  scenario's (`devkit/sim/simulation.py:147`).
 - The old CLAUDE.md recorded this as a lesson ("use error-based or shift-invariant outputs"),
   backed by no record (README, "Claims from before the rebuild").
 
@@ -296,7 +308,7 @@ re-measured against the method it departs from.
   robustness radius (lambda_g, lambda_y)" from estimated noise. The code multiplies
   `lambda_g` and `lambda_y` at every step by $\mathrm{clip}(\mathrm{mean}(\hat\sigma)/\sigma_0, 1, 10)$,
   $\hat\sigma$ from a window of its own prediction residuals, and tightens the output bounds
-  (`devkit/sim/simulation.py:122-136`, `src/deepc/noise_estimator.py:36-46`).
+  (`devkit/sim/simulation.py:113-127`, `src/deepc/noise_estimator.py:36-46`).
 - [2] relates $\lambda_g$ to the radius $\epsilon$ (after [2, Theorem 4.2]), says to choose
   $\epsilon$ "in a data-driven fashion" ([2, Remark 4.1]), and in [2, §V] fixes $\epsilon$ for a
   run and compares runs over 15 random simulations per $\epsilon$. Its text, searched for
