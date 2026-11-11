@@ -3,11 +3,13 @@
 What the code computes: the two plants, how the training data is collected, the Hankel matrices, the DeePC
 quadratic program, the loop that runs it, its two optional variants, the metrics and the tuner.
 
-**Read this first.** This document was written from the code, on 2026-11-10, with no access to the papers
-it cites. It states what the code does, not what the literature says. **No citation below has been checked
-against its source**; each section ends with what to check once the papers are read. Line pointers
-(`file.py:line`) are at commit `3067d03`. Where the code departs from what it claims, or from itself, the
-incident in [`docs/project/failures.md`](docs/project/failures.md) is named (D1, D2, …).
+**Read this first.** This document was written from the code on 2026-11-10 and checked against the papers
+on 2026-11-11: the arXiv versions of [1]–[3], [5] and [6], whose section, equation and theorem numbers are
+the ones used here. [4] is not on arXiv and has not been read. Each section states what the code does.
+§3, §4, §6 and §7, the sections that cite a method, end with an **Against the sources** paragraph that quotes
+what the papers state and names where the code differs; the other sections cite no paper. Line
+pointers (`file.py:line`) are at commit `3067d03`. Where the code departs from a paper, from what it claims,
+or from itself, the incident in [`docs/project/failures.md`](docs/project/failures.md) is named (D1, D2, …).
 
 ## 1. The plants
 
@@ -148,10 +150,21 @@ controller uses; `control/hankel.py:40-81` does the same and nothing calls it, D
 ```
 
 on the inputs only, of order $L$. When it fails, a warning is printed and the controller is built anyway
-(D3). The old README names Willems et al. [4] as the foundation.
+(D3).
 
-To check against the sources: the order of persistency of excitation the fundamental lemma asks for [4],
-and how several datasets may be combined into one matrix (D9).
+**Against the sources.** [1, Definition 4.4] defines persistency of excitation of order $L$ as full row rank
+of $H_L(u)$: the code's check. The fundamental lemma, as [1, Lemma 4.2] states it after Willems et al. [4]
+(reference 37 of [1]), needs order $t + n(\mathcal B)$ for the columns of $H_t$ to span every length-$t$
+trajectory, with $n(\mathcal B)$ the order of a minimal state-space representation. [1, §V-A] assumes order
+$T_{ini} + N + n(\mathcal B)$ and $T \ge (m+1)(T_{ini} + N + n(\mathcal B)) - 1$; [6, Theorem 1] asks for
+order $n + L$.
+
+- **Differs:** the code checks order $L$, not $L + n$ (D13).
+- **Several datasets:** [6, Definition 2, eq. (8)] combines them in a mosaic-Hankel matrix
+  $[H_k(u^1)\ \cdots\ H_k(u^q)]$, one Hankel block per dataset, and [6, Theorem 2] extends the lemma to it
+  under "collectively persistently exciting" inputs of order $n + L$. **Differs:** the code stacks the
+  episodes into one signal before building one Hankel matrix (D9).
+- Both statements are for linear time-invariant systems; the bicycle is not one.
 
 ## 4. The DeePC quadratic program
 
@@ -187,12 +200,28 @@ $\sigma_{out} \in \mathbb R^{Np}_{\ge 0}$ on the output bounds.
   $u = 0$ and the loop applies it (D3). Otherwise the first predicted input $u_0$ is applied (`:293`).
 
 This is the formulation the old README states. The old README names Coulson et al. [1] as its source; the
-code names none for the QP.
-The old README also lists Berberich et al. [5]; no code here implements it.
+code names none for the QP. The old README also lists Berberich et al. [5]; no code here implements it.
 
-To check against [1]: whether its regulariser on $g$ is a norm or a squared norm; the norm on $\sigma_y$;
-whether the cost weighs $u$ or its changes; and its convention for when an output is sampled relative to its
-input (here $y_k$ is the output after $u_k$ is applied, §2 and §5).
+**Against the sources.** [1, eq. (6)] is the DeePC problem: the cost
+$\sum_k \lVert y_k - r_{t+k} \rVert_Q^2 + \lVert u_k \rVert_R^2$, the equality
+$\mathrm{col}(U_p, Y_p, U_f, Y_f)\, g = \mathrm{col}(u_{ini}, y_{ini}, u, y)$ and $u_k \in \mathcal U$,
+$y_k \in \mathcal Y$. Its regularised form, [1, eq. (8)], adds $\lambda_g \lVert g \rVert_1 + \lambda_y
+\lVert \sigma_y \rVert_1$, with $\sigma_y$ on the $Y_p$ row, and replaces the data matrix by "a low-rank matrix
+approximation" of it.
+
+- **As in [1]:** the cost weighs the inputs, not their changes; the slack $\sigma_y$ sits on the past
+  outputs, with the 1-norm by default.
+- **Differs:** the code's default regulariser on $g$ is the squared 2-norm, not [1]'s 1-norm, and the code
+  makes no low-rank approximation (D14). [2, Remark 4.3]: "being robust in the trajectory space in the
+  $\lVert\cdot\rVert_2$ sense requires regularizing with a $\lVert\cdot\rVert_2$" (the norm, not its square).
+- **Added by the code**, in none of [1, eq. (6)–(8)]: the input-rate bounds and the soft output bounds.
+- **Output timing:** [1, eq. (1)] has $y(t) = Cx(t) + Du(t)$. The output the code records after input $u_k$
+  is, for the coupled masses, $y_k = A x_k + B\,\mathrm{clip}(u_k) - r$: while the clip does not act (it
+  never does in the frozen training data, D12), the form of [1, eq. (1)] with $C = A$, $D = B$ and the
+  reference subtracted. For the bicycle it has the form $y = h(x, u)$ of [1, eq. (7)].
+- **Differs, the reference:** [1, eq. (6)] tracks a reference $r$ with the system's outputs. The code's
+  outputs are errors against the scenario's reference, its cost reference is zero, and its training errors
+  are taken against the nominal reference (§2, §5) (D15).
 
 ## 5. The closed loop, tracking on errors
 
@@ -229,8 +258,18 @@ with a finite bound (`control/controller.py:182-199`). At every plant's default 
 for the coupled masses, which have no output bounds, at no $\lambda_{out}$ (D11). The code cites
 arXiv:1903.06804 [2] for scaling the regularisation with the estimated noise.
 
-To check against [2]: whether it scales $\lambda_g, \lambda_y$ with an estimated noise level, and by what
-rule.
+**Against the sources.** [2, eq. (8)] regularises with
+$\lambda_{ini} \lVert \hat Y_p g - \hat y_{ini} \rVert_1 + \lambda_g \lVert g \rVert_1$. After
+[2, Theorem 4.2]: "$\lambda_g$ in (8) plays the role of either $\epsilon \cdot \sup_{\theta \in \Theta_2}
+\lVert\theta\rVert_\infty$ or $\epsilon\lambda_{ini}$", with $\epsilon$ the radius of a Wasserstein ball around
+the data's empirical distribution. [2, Remark 4.1] says to "choose the radius $\epsilon$ of the Wasserstein
+ball in a data-driven fashion (see Section V)", and in [2, §V] "A Wasserstein radius $\epsilon$ was fixed and
+the cost $f(u, y)$ accumulated over the 20 second horizon of the simulation was computed. The cost was
+averaged over 15 random simulations for each $\epsilon$."
+
+- **Differs:** [2] fixes $\epsilon$ for a run and picks it by comparing runs. The code rescales $\lambda_g$
+  and $\lambda_y$ at every step from an online estimate of its prediction residuals, and tightens the output
+  bounds. The text of [2] mentions neither an online noise estimate nor an output tightening (D16).
 
 ## 7. Online Hankel window (`--online-hankel`)
 
@@ -250,7 +289,19 @@ rule.
 
 The code cites arXiv:2407.16066 [3].
 
-To check against [3]: how it forms and drops columns, and what it requires of them.
+**Against the sources.** [3, Algorithm 1] keeps every column it accepts. From step $K$ on, it appends the
+latest length-$K$ trajectory to a mosaic-Hankel matrix [3, eq. (11)] and keeps it only if the matrix's
+minimum non-zero singular value stays at or above a threshold; otherwise it removes it. [3, §III-B] then
+reduces the growing matrix's order with a numerical SVD.
+
+The sliding window the code implements is the one [3, §I] attributes to Baros et al. (*Automatica* 138,
+109926, 2022, as [3] cites it, its reference 18; not read here). In it, "the first column (the oldest data
+point) is discarded from the Hankel matrix, all columns are shifted back by one step, and the most recent
+real-time data is added as the last column", and [3] says this method "requires a PE control input in
+real-time".
+
+- **Differs:** the code cites [3] for Baros et al.'s window, gates its updates on the noise estimate rather
+  than on a singular value, and makes no order reduction (D17).
 
 ## 8. Metrics
 
@@ -286,19 +337,27 @@ A trial that raises, or returns a non-finite metric, scores $10^6$ (D3).
 
 ## References
 
-None of these has been checked against its source in this repository. Each entry is given as the
-repository's own text gives it.
+Checked on 2026-11-11 against the arXiv version named: title and authors from the arXiv record and the
+PDF's title page, section and equation numbers from that version. The PDFs are kept in `references/`, which
+is git-ignored. [4] is not on arXiv and has not been read.
 
-1. J. Coulson, J. Lygeros, F. Dörfler, *Data-Enabled Predictive Control: In the Shallows of the DeePC*.
-   Given by the old README as *European Journal of Control*, 2019; venue, volume and pages not checked.
-2. arXiv:1903.06804, cited in `control/noise_estimator.py` as "Coulson/Lygeros/Dörfler" for the
-   "Wasserstein robustness radius"; title not given in the code, not checked.
-3. arXiv:2407.16066, cited in `control/online_hankel.py` as "Online Reduced-Order DeePC"; authors not given
-   in the code, not checked.
-4. J. C. Willems, P. Rapisarda, I. Markovsky, B. L. M. De Moor, *A note on persistency of excitation*,
-   *Systems & Control Letters*, 2005 (as the old README gives it; volume and pages not checked).
-5. J. Berberich, A. Koch, C. W. Scherer, F. Allgöwer, *Robust data-driven state-feedback design*, ACC 2020
-   (as the old README gives it). No code in this repository implements it.
+1. J. Coulson, J. Lygeros, F. Dörfler, "Data-Enabled Predictive Control: In the Shallows of the DeePC",
+   arXiv:1811.05890v2, 15 Mar 2019. Neither the arXiv record nor the PDF names a venue. The old README gave
+   *European Journal of Control*, 2019, which is not confirmed.
+2. J. Coulson, J. Lygeros, F. Dörfler, "Regularized and Distributionally Robust Data-Enabled Predictive
+   Control", arXiv:1903.06804v2, 1 Nov 2019. No venue on the arXiv record.
+3. A. Vahidi-Moghaddam, K. Zhang, X. Yin, V. Srivastava, Z. Li, "Online Reduced-Order Data-Enabled
+   Predictive Control", arXiv:2407.16066v1, 22 Jul 2024.
+4. J. C. Willems, P. Rapisarda, I. Markovsky, B. L. De Moor, "A note on persistency of excitation",
+   *Systems & Control Letters* 54(4), 325–329, 2005: the whole entry as [1] cites it (its reference 37).
+   Not on arXiv; not read.
+5. J. Berberich, A. Koch, C. W. Scherer, F. Allgöwer, "Robust data-driven state-feedback design", in *Proc.
+   American Control Conference*, 2020, pp. 1532–1538 (the arXiv record's journal reference);
+   arXiv:1909.04314v3, 26 Oct 2020. The PDF's title page names A. Koch; the arXiv record lists that author
+   as Anne Romer. No code here implements it.
+6. H. J. van Waarde, C. De Persis, M. K. Camlibel, P. Tesi, "Willems' Fundamental Lemma for State-space
+   Systems and its Extension to Multiple Datasets", arXiv:2002.01023v2, 7 May 2020. No venue on the arXiv
+   record.
 
 Software, at the versions `uv.lock` pins: CVXPY 1.8.1, OSQP 1.1.1, SCS 3.2.11, Optuna 4.8.0, NumPy 2.4.2,
 SciPy 1.17.1, Plotly 6.6.0.

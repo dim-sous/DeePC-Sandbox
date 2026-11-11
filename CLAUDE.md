@@ -7,7 +7,7 @@ then the fixes. What it is and how it runs: `README.md`. This file holds the wor
 
 **Only advisory rules live here** — the ones no test can catch. A checked rule lives in the
 test that checks it, and that test's docstring carries its incident tag. Each rule points at
-what holds it: an incident in `docs/project/failures.md` (`[D1]`–`[D12]`; a rule without its
+what holds it: an incident in `docs/project/failures.md` (`[D1]`–`[D17]`; a rule without its
 incident degrades into a slogan), a sibling repository's incident (BESS `[B…]`, RCWS `[A…]`),
 or a test. When in doubt, the rules win.
 
@@ -123,6 +123,6 @@ its observed consequence. State what was observed, never what it means.
   record, not a footnote.
 - Literature-grounded: when the thing exists in the literature (regularised DeePC, online
   Hankel updates, persistency of excitation), find the established method BEFORE designing;
-  cite it where it is used. `[D9]`
+  cite it where it is used; a departure from it is declared. `[D9, D13–D17]`
 - Every guard makes a failure less legible: a new clip, fallback, threshold or relaxation must
   earn its place, states its source, and defaults to reporting, not acting. `[D3, D5]`

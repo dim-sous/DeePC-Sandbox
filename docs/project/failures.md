@@ -5,14 +5,16 @@ incident degrades into a slogan** — every rule tagged `[D…]` was written aft
 was found in this repository. Rules taken from the sibling repositories cite theirs (BESS
 `[B…]`, RCWS `[A…]`).
 
-Referenced from `CLAUDE.md` as `[D1]`–`[D12]`. The labels are stable: add new ones, do not
+Referenced from `CLAUDE.md` as `[D1]`–`[D17]`. The labels are stable: add new ones, do not
 renumber. Each entry states what was observed, with the lines; what it means is the rule's job.
 
 D1–D8 were found on 2026-11-10, reading the code at `45dc91b` (untouched since 2026-05-29) and
 running its own functions; their line numbers are that commit's. D9–D12 were found the same day
-while writing `METHODS.md` from the code at `3067d03` (the same code), D12 by its code review. **None is fixed**: the
-safety net (`tests/reference/`) freezes each as it behaves, and each waits for the Lab to show
-it before a branch fixes it and moves the frozen numbers on purpose.
+while writing `METHODS.md` from the code at `3067d03` (the same code), D12 by its code review.
+D13–D17 were found on 2026-11-11, reading the papers `METHODS.md` cites (its References, arXiv
+versions; numbers in brackets refer to that list). **None is fixed**: the safety net
+(`tests/reference/`) freezes each as it behaves, and each waits for the Lab to show it before a
+branch fixes it and moves the frozen numbers on purpose.
 
 ---
 
@@ -149,9 +151,15 @@ registry is the only place that knows which exist.
   samples from step `hankel_warmup_steps` on (default 100), so its first $L - 1$ online columns
   join the end of the training data to the loop.
 
+- The literature's construction for several datasets, found 2026-11-11: the mosaic-Hankel matrix,
+  one Hankel block per dataset side by side ([6, Definition 2, eq. (8)], with the fundamental
+  lemma extended to it in [6, Theorem 2]; [3, Definition 3, eq. (4)] uses the same). Measured on
+  the frozen training data (`tests/reference/*-data.npz`; seed 42, plant defaults), the
+  per-episode mosaic of the inputs has full row rank at order $L$: 48 of 48 rows over 485
+  columns for the coupled masses, 36 of 36 over 315 for the bicycle.
+
 Rules: literature-grounded — several datasets are combined the way the literature does it
-(the established construction is to be found and cited, `METHODS.md` §3); a data matrix states
-what each of its columns holds.
+(`METHODS.md` §3); a data matrix states what each of its columns holds.
 
 ## D10 — the loop and the data align the reference differently
 
@@ -195,4 +203,74 @@ Rules: a setting the run did not use is refused or recorded as unused, never acc
 
 Rules: one quantity, one formula — the input the data records is the input the plant applied,
 or the divergence is declared where it lives.
+
+## D13 — persistency of excitation checked at a lower order than the lemma asks
+
+- The code checks $\mathrm{rank}\, H_L(u) \ge Lm$, order $L = T_{ini} + N$
+  (`control/regularization.py:32-33`, called at `control/controller.py:75`).
+- [1, §V-A] assumes the input "persistently exciting of order $T_{ini} + N + n(\mathcal B)$";
+  [1, Lemma 4.2] and [6, Theorem 1] state the lemma under order $t + n(\mathcal B)$ and $n + L$.
+- Measured on the frozen training data (`tests/reference/*-data.npz`; seed 42, plant defaults),
+  the stacked inputs have full row rank at both orders: coupled masses 48 of 48 at $L$ = 24 and
+  56 of 56 at $L + 4$ = 28; bicycle 36 of 36 at $L$ = 18 and 44 of 44 at $L + 4$ = 22 (4 is the
+  state dimension; the lemma is stated for linear systems, which the bicycle is not).
+
+Rules: literature-grounded — a condition the method rests on is checked as the source states it.
+
+## D14 — the regulariser on $g$, and no low-rank step
+
+- Both plants default to `reg_norm_g = "L2"` (`plants/bicycle_model.py:220-234`,
+  `plants/coupled_masses.py:139-153`), which the QP implements as the squared 2-norm,
+  `cp.sum_squares(self.g)` (`control/controller.py:139-142`).
+- [1, eq. (8)] regularises with $\lambda_g \lVert g \rVert_1$; [2, Remark 4.3] pairs robustness in
+  the 2-norm sense with regularising by the 2-norm itself.
+- [1, eq. (8)] also replaces the data matrix by "a low-rank matrix approximation" of it; the code
+  builds its blocks from the raw Hankel matrix (`control/online_hankel.py:49-50`, `:86-90`).
+
+Rules: literature-grounded — a departure from the cited method is declared where it lives
+(`# MISMATCH`).
+
+## D15 — tracking on errors with a zero reference
+
+- [1, eq. (6)] penalises $\lVert y_k - r_{t+k} \rVert_Q^2$, with $y$ the system's outputs and $r$
+  the reference.
+- The code's outputs are errors against a reference (`plants/bicycle_model.py:46-51`,
+  `plants/coupled_masses.py:127`) and its cost reference is zero (`sim/simulation.py:126`); the
+  training errors are taken against a nominal reference (bicycle: a straight line at $v_{ref}$,
+  `plants/bicycle_model.py:371-374`; coupled masses: zero), the closed-loop errors against the
+  scenario's (`sim/simulation.py:141`).
+- The old CLAUDE.md recorded this as a lesson ("use error-based or shift-invariant outputs"),
+  backed by no record (README, "Claims from before the rebuild").
+
+Rules: literature-grounded — a departure from the cited method is declared where it lives and
+re-measured against the method it departs from.
+
+## D16 — a noise-adaptive rule the cited paper does not state
+
+- `control/noise_estimator.py:1-5` cites arXiv:1903.06804 ([2]) for scaling "the Wasserstein
+  robustness radius (lambda_g, lambda_y)" from estimated noise. The code multiplies
+  `lambda_g` and `lambda_y` at every step by $\mathrm{clip}(\mathrm{mean}(\hat\sigma)/\sigma_0, 1, 10)$,
+  $\hat\sigma$ from a window of its own prediction residuals, and tightens the output bounds
+  (`sim/simulation.py:107-121`, `control/noise_estimator.py:36-46`).
+- [2] relates $\lambda_g$ to the radius $\epsilon$ (after [2, Theorem 4.2]), says to choose
+  $\epsilon$ "in a data-driven fashion" ([2, Remark 4.1]), and in [2, §V] fixes $\epsilon$ for a
+  run and compares runs over 15 random simulations per $\epsilon$. Its text, searched for
+  "estimat", "tighten" and "adaptive" (`pdftotext` of arXiv v2) and read around each hit, mentions
+  neither an online noise estimate nor an output tightening.
+
+Rules: literature-grounded — a citation names the source of what the code does, and a rule of
+our own is said to be ours.
+
+## D17 — an online window cited to a paper that describes another
+
+- `control/online_hankel.py:9` cites arXiv:2407.16066 ([3]). The code slides a fixed-width
+  window, dropping the oldest column for each new one (`control/online_hankel.py:109-114`),
+  and gates updates on the noise estimate (D5).
+- [3, Algorithm 1] grows a mosaic-Hankel matrix and keeps a new column only if the minimum
+  non-zero singular value stays at or above a threshold; [3, §III-B] reduces its order by a
+  numerical SVD. [3, §I] attributes the sliding window to Baros et al. (*Automatica* 138, 109926,
+  2022, its reference 18; not read here) and says that method "requires a PE control input in
+  real-time".
+
+Rules: literature-grounded — a citation names the source of what the code does.
 
