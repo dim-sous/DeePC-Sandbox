@@ -9,8 +9,8 @@ Model predictive control needs an explicit model of the system. DeePC replaces i
 excite the system with rich inputs, record what happens, and use block-Hankel matrices of the recorded
 trajectories as the model in the quadratic program solved at each step. The foundation the project names is
 Willems' fundamental lemma, in the old README's words: "for a linear time-invariant system, a sufficiently
-rich input-output trajectory contains all information needed to predict future behavior" (not yet checked
-against its source; see [METHODS.md](METHODS.md), §3).
+rich input-output trajectory contains all information needed to predict future behavior". How the papers
+state it, and where the code departs from them, is in [METHODS.md](METHODS.md), §3.
 
 - **Plants.**
 
@@ -122,7 +122,7 @@ numbers.
 | `tests/` | the safety net (`tests/reference/`, `test_reference.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
-| `docs/project/failures.md` | the incidents the rules were written after (D1–D12) |
+| `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |
 | `references/` | the papers, on each computer only (git-ignored: the repository is public) |
 
 ## Limitations
@@ -142,6 +142,13 @@ Simulation only. The known problems are recorded, none fixed yet, in
 - **D10** the loop and the data align the reference with the state differently.
 - **D11** the noise-adaptive tightening enters no constraint at the defaults.
 - **D12** the bicycle's training data records inputs before the plant clips them.
+- **D13** the excitation check uses a lower order than the fundamental lemma asks for.
+- **D14** the default regulariser on the Hankel weights is the squared 2-norm, where Coulson et al. use the
+  1-norm and a low-rank step the code lacks.
+- **D15** tracking on errors with a zero reference, where Coulson et al. track a reference with the
+  system's outputs.
+- **D16** the noise-adaptive rule is not the one in the paper it cites.
+- **D17** the online window is not the one in the paper it cites.
 
 **Claims from before the rebuild, not re-measured.** These were written into the old CLAUDE.md before any
 run was recorded. No record backs them, and each stays unverified until one re-measures it.
@@ -160,13 +167,17 @@ run was recorded. No record backs them, and each stays unverified until one re-m
 
 ## References
 
-The main sources, none yet checked against its source here; the full list is in
-[METHODS.md](METHODS.md#references).
+The main sources, checked against their arXiv versions on 2026-11-11 except the last, which is not on arXiv;
+the full list is in [METHODS.md](METHODS.md#references).
 
-- J. Coulson, J. Lygeros, F. Dörfler, *Data-Enabled Predictive Control: In the Shallows of the DeePC*,
-  2019 (venue not checked).
-- J. C. Willems, P. Rapisarda, I. Markovsky, B. L. M. De Moor, *A note on persistency of excitation*,
-  *Systems & Control Letters*, 2005.
+- J. Coulson, J. Lygeros, F. Dörfler, "Data-Enabled Predictive Control: In the Shallows of the DeePC",
+  arXiv:1811.05890v2, 2019 (no venue on the record).
+- J. Coulson, J. Lygeros, F. Dörfler, "Regularized and Distributionally Robust Data-Enabled Predictive
+  Control", arXiv:1903.06804v2, 2019.
+- H. J. van Waarde, C. De Persis, M. K. Camlibel, P. Tesi, "Willems' Fundamental Lemma for State-space
+  Systems and its Extension to Multiple Datasets", arXiv:2002.01023v2, 2020.
+- J. C. Willems, P. Rapisarda, I. Markovsky, B. L. De Moor, "A note on persistency of excitation",
+  *Systems & Control Letters* 54(4), 325–329, 2005 (not read).
 
 ## License
 
