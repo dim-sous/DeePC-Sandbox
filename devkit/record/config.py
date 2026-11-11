@@ -22,7 +22,8 @@ outside the choices in its own words. What param has no slot for rides in ``meta
 
 A setting whose default is ``None`` means "the plant's own": the piece resolves it when it runs
 and saves what it resolved. A list setting holds numbers (the Q and R weights; JSON or commas on
-the command line) or, declared ``item_type=str``, expressions (JSON on the command line). ``none`` on the command line sets a setting that allows it back to ``None``.
+the command line) or, declared ``item_type=str``, expressions (JSON on the command line).
+``none`` on the command line sets a setting that allows it back to ``None``.
 
 A built Config is immutable; a changed one is a new Config (:func:`with_overrides`).
 """

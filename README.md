@@ -16,7 +16,9 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
 - **Systems, typed.** The `system` piece defines a system as rows: one per state equation
   ($\dot x_i = f_i(x, u, \theta)$), one per output equation ($y_j = h_j(x, \theta)$), and the values
   of the parameter vector $\theta$, in `x1…`, `u1…`, `theta1…`. SymPy reads and checks them
-  ([METHODS.md](METHODS.md) §10); nothing is simulated there. It is the first piece of a rewrite
+  ([METHODS.md](METHODS.md) §10). A run also analyses the system at a point you give, $(x^*, u^*)$,
+  for one input–output pair: its exact linearisation, the poles, the Bode plot and the step,
+  impulse and ramp responses (python-control). It is the first piece of a rewrite
   ([docs/project/design.md](docs/project/design.md)).
 - **Open loop.** The `open_loop` piece simulates a saved system run from $x_0$: an i.i.d. uniform
   excitation per input, clipped to the actuator bounds, and a Gaussian disturbance where the

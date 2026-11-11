@@ -41,7 +41,18 @@ developer, 2026-11-11: "dataset sounds weird").
 run is a complete, fixed plant. No initial state, no input bounds, no sampling time, no chart: those
 are the open-loop simulation's (§2).
 
-**The record.** The rows as SymPy reads them (θ as symbols) and the sizes $n, m, p, q$.
+**The record.** The rows as SymPy reads them (θ as symbols) and the sizes $n, m, p, q, r$.
+
+**The analysis** (asked for 2026-11-11, in three branches S1–S3, after the open-loop branch). The
+developer: plots "useful for understanding the system (bode plots, Nyquist plots, Nichols plots,
+Root locus plots, step/impulse/ramp response plots, 2d phase portraits etc)", numbers "that reflect
+the system (critical points and their nature, etc)", and "the linearization is not fixed but
+defined by the user during plot request". Decided: the request lives in the System tab (an
+Analysis group: $x^*$, $u^*$, the pair); one input–output pair per request; python-control;
+the phase in degrees; time and frequency ranges automatic. **S1**: the linearisation, the poles,
+Bode, the step, impulse and ramp responses; numbers: unstable poles and the largest real part,
+the smallest damping ratio, the pair's DC gain and margins, the equilibrium residual. **S2**:
+Nyquist, Nichols, root locus. **S3**: the equilibria and their type, phase portraits.
 
 **Parsing.** SymPy (`parse_expr`, then `lambdify` to NumPy). `parse_expr` evaluates Python, so
 each row is checked token by token first: the symbols, a list of functions, numbers, operators;

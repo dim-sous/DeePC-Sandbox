@@ -22,6 +22,7 @@ asked for -- left out unsaid, a comparison would read as complete.
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Sequence
 from typing import Any
 
@@ -267,7 +268,7 @@ def chart_of(pairs: Pairs, name: str, *, runs: str = "one") -> Panel:
                      for pre, r in _shared(ref_items, len(held)))
         panel = Panel(name, first.x_label,
                       (Axes(first.y_label, tuple(lines), tuple(bands), refs),), first.doc)
-    return panel
+    return dataclasses.replace(panel, x_log=first.x_log, y_log=first.y_log)
 
 
 # --- a number against a setting --------------------------------------------------------------

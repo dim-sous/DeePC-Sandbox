@@ -31,6 +31,7 @@ on the developer's computer ([[multi-device]]).
 | #13 | The bicycle deleted (no source for its model); position history, Position RMSE, Path chart gone; safety net gains the masses' online-Hankel and noise-adaptive cases, remade on the developer's computer |
 | #14 | Rewrite branch 1: the `system` piece (typed rows x', y, θ; Lab row editor), `tools/system/` (SymPy parser, RK45 `hold`), the no-units rule, `docs/project/design.md` |
 | #15 | Rewrite branch 2: the `open_loop` piece (excitation, actuator clip, typed disturbances d, y_k = h(x_k) + noise; numbers PE order, SNR, clipped, step time); the old `dataset` kept until branch 3 |
+| #16 | System analysis S1: the Analysis group (x*, u*, pair), exact linearisation, poles, Bode (declared log axes), step/impulse/ramp, DC gain, margins; python-control 0.10.2 |
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
@@ -53,6 +54,16 @@ developer's choices 2d–2g in design.md. After the first hand-off they asked fo
 useful numbers (PE order of u by the controller's own check, SNR per output, clipped, step time:
 2i) — merged as PR #15 on 2026-11-11; (3) the closed loop on [1, eq. (8)] tracking y, deleting the old pipeline and
 making a new safety net. The queue below predates it and is superseded where the design says so.
+
+**System analysis, in three branches (the developer, 2026-11-11: "lets take it in order: system
+-> open loop -> closed loop"):** S1 on branch `system-analysis` — the System tab's Analysis group
+(x*, u* default the origin, the pair u_j -> y_i), the exact SymPy linearisation, python-control
+0.10.2 (added) for poles, Bode (log axes now declarable on a Series), step/impulse/ramp, DC gain,
+margins; numbers per their pick; merged as PR #16 on 2026-11-11 (the developer: "Once you merge
+we stop there, enough for today"). **Pick up here:** S2 Nyquist, Nichols, root locus (charts of
+one quantity against another, root-locus branches each on its own x: the figure layer needs
+per-trace abscissae again); S3 equilibria and their type, phase portraits (a vector field). Then
+more Open loop if asked, then the closed loop.
 
 **Asked for next (2026-11-11, during the open-loop review):** plots on the System tab "useful
 for understanding the system (bode plots, Nyquist plots, Nichols plots, Root locus plots,

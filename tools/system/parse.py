@@ -50,7 +50,8 @@ _TRANSFORMS = standard_transformations + (convert_xor,)      # ^ is a power, as 
 class Parsed:
     """A parsed system: its sizes, its rows as SymPy reads them (θ kept as symbols), its θ
     values, and NumPy functions ``f(x, u, d) -> (n,)`` and ``h(x) -> (p,)`` at those values; ``d``
-    is (r,), empty for a system that names no disturbance."""
+    is (r,), empty for a system that names no disturbance. ``jacobians(x, u, d) -> (A, B, C)``:
+    ∂f/∂x (n, n), ∂f/∂u (n, m) and ∂h/∂x (p, n) there, differentiated exactly by SymPy."""
 
     n: int
     m: int
@@ -62,6 +63,8 @@ class Parsed:
     theta: tuple[float, ...]
     f: Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]
     h: Callable[[np.ndarray], np.ndarray]
+    jacobians: Callable[[np.ndarray, np.ndarray, np.ndarray],
+                        tuple[np.ndarray, np.ndarray, np.ndarray]]
 
 
 def _rows(rows: Sequence[str], label: str) -> list[str]:
@@ -182,7 +185,16 @@ def parse(f_rows: Sequence[str], h_rows: Sequence[str], theta: Sequence[float]) 
                              f"{what} are {kind}1…{kind}{size}, each acting through a state row")
     f_raw = sp.lambdify((xs, us, ds, thetas), f_exprs, "numpy")
     h_raw = sp.lambdify((xs, thetas), h_exprs, "numpy")
+    F, H = sp.Matrix(f_exprs), sp.Matrix(h_exprs)
+    jacobians_raw = sp.lambdify((xs, us, ds, thetas),
+                                [F.jacobian(xs), F.jacobian(us), H.jacobian(xs)], "numpy")
+
+    def jacobians(x: np.ndarray, u: np.ndarray, d: np.ndarray):
+        A, B, C = jacobians_raw(x, u, d, theta)
+        return (np.array(A, dtype=float).reshape(n, n), np.array(B, dtype=float).reshape(n, m),
+                np.array(C, dtype=float).reshape(p, n))
+
     return Parsed(n=n, m=m, p=p, q=q, r=r, f_read=tuple(map(str, f_exprs)),
                   h_read=tuple(map(str, h_exprs)), theta=theta,
                   f=lambda x, u, d: np.array(f_raw(x, u, d, theta), dtype=float),
-                  h=lambda x: np.array(h_raw(x, theta), dtype=float))
+                  h=lambda x: np.array(h_raw(x, theta), dtype=float), jacobians=jacobians)

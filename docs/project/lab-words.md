@@ -181,7 +181,7 @@ Numbers of Dataset (coupled masses run), by group -- `code name`: label [unit] -
 
 ### System (`system`)
 
-Settings, by group -- `code name`: label · its rows · add button -- help line (no units):
+Settings, by group -- `code name`: label (· its rows · add button) -- help line (no units):
 
 - **States**
   - `f`: x' · rows x1' =, x2' =, … · + State -- One row per state: x_i' as an expression in x1…, u1…, the disturbances d1…, theta1… and sin cos tan exp log sqrt tanh abs pi
@@ -189,8 +189,21 @@ Settings, by group -- `code name`: label · its rows · add button -- help line 
   - `h`: y · rows y1 =, y2 =, … · + Output -- One row per output: y_j as an expression in x1…, theta1… and the same functions
 - **Parameters**
   - `theta`: θ · rows θ1 =, θ2 =, … · + Parameter -- One row per parameter: the value of theta_k, which the rows name as theta1, theta2, …
+- **Analysis**
+  - `x_star`: x* -- The state to linearise at, one value per state; none: the origin
+  - `u_star`: u* -- The input to linearise at, one value per input; none: zero
+  - `input`: Input -- The input u_j of the analysed pair, by its index j
+  - `output`: Output -- The output y_i of the analysed pair, by its index i
 
-Charts of System: none (a system run defines; the open-loop piece simulates).
+Charts of System (default run, the two masses at the origin, u1 → y1), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
+
+- **Frequency**
+  - `bode-magnitude`: Bode magnitude · ω · |G| · |G| of u1 → y1 (log ω, log |G|) -- The magnitude of the frequency response of u1 → y1 at (x*, u*)
+  - `bode-phase`: Bode phase · ω · ∠G · ∠G of u1 → y1 (log ω) -- The phase of the frequency response of u1 → y1 at (x*, u*), in degrees
+- **Time**
+  - `step`: Step response · t · δy1 · δy1 -- y1's deviation from h(x*) after a unit step in u1, linearised at (x*, u*)
+  - `impulse`: Impulse response · t · δy1 · δy1 -- y1's deviation from h(x*) after a unit impulse in u1, linearised at (x*, u*)
+  - `ramp`: Ramp response · t · δy1 · δy1 -- y1's deviation from h(x*) under u1 - u1* = t, linearised at (x*, u*)
 
 Numbers of System, by group -- `code name`: label -- hover:
 
@@ -200,6 +213,16 @@ Numbers of System, by group -- `code name`: label -- hover:
   - `p`: p -- The number of outputs, y1…yp: one per output row
   - `q`: q -- The number of parameters, theta1…thetaq
   - `r`: r -- The number of disturbance inputs, d1…dr: where the unmodelled disturbance enters
+- **Poles**
+  - `unstable_poles`: Unstable poles -- Eigenvalues of A with a positive real part, at (x*, u*)
+  - `max_pole_re`: Max pole Re -- The largest real part of A's eigenvalues
+  - `min_damping`: Min damping ratio -- The smallest damping ratio of A's eigenvalues (python-control's damp); a pole at the origin has none
+  - `residual`: Equilibrium residual -- |f(x*, u*, 0)|: 0 when (x*, u*) is an equilibrium
+- **Pair**
+  - `dc_gain`: DC gain -- The pair's steady-state gain G(0)
+  - `gain_margin`: Gain margin -- The pair's gain margin, as python-control's stability_margins computes it
+  - `phase_margin`: Phase margin -- The pair's phase margin in degrees, as python-control's stability_margins computes it
+
 
 ### Open loop (`open_loop`)
 

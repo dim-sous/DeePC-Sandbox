@@ -13,8 +13,8 @@ from record.config import Settings
 
 # words, not the symbols: the form writes its group headings in capitals, which would turn x
 # into X; the rows themselves are labelled x1', y1, θ1
-X, Y, THETA = "States", "Outputs", "Parameters"
-GROUPS: tuple[str, ...] = (X, Y, THETA)
+X, Y, THETA, ANALYSIS = "States", "Outputs", "Parameters", "Analysis"
+GROUPS: tuple[str, ...] = (X, Y, THETA, ANALYSIS)
 
 
 class Config(Settings):
@@ -40,3 +40,23 @@ class Config(Settings):
         [2.0, 1.0, 0.3, 0.1], item_type=float, label="θ",
         doc="One row per parameter: the value of theta_k, which the rows name as theta1, theta2, …",
         metadata={"group": THETA, "rows": {"label": "θ{}", "add": "+ Parameter"}})
+    # The analysis request: the point to linearise at and the input-output pair (the developer,
+    # 2026-11-11: "the linearization is not fixed but defined by the user during plot request").
+    # None is the origin, sized to whatever system the rows define, so a new system runs without
+    # them typed; the run records the point it used.
+    x_star = param.List(
+        None, allow_None=True, item_type=float, label="x*",
+        doc="The state to linearise at, one value per state; none: the origin",
+        metadata={"group": ANALYSIS})
+    u_star = param.List(
+        None, allow_None=True, item_type=float, label="u*",
+        doc="The input to linearise at, one value per input; none: zero",
+        metadata={"group": ANALYSIS})
+    input = param.Integer(
+        1, bounds=(1, None), label="Input",
+        doc="The input u_j of the analysed pair, by its index j",
+        metadata={"group": ANALYSIS})
+    output = param.Integer(
+        1, bounds=(1, None), label="Output",
+        doc="The output y_i of the analysed pair, by its index i",
+        metadata={"group": ANALYSIS})

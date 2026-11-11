@@ -311,6 +311,20 @@ record keeps the rows as SymPy read them, with $\theta$ as symbols, and the size
 simulated here: the initial state, the input bounds and the sampling time are the open-loop
 simulation's (`docs/project/design.md` §2).
 
+**The analysis at a requested point** (`tools/system/linearize.py`, `devkit/harness/system/run.py`;
+the developer, 2026-11-11: "the linearization is not fixed but defined by the user during plot
+request"). At $(x^*, u^*)$ (default the origin) and $d = 0$, the system is linearised exactly,
+$A = \partial f/\partial x$, $B = \partial f/\partial u$, $C = \partial h/\partial x$ at the point, by
+SymPy's derivatives; $D = 0$, since $h$ names no input. The point need not be an equilibrium; the
+residual $\lVert f(x^*, u^*, 0) \rVert_2$ says how far it is. For the chosen pair $u_j \to y_i$,
+$G(s) = C_i (sI - A)^{-1} B_j$, python-control (0.10.2, by function) computes: the poles and their
+damping ratios (`damp`), the frequency response over its own range of $\omega$
+(`frequency_response`; the phase unwrapped and shown in degrees), the step response over its own
+time span (`step_response`), the impulse and ramp ($u_j - u_j^* = t$) responses over that span
+(`impulse_response`, `forced_response`), the DC gain $G(0)$ (`dcgain`) and the gain and phase
+margins (`stability_margins`). A number with no finite answer (an infinite margin, the DC gain of
+an integrator) is left out, the reason recorded.
+
 **Integration** (`tools/system/integrate.py`, used by the open-loop simulation, branch 2). Over a
 step the input is held constant (zero-order hold) and the state integrated by
 `scipy.integrate.solve_ivp`, method RK45, the Dormand–Prince 5(4) pair [7], at rtol $10^{-9}$ and

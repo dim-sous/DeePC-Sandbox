@@ -115,6 +115,9 @@ class Panel:
     doc: str = ""
     quantity: str = ""
     x_ticks: tuple[tuple[float, str], ...] | None = None
+    #: Logarithmic axes, as the record's Series declares them.
+    x_log: bool = False
+    y_log: bool = False
 
 
 def _labels(panel: Panel) -> set[str]:
@@ -155,10 +158,14 @@ def render(panel: Panel, out_dir: Path, prov, *, facts: dict[str, Any] | None = 
             ax.plot(line.drawn_x(), np.asarray(line.y, float), color=line.color,
                     linewidth=LINE_WIDTH, label=broken(line.label), **style)
         ax.set_ylabel(spec.y_label)
+        if panel.y_log:
+            ax.set_yscale("log")
     bottom = axs[-1, 0]
     if panel.x_ticks:
         bottom.set_xticks([p for p, _ in panel.x_ticks], [w for _, w in panel.x_ticks])
     bottom.set_xlabel(panel.x_label)
+    if panel.x_log:
+        bottom.set_xscale("log")
     if panel.quantity:
         fig.supylabel(panel.quantity, color=INK_SECONDARY, fontsize=10)
     if has_legend(panel):
