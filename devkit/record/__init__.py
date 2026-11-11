@@ -102,6 +102,10 @@ class Series:
     title: str = ""
     #: The statistics its traces may be pooled by across runs ("mean", "rms"); () for none.
     pooled: tuple[str, ...] = ()
+    #: A logarithmic bottom axis or ordinate, declared by the record for a quantity read in
+    #: decades (a Bode plot's ω and |G|); not a card's control.
+    x_log: bool = False
+    y_log: bool = False
 
     def __post_init__(self) -> None:
         if not self.title:

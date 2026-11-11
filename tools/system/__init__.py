@@ -6,7 +6,8 @@ open-loop simulation's settings, not the system's (docs/project/design.md)."""
 from __future__ import annotations
 
 from system.integrate import ATOL, RTOL, hold
+from system.linearize import linearize
 from system.parse import Parsed, parse
 from system.step import step
 
-__all__ = ["Parsed", "parse", "hold", "step", "RTOL", "ATOL"]
+__all__ = ["Parsed", "parse", "hold", "step", "linearize", "RTOL", "ATOL"]

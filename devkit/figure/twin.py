@@ -100,7 +100,8 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
         # arithmetic produces
         domain = [round(max(0.0, top - h), 6), round(min(1.0, top), 6)]
         layout[axis_key] = {**_axis("" if stacked else broken(ax.y_label, "<br>")),
-                            "domain": domain, "anchor": "x"}
+                            "domain": domain, "anchor": "x",
+                            **({"type": "log"} if panel.y_log else {})}
         if stacked:
             layout["annotations"].append({
                 "xref": "paper", "yref": "paper", "x": 0, "y": domain[1], "xanchor": "left",
@@ -146,7 +147,7 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
             "yanchor": "middle", "xshift": -60, "textangle": -90, "showarrow": False,
             "text": html.escape(panel.quantity), "font": {"size": 12, "color": INK}})
     xaxis: dict[str, Any] = {**_axis(panel.x_label), "anchor": f"y{n}" if stacked else "y",
-                             "domain": [0, 1]}
+                             "domain": [0, 1], **({"type": "log"} if panel.x_log else {})}
     if panel.x_ticks:
         xaxis.update({"tickvals": [p for p, _ in panel.x_ticks],
                       "ticktext": [w for _, w in panel.x_ticks]})

@@ -180,3 +180,23 @@ def test_a_number_against_a_list_setting_places_each_list_by_name(runs, tmp_path
     [line] = panel.axes[0].lines
     assert list(line.x) == [0.0, 1.0]
     assert list(line.y) == [loop.numbers["rmse_e_x1"], other.numbers["rmse_e_x1"]]
+
+
+def test_a_log_axis_the_record_declares_reaches_both_drawings(tmp_path) -> None:
+    """A Bode plot reads ω and |G| in decades: the record declares the axes logarithmic, and the
+    still and the Lab's twin draw them so; a card offers no log control (the developer's cut)."""
+    from figure.render import render
+    from figure.twin import figure_of
+    from record import stamp
+    system = get_component("system")
+    rec = system.run(system.Config())
+    magnitude = chart_of([("a", rec)], "bode-magnitude")
+    assert magnitude.x_log and magnitude.y_log
+    twin = figure_of(magnitude)
+    assert twin["layout"]["xaxis"]["type"] == "log" and twin["layout"]["yaxis"]["type"] == "log"
+    phase = figure_of(chart_of([("a", rec)], "bode-phase"))
+    assert phase["layout"]["xaxis"]["type"] == "log" and "type" not in phase["layout"]["yaxis"]
+    step = figure_of(chart_of([("a", rec)], "step"))
+    assert "type" not in step["layout"]["xaxis"]
+    [png, *_] = render(magnitude, tmp_path, stamp(0.0))
+    assert png.exists()
