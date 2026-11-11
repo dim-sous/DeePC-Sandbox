@@ -23,6 +23,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import html
+import json
 import sys
 import traceback
 from pathlib import Path
@@ -37,7 +38,7 @@ from record import capital
 
 from . import jobs, shaping, skin, state, view
 from .compare import CompareTable
-from .form import Form
+from .form import Form, as_text
 from .runlist import RunList
 from .split import DEFAULT_PX, Split
 
@@ -100,6 +101,101 @@ def _tool(cls: Any, **kw: Any) -> Any:
     """A control on a card: the Lab's stylesheet, compact."""
     kw.setdefault("margin", _TOOL_MARGIN)
     return cls(stylesheets=[skin.WIDGET, skin.TOOL], **kw)
+
+
+class _Rows:
+    """A list setting declaring ``rows`` drawn as labelled rows: one box per item, labelled by
+    its index (``x1' =``), ✕ to take it out, a button to add one. It holds the list as the form
+    holds every setting, as the text ``--set`` takes (JSON); ``""`` is the declared default.
+    Every edit by hand calls ``on_edit`` with that text; a value written to it does not. Greying
+    and the changed mark reach the drawn boxes in place: redrawing them while one is typed in
+    would take the box away from under the keyboard."""
+
+    def __init__(self, f: dict[str, Any], on_edit: Callable[[str], None]) -> None:
+        self.f, self._on_edit = f, on_edit
+        self.view = pn.Column(sizing_mode="stretch_width", margin=0)
+        self._disabled, self._stylesheets = False, [skin.WIDGET]
+        self._boxes: list[Any] = []
+        self._buttons: list[Any] = []
+        self._items: list[str] = [as_text(v) for v in f["default"] or []]
+        self._draw()
+
+    @property
+    def value(self) -> str:
+        return self._text()
+
+    @value.setter
+    def value(self, text: str) -> None:
+        self._items = [as_text(v) for v in (json.loads(text) if text else self.f["default"] or [])]
+        self._draw()
+
+    @property
+    def disabled(self) -> bool:
+        return self._disabled
+
+    @disabled.setter
+    def disabled(self, off: bool) -> None:
+        self._disabled = off
+        for widget in self._boxes + self._buttons:
+            widget.disabled = off
+
+    @property
+    def stylesheets(self) -> list[Any]:
+        return self._stylesheets
+
+    @stylesheets.setter
+    def stylesheets(self, sheets: list[Any]) -> None:
+        self._stylesheets = list(sheets)
+        for box in self._boxes:
+            box.stylesheets = self._stylesheets
+
+    def _text(self) -> str:
+        """The rows as JSON. A list of numbers (θ) writes each row that reads as a number as
+        one, so its default reads as unset, and any other row as the text typed, which the
+        terminal refuses in its own words: never a row split or dropped on the way."""
+        if self.f.get("texts"):
+            return json.dumps(self._items, ensure_ascii=False)
+        def number(text: str) -> Any:
+            try:
+                return float(text)
+            except ValueError:
+                return text
+        return json.dumps([number(v) for v in self._items], ensure_ascii=False)
+
+    def _draw(self) -> None:
+        label, add = self.f["rows"]["label"], self.f["rows"]["add"]
+        rows, self._boxes, self._buttons = [], [], []
+        for i, item in enumerate(self._items):
+            box = pn.widgets.TextInput(value=item, margin=0, sizing_mode="stretch_width",
+                                       disabled=self._disabled, stylesheets=self._stylesheets)
+            box.param.watch(lambda e, i=i: self._typed(i, e.new), "value_input")
+            drop = _widget(pn.widgets.Button, label="✕", width=30, margin=(0, 0, 0, 6),
+                           disabled=self._disabled)
+            drop.on_click(lambda _e, i=i: self._drop(i))
+            self._boxes.append(box)
+            self._buttons.append(drop)
+            rows.append(pn.Row(_html(html.escape(label.format(i + 1) + " ="), margin=0,
+                                     style=f"{_MONO};font-size:12.5px;display:block;width:64px"),
+                               box, drop, sizing_mode="stretch_width", margin=(0, 0, 4, 0)))
+        more = _widget(pn.widgets.Button, label=add, width=120, margin=(2, 0, 0, 64),
+                       disabled=self._disabled)
+        more.on_click(lambda _e: self._add())
+        self._buttons.append(more)
+        self.view.objects = rows + [more]
+
+    def _typed(self, i: int, text: str) -> None:
+        self._items[i] = text
+        self._on_edit(self._text())
+
+    def _drop(self, i: int) -> None:
+        del self._items[i]
+        self._draw()
+        self._on_edit(self._text())
+
+    def _add(self) -> None:
+        self._items.append("")
+        self._draw()
+        self._on_edit(self._text())
 
 
 def _width(words: str) -> int:
@@ -890,15 +986,20 @@ class Lab:
         self._controls.clear(); self._labels.clear(); self._tips.clear()
         self._group_notes.clear()
         groups: dict[str, list[Any]] = {}
+        blocks: dict[str, list[Any]] = {}       # the row fields, full width under the grid
         for f in self.form.fields:
-            groups.setdefault(f["group"], []).extend(self._field_cells(f))
+            cells = groups.setdefault(f["group"], [])
+            if f.get("rows"):
+                blocks.setdefault(f["group"], []).append(self._rows_block(f))
+            else:
+                cells.extend(self._field_cells(f))
         sections = []
         for g, cells in groups.items():
             note = _html("", style=_DIM)
             self._group_notes[g] = note
-            body = pn.Column(pn.GridBox(*cells, ncols=6, stylesheets=[skin.FORM_GRID],
-                                        sizing_mode="stretch_width"),
-                             sizing_mode="stretch_width", margin=0)
+            grid = ([pn.GridBox(*cells, ncols=6, stylesheets=[skin.FORM_GRID],
+                                sizing_mode="stretch_width")] if cells else [])
+            body = pn.Column(*grid, *blocks.get(g, []), sizing_mode="stretch_width", margin=0)
             head: Any = _h2(g)
             if all(f.get("folded") for f in self.form.fields if f["group"] == g):
                 body.visible = g in self._unfolded
@@ -941,6 +1042,16 @@ class Lab:
                 self._filling = False
             if f["name"] in self._tips:
                 self._tips[f["name"]].value = self._line_of(f, control.value)
+
+    def _rows_block(self, f: dict[str, Any]) -> Any:
+        """A row field: its label (the help on its hover), then its rows (:class:`_Rows`)."""
+        name = f["name"]
+        label = _html("", margin=0)
+        self._labels[name] = label
+        editor = _Rows(f, on_edit=lambda text, n=name: self._on_type(n, text))
+        editor.value = self.form.set.get(name, "")
+        self._controls[name] = editor
+        return pn.Column(label, editor.view, sizing_mode="stretch_width", margin=(0, 0, 8, 0))
 
     def _field_cells(self, f: dict[str, Any]) -> list[Any]:
         """A field as the THREE cells of a six-track grid: label, box, unit (or the pick's
@@ -1028,7 +1139,7 @@ class Lab:
         """Put ``text`` in a control and in every parameter a watcher reads, so what the box
         shows and what the run would use cannot drift apart."""
         control.value = text
-        if "value_input" in control.param:
+        if hasattr(control, "param") and "value_input" in control.param:
             control.value_input = text
 
     def _draw_names(self) -> None:

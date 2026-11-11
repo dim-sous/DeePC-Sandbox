@@ -242,3 +242,33 @@ def test_at_half_a_screen_and_at_full_width_nothing_runs_off_or_overprints(serve
         assert not errors, errors
     finally:
         page.close()
+
+
+def test_the_system_form_shows_a_labelled_row_per_equation_and_adds_one(served) -> None:
+    """The developer, 2026-11-11: rows for each state and each output equation, and θ, labelled,
+    with add and remove. Switching the piece logs a plotly page error on its own, for every piece
+    (found 2026-11-11, open in .claude/memory/project_state.md); the form must add none."""
+    url, browser, *_ = served
+    page, errors = _page(browser, url)
+    try:
+        page.locator("select").first.select_option(label="System")
+        _settle(page, 2500)
+        switched = len(errors)
+        page.locator("button", has_text="New run").first.click()
+        _settle(page, 1500)
+        assert [t for t in _text(page) if t.endswith(" =")] == [
+            "x1' =", "x2' =", "x3' =", "x4' =", "y1 =", "y2 =", "y3 =", "y4 =",
+            "θ1 =", "θ2 =", "θ3 =", "θ4 ="]
+        page.locator("button", has_text="+ State").first.click()
+        _settle(page, 1500)
+        assert "x5' =" in _text(page)
+        x4 = "theta2*x1 + theta4*x2 - (theta1 + theta2)*x3 - (theta3 + theta4)*x4 + u2"
+        box = next(b for b in page.locator("input[type=text]").all() if b.input_value() == x4)
+        box.click()
+        page.keyboard.press("End")
+        page.keyboard.type(" - x5", delay=40)                   # key by key, as a person types
+        _settle(page, 1500)
+        assert box.input_value() == x4 + " - x5", "every key reached the box (code review)"
+        assert not errors[switched:], errors[switched:]
+    finally:
+        page.close()

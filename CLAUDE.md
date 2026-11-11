@@ -88,8 +88,9 @@ The judgment calls no test can make yet:
   Lab, with no other edit (RCWS `dd18796` took ten files).
 - After any move, search code, docs and settings for the old names (RCWS #159).
 - The words a Lab user reads — labels, hovers, chart names, legends — follow the developer's
-  pattern (2026-11-11): a capital first, no articles, acronyms and the standard mathematical
-  terms; each is listed in `docs/project/lab-words.md`, changed on their word (RCWS #96).
+  pattern (2026-11-11): inputs u1…, outputs y1…, states x1…, time t, everywhere; no units; a
+  capital first for words, no articles, acronyms and the standard mathematical terms; each is
+  listed in `docs/project/lab-words.md`, changed on their word (RCWS #96).
 
 ## Conventions & invariants
 
@@ -108,9 +109,10 @@ say "I don't know — here is the experiment", then run it. One rule, four faces
   until a record re-measures them. `[D1]`
 - In code — a comment states what the code DOES, checked against the lines below it;
   identifiers name the condition, never its cause. `[D6]`
-- In figures — they DESCRIBE, never conclude (skill `figure-conventions`): axis labels with
-  units (one unit per axis), a legend naming every trace when more than one, nothing else, no
-  title. A bound names the quantity it bounds, with its unit. `[D7]`
+- In figures — they DESCRIBE, never conclude (skill `figure-conventions`): axis labels name the
+  quantity (t, u1, y1, x1), no units — the old pieces keep theirs until rewritten; a legend
+  naming every trace when more than one, nothing else, no title. A bound names the quantity it
+  bounds. `[D7]`
 - In error handling — fail LOUD: no swallowed exceptions, no stand-in answer for one the code
   failed to compute. A solver status is counted by its own name in the record, and a fallback
   is counted where it happens. `[D2, D3]`

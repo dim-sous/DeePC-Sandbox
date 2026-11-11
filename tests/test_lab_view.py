@@ -953,3 +953,44 @@ def test_switching_the_piece_forgets_what_was_ticked_and_open(own_runs) -> None:
     lab._on_piece("closed_loop")
     assert lab.shown == ["second"] and lab.open_charts == ["output-e-x1"]
     assert not lab._loaded or all(p.endswith(".json") for p in lab._loaded)
+
+
+def _rows_of_editor(editor) -> list:
+    """An editor's rows as (label words, box, ✕), its last object being the add button."""
+    return [tuple(row.objects) for row in editor.view.objects[:-1]]
+
+
+def test_the_system_form_draws_a_labelled_box_per_row_and_its_edits_reach_the_run(two_runs) -> None:
+    """The developer, 2026-11-11: "rows for each state equation and each observation equation",
+    labelled, with add and remove; the list reaches the run as JSON, the default unset."""
+    lab, *_ = _lab(two_runs)
+    lab.piece_select.value = "system"
+    f, theta = lab._controls["f"], lab._controls["theta"]
+    rows = _rows_of_editor(f)
+    assert len(rows) == 4
+    assert [html.unescape(r[0].object).split(">")[1].split("<")[0] for r in rows] == [
+        "x1' =", "x2' =", "x3' =", "x4' ="]
+    assert [r[1].value for r in rows][0] == "x2" and "f" not in lab.form.set
+    rows[1][1].value_input = "-theta1*x1 - theta3*x2 + u1"
+    assert json.loads(lab.form.set["f"])[1] == "-theta1*x1 - theta3*x2 + u1"
+    assert _rows_of_editor(f)[1][1] is rows[1][1], "the box typed in stays (code review)"
+    f.view.objects[-1].clicks += 1                       # + State
+    assert len(_rows_of_editor(f)) == 5 and json.loads(lab.form.set["f"])[-1] == ""
+    _rows_of_editor(f)[4][2].clicks += 1                 # its ✕
+    _rows_of_editor(f)[1][2].clicks += 1                 # and x2'
+    assert json.loads(lab.form.set["f"]) == ["x2", "x4", lab.form.by_name["f"]["default"][3]]
+    assert [html.unescape(r[0].object).split(">")[1].split("<")[0]
+            for r in _rows_of_editor(f)] == ["x1' =", "x2' =", "x3' ="], "labels renumber"
+    _rows_of_editor(theta)[0][1].value_input = "1,5"     # not a number: kept whole, as typed
+    assert json.loads(lab.form.set["theta"]) == ["1,5", 1.0, 0.3, 0.1]
+    _rows_of_editor(theta)[0][1].value_input = "2"       # the default, typed again
+    assert "theta" not in lab.form.set, "a number list back at its default is unset"
+    overrides = lab.form.launch_words()[0]
+    assert any(o.startswith("f=[") for o in overrides)
+    assert not any(o.startswith("theta=") for o in overrides)
+    lab._clear()
+    assert len(_rows_of_editor(f)) == 4 and lab.form.set == {}
+    lab.form.use({"f": ["x2", "-x1 + u1"], "h": ["x1"], "theta": [0.5]})
+    lab._fill_controls()
+    assert [r[1].value for r in _rows_of_editor(f)] == ["x2", "-x1 + u1"]
+    assert [r[1].value for r in _rows_of_editor(theta)] == ["0.5"]

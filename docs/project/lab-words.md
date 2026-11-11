@@ -14,13 +14,14 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 file `deepc draw` writes and a link's address key. Hovers are sentences: they begin with a capital and
 keep their articles where a sentence needs them.
 
-**Open, for your word:** a channel's name is the plant's own code name, used as it is in a chart's
-title, ordinate and legend: the coupled masses' e_x1, e_v1, e_x2, e_v2, F1, F2. Giving them
-other words means the plant declares its own, a change in `tools/plants` I have not made.
+**Your word, 2026-11-11:** inputs (manipulated variables) are u1…, outputs (measurements) y1…,
+true states x1…, time t — "the names everywhere (axis labels, chart buttons, EVERYWHERE)" — and
+no units anywhere. The System piece follows it; the Dataset and Closed loop pieces keep the plant
+classes' names (e_x1, F1, …) and units until the rewrite replaces them (`docs/project/design.md`).
 
 ## 1. Page
 
-- header: DeePC Lab · the pieces' names: Closed loop · Dataset
+- header: DeePC Lab · the pieces' names: Closed loop · Dataset · System
 - job state: Idle · Running… · Done · Ended with exit N
 - header buttons: Stop · Refresh · New run; the folder beside them: results/closed_loop · N records
 - headings: Runs · Compare · Figures; beside Compare's settings choice: Settings
@@ -177,3 +178,24 @@ Numbers of Dataset (coupled masses run), by group -- `code name`: label [unit] -
   - `y_rms_e_v1`: e_v1 RMS [m/s] -- Root mean square of the recorded e_v1 over all samples
   - `y_rms_e_x2`: e_x2 RMS [m] -- Root mean square of the recorded e_x2 over all samples
   - `y_rms_e_v2`: e_v2 RMS [m/s] -- Root mean square of the recorded e_v2 over all samples
+
+### System (`system`)
+
+Settings, by group -- `code name`: label · its rows · add button -- help line (no units):
+
+- **States**
+  - `f`: x' · rows x1' =, x2' =, … · + State -- One row per state: x_i' as an expression in x1…, u1…, theta1… and sin cos tan exp log sqrt tanh abs pi
+- **Outputs**
+  - `h`: y · rows y1 =, y2 =, … · + Output -- One row per output: y_j as an expression in x1…, theta1… and the same functions
+- **Parameters**
+  - `theta`: θ · rows θ1 =, θ2 =, … · + Parameter -- One row per parameter: the value of theta_k, which the rows name as theta1, theta2, …
+
+Charts of System: none (a system run defines; the open-loop piece simulates).
+
+Numbers of System, by group -- `code name`: label -- hover:
+
+- **Sizes**
+  - `n`: n -- The number of states, x1…xn: one per state row
+  - `m`: m -- The number of inputs, u1…um
+  - `p`: p -- The number of outputs, y1…yp: one per output row
+  - `q`: q -- The number of parameters, theta1…thetaq
