@@ -336,7 +336,7 @@ class BicycleModel(PlantBase):
         self, T_per: int, rng: np.random.Generator,
     ) -> np.ndarray:
         """Generate (T_per, 2) excitation signals for [steering, accel]."""
-        from sim.data_generation import generate_multisine, generate_prbs
+        from plants.excitation import generate_multisine, generate_prbs
 
         # Steering: PRBS + uniform random
         delta_prbs = generate_prbs(

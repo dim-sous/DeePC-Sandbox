@@ -15,7 +15,7 @@ from collections import deque
 
 import numpy as np
 
-from control.hankel import build_hankel_matrix
+from deepc.hankel import build_hankel_matrix
 
 
 class SlidingHankelWindow:

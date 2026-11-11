@@ -14,7 +14,8 @@ or a test. When in doubt, the rules win.
 ## Commands
 
 - Python through uv only, 3.13 as pinned: `uv run pytest …`, `uv run python …` — never a venv
-  python. For parallel jobs `uv sync` once, then `uv run --no-sync`.
+  python. For parallel jobs `uv sync` once, then `uv run --no-sync`. After pulling a branch
+  that moved packages, `uv sync` once (the editable install records the package list).
 - Entry points, until the terminal and the Lab land: `uv run python run.py [--plant …]
   [--scenario …] [flags]` (one HTML report and one metrics file under `results/<tag>/`;
   `--help` lists the flags). `tune.py` is set aside: its `Ts` search runs through `[D1]`.
@@ -57,20 +58,21 @@ or a test. When in doubt, the rules win.
 ## Architecture
 
 Layout is where files live; architecture is what depends on what — keep the two words apart.
-Today: `control/` is the DeePC controller (Hankel matrices, the sparse QP, the
-persistent-excitation check, the noise-adaptive and online-Hankel variants); `plants/` the
-simulated plants, each with its data-collection recipe; `sim/` data collection, scenarios and
-the closed loop; `run.py` the command, the metrics and the report. The target, BESS's: three
-roots, one direction — `src/` the controller, `tools/` the plants, `devkit/` the bench
-(records, figures, the terminal, the Lab) — imports running `src ← tools ← devkit`, held by a
-test once it lands.
+Three roots, one direction, as BESS's: `src/` is the controller a real system would run
+(`deepc`: Hankel matrices, the sparse QP, the excitation check, the constraints it reads, the
+noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
+hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
+registry); `devkit/` the bench (`sim`: data collection, scenarios, the closed loop, the config
+builder; records, figures, the terminal and the Lab to come). Imports run `src ← tools ←
+devkit` and stay flat (`import deepc`, never `import src.deepc`), held by `tests/test_roots.py`.
+`run.py` and `tune.py` stay at the root until the terminal replaces them.
 
 The judgment calls no test can make yet:
 
 - A change in A must not require a change in B — when a change forces an edit somewhere it has
   no business reaching, the coupling is the defect, not the edit. `[D5]`
 - The controller names no plant: it receives values (data, outputs, constraints), never a plant
-  class. Today `control/controller.py` imports `plants.base.Constraints`; the move removes it.
+  class (the import half is held by `tests/test_roots.py`).
 - One block, one package; one file per variant, and the block's registry is the only place
   that knows which exist. Code nothing calls goes. `[D8]`
 - A setting the run did not use is refused or recorded as unused, never accepted. `[D1, D11]`

@@ -32,7 +32,8 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
 
 The equations, the data collection, the controller, its variants, the metrics and their sources are in
 [METHODS.md](METHODS.md). The project is being rebuilt, first with the scaffolding that will expose its gaps
-(the rules in [CLAUDE.md](CLAUDE.md), a safety net, then records and a Lab), then the fixes.
+(the rules in [CLAUDE.md](CLAUDE.md), a safety net, the three-folder layout, then records and a Lab), then
+the fixes.
 
 ## Installation
 
@@ -43,7 +44,8 @@ uv sync
 ```
 
 This creates `.venv/` with Python 3.13 (pinned in `.python-version`) and the library versions pinned in
-`uv.lock`.
+`uv.lock`, and installs the three code folders (`src/`, `tools/`, `devkit/`) so their packages import by
+name. After pulling a change that moved packages, run `uv sync` once.
 
 ## Usage
 
@@ -76,7 +78,7 @@ uv run python run.py --help
 Each run writes a self-contained HTML report with interactive Plotly charts and a metrics file to
 `results/<tag>/`.
 
-**Adding a plant.** Implement `PlantBase` from `plants/base.py`:
+**Adding a plant.** Implement `PlantBase` from `tools/plants/base.py`:
 
 ```python
 from plants.base import PlantBase, Constraints, DataCollectionConfig
@@ -90,7 +92,7 @@ class MyPlant(PlantBase):
     ...
 ```
 
-Then add it to `PLANT_REGISTRY` in `run.py` and run with `--plant my_plant`.
+Then add it to `PLANT_REGISTRY` in `tools/plants/__init__.py` and run with `--plant my_plant`.
 
 ## Checks
 
@@ -103,6 +105,9 @@ The suite runs locally and is the gate for every change. It holds:
 - **The safety net** (`tests/reference/`). Today's numbers are frozen: training data, reference paths,
   five closed loops and `run.py` end to end. The test compares the code against them byte for byte, along
   with every setting each case ran under.
+- **The layout's direction** (`tests/test_roots.py`). The controller (`src/`) imports neither the plants
+  (`tools/`) nor the bench (`devkit/`), the plants never import the bench, and `src/` holds exactly the
+  modules its inventory declares.
 - **The document checks.** CLAUDE.md's length budget and METHODS.md's citations. Every folder path and
   every `file:line` pointer in this README, METHODS.md and failures.md must exist, and each pointer must fall
   inside its file. Whether a pointer still points at the code it describes is not checked.
@@ -114,12 +119,12 @@ numbers.
 
 | Path | Role |
 |---|---|
-| `run.py` | the command: data collection, closed loop, metrics, HTML report; the plant registry |
+| `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
+| `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
+| `devkit/sim/` | the bench: data collection (`data_generation.py`), scenarios (`scenarios.py`), the closed loop (`simulation.py`), the config built from a plant (`config.py`) |
+| `run.py` | the command: data collection, closed loop, metrics, HTML report |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
-| `control/` | the controller: settings (`config.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
-| `plants/` | `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`) |
-| `sim/` | data collection (`data_generation.py`), scenarios (`scenarios.py`), the closed loop (`simulation.py`) |
-| `tests/` | the safety net (`tests/reference/`, `test_reference.py`) and the document checks (`test_conventions.py`) |
+| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
 | `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |

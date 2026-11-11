@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "deepc-sandbox"
 version = "0.1.0"
@@ -17,8 +21,28 @@ dev = [
     "pytest>=8.0",
 ]
 
+[tool.setuptools.packages.find]
+# Three roots, one direction, as BESS's: src/ is the controller a real system would run; tools/
+# is the simulated world it never sees on hardware; devkit/ is the test bench. All three land on
+# sys.path via the editable install, so imports stay flat (`import deepc`, `import plants`,
+# `import sim`). The direction src <- tools <- devkit is held by tests/test_roots.py.
+where = ["src", "tools", "devkit"]
+# Only folders with an __init__.py are packages (BESS, 2026-10-26: a deleted package's leftover
+# __pycache__ folder was installed as an empty namespace package).
+namespaces = false
+
+[tool.uv]
+# The editable install records the package list at install time, so a package added or moved
+# under the roots is invisible until a reinstall. These keys make `uv sync` notice one.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "src/**/__init__.py" },
+    { file = "tools/**/__init__.py" },
+    { file = "devkit/**/__init__.py" },
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# The code is imported from the repository root (`import run`, `from control.config import …`)
-# until the three roots land with an editable install.
+# The roots are importable through the editable install; the repository root is on the path for
+# the entry points that stay there until the terminal lands (`import run`) and for `tests`.
 pythonpath = ["."]

@@ -2,18 +2,13 @@
 
 Contains only algorithm-level parameters.  Plant-specific settings
 (dimensions, constraints, reference params) live on the plant object
-and flow into the config via ``build_deepc_config``.
+and flow into the config on the bench, which builds it from the plant.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
-
 import numpy as np
-
-if TYPE_CHECKING:
-    from plants.base import PlantBase
 
 
 @dataclass
@@ -79,16 +74,3 @@ class DeePCConfig:
     def R(self) -> np.ndarray:
         return np.array(self.R_diag * self.N)
 
-
-def build_deepc_config(plant: PlantBase, **overrides: Any) -> DeePCConfig:
-    """Build a DeePCConfig from a plant's defaults + user overrides.
-
-    Plant defaults are applied first, then ``m``, ``p``, ``Ts`` from the
-    plant object, then any explicit *overrides* (e.g. from CLI args).
-    """
-    defaults = plant.get_default_config_overrides()
-    defaults["m"] = plant.m
-    defaults["p"] = plant.p
-    defaults["Ts"] = plant.Ts
-    defaults.update({k: v for k, v in overrides.items() if v is not None})
-    return DeePCConfig(**defaults)

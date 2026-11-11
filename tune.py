@@ -24,9 +24,8 @@ import optuna
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from control.config import build_deepc_config
 from plants.base import PlantBase
-from plants.bicycle_model import BicycleModel
+from sim.config import build_deepc_config
 from sim.data_generation import collect_data
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation

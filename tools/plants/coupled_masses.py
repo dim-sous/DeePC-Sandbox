@@ -260,7 +260,7 @@ class CoupledMasses(PlantBase):
     def _generate_excitation(
         self, T_per: int, rng: np.random.Generator,
     ) -> np.ndarray:
-        from sim.data_generation import generate_multisine, generate_prbs
+        from plants.excitation import generate_multisine, generate_prbs
 
         exc = np.zeros((T_per, 2))
         for ch in range(2):

@@ -5,7 +5,7 @@ when_to_use: Writing or editing plotting code (run.py, tune.py, a plant's plot_*
 paths:
   - run.py
   - tune.py
-  - plants/**/*.py
+  - tools/plants/**/*.py
   - devkit/figure/**/*.py
   - devkit/harness/**/*.py
 allowed-tools: Read Grep Glob Edit Write Bash
