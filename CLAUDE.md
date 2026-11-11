@@ -57,6 +57,8 @@ or a test. When in doubt, the rules win.
 - Explanations start from what the developer can see; the maths keeps its terms. Skill `plain`.
 - Git is the only sync between computers; ignore only regenerable or machine-specific files,
   and `references/` (the papers): the repository is public.
+- A new session starts from `.claude/memory/MEMORY.md`: where the rebuild stands, what the
+  developer decided, the next branches. Keep it current; commit it with each branch.
 
 ## Architecture
 
