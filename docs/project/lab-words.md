@@ -92,7 +92,6 @@ Settings, by group -- `code name`: label [unit] -- help line:
 - **Scenario**
   - `scenario`: Scenario -- The reference the plant is asked to follow; one the plant offers
   - `sim_duration`: Duration [s] -- Closed-loop duration in seconds; none: the code's own default
-  - `Ts`: T_s [s] -- The config's sampling time in seconds: it sets the step count and the reference's spacing, not the plant's own step (D1); none: the code's own default
 - **Controller**
   - `Tini`: T_ini [samples] -- Past window length in samples; none: the code's own default
   - `N`: N [samples] -- Prediction horizon in samples; none: the code's own default
@@ -122,6 +121,7 @@ Settings, by group -- `code name`: label [unit] -- help line:
 
 - **Plant**
   - `plant`: Plant -- The simulated plant the data is collected from
+  - `Ts`: T_s [s] -- The plant's step and the data's sampling time, in seconds; the closed loop on this run steps at it too; none: the plant's own
 - **Data**
   - `T_data`: T [samples] -- Samples collected, split across the plant's episodes; none: the plant's own
   - `noise_std_output`: σ_n [output unit] -- Standard deviation of the Gaussian noise added to each recorded output; none: the plant's own; in each output's own unit
@@ -143,8 +143,8 @@ Charts of Closed loop (bicycle run), by group -- `code name`: title · bottom ax
   - `sigma-y-norm`: ‖σ_y‖₂ · Solve [-] · ‖σ_y‖₂ [-] · ‖σ_y‖₂ -- 2-norm of the past-output slack σ_y at each solve
   - `lambda-g`: λ_g · Solve [-] · λ_g [-] · λ_g -- λ_g the solve used at each solve
 - **Position**
-  - `position-x`: Position x · Step [-] · x [m] · Plant, Reference -- The plant's x after each step beside the waypoint of the same index, as the position RMSE compares them; equal times only while T_s is the plant's own (D1)
-  - `position-y`: Position y · Step [-] · y [m] · Plant, Reference -- The plant's y after each step beside the waypoint of the same index, as the position RMSE compares them; equal times only while T_s is the plant's own (D1)
+  - `position-x`: Position x · Step [-] · x [m] · Plant, Reference -- The plant's x after each step beside the waypoint of the same index, as the position RMSE compares them
+  - `position-y`: Position y · Step [-] · y [m] · Plant, Reference -- The plant's y after each step beside the waypoint of the same index, as the position RMSE compares them
 
 Numbers of Closed loop (bicycle run), by group -- `code name`: label [unit] -- hover:
 

@@ -93,6 +93,9 @@ both, the velocity references stay zero, so $e_{v_i} = v_i$ even while the posit
 
 ## 2. Collecting the training data
 
+The plant is built at the dataset run's step $T_s$, by default its own (§1), and every closed loop on that
+data steps at the same $T_s$ (`devkit/harness/dataset/run.py`, `plant_of`; D1).
+
 `devkit/sim/data_generation.py:18-70`. The plant's `get_data_collection_config()` names $E$ episodes (5 for both
 plants), an excitation signal, a baseline controller $\kappa$ and a nominal reference $\bar r_k$. `T_data`
 samples are split into $E$ episodes of $\lfloor T_{data}/E \rfloor$ samples, the first
@@ -231,7 +234,7 @@ approximation" of it.
 `get_initial_state_for_scenario` returns the waypoint itself). The loop then runs:
 
 1. **Warm-up**, $T_{ini}$ steps with $u = 0$ (`:78-85`), each recording $y_i = e(x_{i+1}, r_i)$.
-2. **Then, for** $k = 0, \dots, K - 1$, with $K$ = `int(sim_duration / Ts)` (`src/deepc/config.py:62-63`, D1):
+2. **Then, for** $k = 0, \dots, K - 1$, with $K$ = `int(sim_duration / Ts)` (`src/deepc/config.py:62-63`), $T_s$ the plant's step (D1):
    - solve §4 with $y_{ref} = 0$ over the whole horizon (`devkit/sim/simulation.py:126`);
    - apply $u_0$;
    - record $y = e(x_{i+1}, r_i)$ with $i = k + T_{ini}$ (`devkit/sim/simulation.py:139-141`).
@@ -320,14 +323,14 @@ real-time".
 
 ## 9. Tuning (`tune.py`)
 
-Optuna's TPE sampler, seed 42 (`tune.py:342-345`), minimises one metric per trial: `rmse_position` for the
+Optuna's TPE sampler, seed 42 (`tune.py:343-346`), minimises one metric per trial: `rmse_position` for the
 bicycle, `rmse_e_x1` for the masses. If that metric is missing, the mean of the RMSEs is used. Each trial
 collects its data at seed 42 and runs the closed loop for `--sim-duration` (default 10 s) on the `--scenario`
 (default `default`). Search space (`tune.py:60-70`):
 
 | setting | range | scale |
 |---|---|---|
-| `Ts` | 0.02 – 0.2 s | log (never reaches the plant, D1) |
+| `Ts` | 0.02 – 0.2 s | log (the trial's plant step, D1) |
 | `Tini` | 1 – 10 | integer |
 | `N` | 3 – 30 | integer |
 | `T_data` | 100 – 1000, step 50 | integer |

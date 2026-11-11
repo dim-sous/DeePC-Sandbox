@@ -169,7 +169,7 @@ def test_driving_the_lab_never_runs_the_piece_nor_builds_its_config(monkeypatch,
     lab.page()
     lab._on_type("lambda_g", "10")
     lab._on_pick("noise_adaptive", "true")
-    lab._on_sweep(field="Ts", values="0.1,0.2")
+    lab._on_sweep(field="N", values="10,20")
     lab._on_name("probe")
     lab._use("second")
     lab._run()
@@ -282,8 +282,8 @@ def test_a_record_the_class_has_moved_past_is_listed_and_marked(two_runs, tmp_pa
 
 
 def test_a_run_becomes_the_command_a_person_would_type() -> None:
-    assert jobs.run_argv("closed_loop", ["lambda_g=10", "Ts=0.1"], "probe") == [
-        "uv", "run", "deepc", "run", "closed_loop", "--set", "lambda_g=10", "--set", "Ts=0.1",
+    assert jobs.run_argv("closed_loop", ["lambda_g=10", "N=10"], "probe") == [
+        "uv", "run", "deepc", "run", "closed_loop", "--set", "lambda_g=10", "--set", "N=10",
         "--name", "probe"]
     assert jobs.run_argv("closed_loop", [], "p", "elsewhere", ["lambda_g=1,5"]) == [
         "uv", "run", "deepc", "run", "closed_loop", "--sweep", "lambda_g=1,5", "--name", "p",

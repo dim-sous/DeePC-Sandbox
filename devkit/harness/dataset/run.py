@@ -1,6 +1,7 @@
 """``run(config) -> Record``: collect training data from a plant, as ``run.py`` does. No printing,
-no saving, no drawing. And ``dataset_of(path)``: a saved dataset run, checked against the code
-that reads it, for the pieces that run on one.
+no saving, no drawing. ``plant_of(config)``: the plant a dataset run collects from, at its step.
+And ``dataset_of(path)``: a saved dataset run, checked against the code that reads it, for the
+pieces that run on one.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import time
 import numpy as np
 
 from plants import PLANT_REGISTRY
+from plants.base import PlantBase
 from record import stamp
 from sim.config import build_deepc_config
 from sim.data_generation import collect_data, episode_lengths
@@ -22,9 +24,15 @@ from .record import Record
 _CHECKED: dict[tuple, Record] = {}
 
 
+def plant_of(cfg: Config) -> PlantBase:
+    """The plant a dataset run collects from, built at the run's step ``cfg.Ts`` in seconds (None:
+    the plant's own), so the data and every closed loop on it step at one T_s (D1)."""
+    return PLANT_REGISTRY[cfg.plant](**({} if cfg.Ts is None else {"Ts": cfg.Ts}))
+
+
 def run(cfg: Config) -> Record:
     started = time.perf_counter()
-    plant = PLANT_REGISTRY[cfg.plant]()
+    plant = plant_of(cfg)
     deepc_cfg = build_deepc_config(plant, T_data=cfg.T_data, noise_std_output=cfg.noise_std_output)
     u, y = collect_data(plant, deepc_cfg, seed=cfg.seed)
     lengths = episode_lengths(deepc_cfg.T_data, len(plant.get_data_collection_config().initial_conditions))

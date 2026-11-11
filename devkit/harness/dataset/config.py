@@ -1,4 +1,4 @@
-"""The dataset piece's settings: which plant, how much data, how noisy, which seed.
+"""The dataset piece's settings: which plant at which step, how much data, how noisy, which seed.
 
 A setting left at ``None`` takes the plant's own default (its ``get_default_config_overrides``),
 resolved when the piece runs and saved in the record's ``constants``. The labels and help lines
@@ -24,6 +24,11 @@ class Config(Settings):
         default="bicycle", objects=list(PLANT_REGISTRY), label="Plant",
         doc="The simulated plant the data is collected from",
         metadata={"group": PLANT})
+    Ts = param.Number(
+        None, allow_None=True, bounds=(0.0, None), inclusive_bounds=(False, True), label="T_s",
+        doc="The plant's step and the data's sampling time, in seconds; the closed loop on this "
+            "run steps at it too; none: the plant's own",
+        metadata={"group": PLANT, "unit": "s"})
     T_data = param.Integer(
         None, allow_None=True, label="T",
         doc="Samples collected, split across the plant's episodes; none: the plant's own",

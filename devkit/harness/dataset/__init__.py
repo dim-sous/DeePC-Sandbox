@@ -4,6 +4,6 @@ episodes stacked end to end; a saved run, checked, is what the closed-loop piece
 
 from .config import Config
 from .record import Record
-from .run import dataset_of, run
+from .run import dataset_of, plant_of, run
 
-__all__ = ["Config", "run", "Record", "dataset_of"]
+__all__ = ["Config", "run", "Record", "dataset_of", "plant_of"]

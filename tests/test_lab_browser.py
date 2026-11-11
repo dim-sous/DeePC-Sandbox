@@ -141,19 +141,19 @@ def test_what_is_pasted_or_typed_with_tab_at_once_is_what_the_run_would_use(serv
     try:
         page.locator("button", has_text="New run").click()
         _settle(page)
-        # the boxes left to the code's own default, in the form's order: Duration, T_s, T_ini,
-        # N, Q, R, λ_g, ...
+        # the boxes left to the code's own default, in the form's order: Duration, T_ini, N, Q,
+        # R, λ_g, ...
         boxes = page.locator('input[placeholder="Code default"]')
-        boxes.nth(1).click()                                     # the T_s box
-        page.keyboard.insert_text("0.05")                        # a paste
+        boxes.nth(0).click()                                     # the Duration box
+        page.keyboard.insert_text("0.5")                         # a paste
         page.keyboard.press("Tab")                               # and Tab, at once
         _settle(page)
-        boxes.nth(6).click()                                     # the λ_g box
+        boxes.nth(5).click()                                     # the λ_g box
         page.keyboard.type("3", delay=0)                         # a key and Tab, at once
         page.keyboard.press("Tab")
         _settle(page)
         line = next(t for t in _text(page) if t.startswith("uv run deepc run"))
-        assert "--set Ts=0.05" in line and "--set lambda_g=3" in line, line
+        assert "--set sim_duration=0.5" in line and "--set lambda_g=3" in line, line
         assert not errors, errors
     finally:
         page.close()

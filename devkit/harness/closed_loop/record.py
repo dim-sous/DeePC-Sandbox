@@ -95,8 +95,7 @@ class Record(_Record):
                                    ("Reference", self.reference_position[:, j])),
                            group=_POSITION,
                            doc=f"The plant's {axis} after each step beside the waypoint of the "
-                               f"same index, as the position RMSE compares them; equal times only "
-                               f"while T_s is the plant's own (D1)")
+                               f"same index, as the position RMSE compares them")
                     for j, axis in enumerate(("x", "y"))]
         return tuple(out)
 
