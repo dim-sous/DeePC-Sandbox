@@ -136,32 +136,9 @@ class PlantBase(ABC):
         return first_waypoint
 
     def get_position_from_state(self, state: np.ndarray) -> np.ndarray | None:
-        """Return ``[x, y]`` position for trajectory plotting.
+        """Return ``[x, y]`` position: the loop records it for the position metrics and the Path chart.
 
         Return ``None`` if the plant has no spatial position concept.
-        """
-        return None
-
-    def plot_training_data(
-        self,
-        u_data: np.ndarray,
-        y_data: np.ndarray,
-        Ts: float,
-    ) -> str | None:
-        """Optional custom Plotly HTML div for training data.
-
-        Return ``None`` to use the generic auto-plot.
-        """
-        return None
-
-    def plot_simulation_results(
-        self,
-        results: dict,
-        config: Any,
-    ) -> str | None:
-        """Optional custom Plotly HTML div for simulation results.
-
-        Return ``None`` to use the generic auto-plot.
         """
         return None
 

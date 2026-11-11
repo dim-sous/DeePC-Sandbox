@@ -1,11 +1,9 @@
 ---
 name: figure-conventions
-description: Checklist for anything that draws or annotates a figure (a record's panel declaration, a Lab card, a still, the run.py report, a plant's plot hook). Figures describe; they never conclude.
-when_to_use: Writing or editing plotting code (devkit/figure/, devkit/lab/, a piece's Record declaration, run.py, tune.py, a plant's plot_* method), annotating a chart, or choosing what a hand-off shows.
+description: Checklist for anything that draws or annotates a figure (a record's panel declaration, a Lab card, a still, tune.py's report). Figures describe; they never conclude.
+when_to_use: Writing or editing plotting code (devkit/figure/, devkit/lab/, a piece's Record declaration, tune.py), annotating a chart, or choosing what a hand-off shows.
 paths:
-  - run.py
   - tune.py
-  - tools/plants/**/*.py
   - devkit/figure/**/*.py
   - devkit/lab/**/*.py
   - devkit/harness/**/*.py
@@ -55,8 +53,8 @@ that sentence goes in the hand-off, not in the figure.
 ## Every figure regenerates
 
 One panel spec is drawn three ways (the Lab's card, a still, the numbers as CSV) from what a
-record declares, as in BESS (`devkit/figure/`); `run.py`'s HTML report and `tune.py`'s are the
-older figures, drawn from the run that wrote them. Either way: never edit an
+record declares, as in BESS (`devkit/figure/`); `tune.py`'s HTML report is the one older
+figure left, drawn from the study that wrote it. Either way: never edit an
 image by hand, and never write a one-off script whose output cannot be made again.
 
 ## What the developer's gate needs

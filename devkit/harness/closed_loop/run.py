@@ -19,6 +19,7 @@ import numpy as np
 
 from harness.dataset import dataset_of, plant_of
 from record import stamp
+from sim.bounds import input_bounds_of
 from sim.config import build_deepc_config
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation, solve_counts
@@ -93,7 +94,8 @@ def run(cfg: Config) -> Record:
                                    "date": data.provenance.date if data.provenance else "",
                                    "git_sha": data.provenance.git_sha if data.provenance else ""}},
         inputs=list(plant.input_names), outputs=list(plant.output_names),
-        input_units=list(plant.input_units), output_units=list(plant.output_units),
+        input_units=list(plant.input_units), input_bounds=input_bounds_of(plant),
+        output_units=list(plant.output_units),
         plant_metrics=list(plant_metrics),
         plant_metric_units=[plant.metric_units[k] for k in plant_metrics],
         time=np.asarray(res["times"], dtype=float), u=np.asarray(res["u_history"], dtype=float), y=y,

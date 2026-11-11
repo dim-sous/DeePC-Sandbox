@@ -65,7 +65,8 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
         "paper_bgcolor": SURFACE, "plot_bgcolor": SURFACE,
         "font": {"family": FONT, "size": 12, "color": INK_SECONDARY},
         "margin": {"l": 84 if stacked else 64, "r": 14, "t": 40 if shown else 16, "b": 44},
-        "hovermode": "closest" if crowded else "x unified",
+        # a path doubles back on its bottom axis, so one abscissa holds several of its points
+        "hovermode": "closest" if crowded or panel.equal_axes else "x unified",
         # the hover writes every name whole: plotly's default cuts a name at 15 characters
         "hoverlabel": {"bgcolor": SURFACE, "bordercolor": GRID, "namelength": -1,
                        "font": {"family": MONO, "size": 11, "color": INK}},
@@ -101,7 +102,8 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
         domain = [round(max(0.0, top - h), 6), round(min(1.0, top), 6)]
         layout[axis_key] = {**_axis("" if stacked else broken(ax.y_label, "<br>")),
                             "domain": domain, "anchor": "x",
-                            "type": "log" if ax.log_y else "linear"}
+                            "type": "log" if ax.log_y else "linear",
+                            **({"scaleanchor": "x", "scaleratio": 1} if panel.equal_axes else {})}
         if stacked:
             layout["annotations"].append({
                 "xref": "paper", "yref": "paper", "x": 0, "y": domain[1], "xanchor": "left",
@@ -134,7 +136,9 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
                      "line": {"width": LINE_WIDTH, "color": line.color, "dash": line.dash},
                      "marker": {"size": 7 if line.texts else 5, "color": line.color},
                      "name": broken(line.label, "<br>"), "legendgroup": line.label,
-                     "showlegend": entry(line.label), "hovertemplate": "%{y:.6g}"}
+                     "showlegend": entry(line.label),
+                     # a path's point is both its coordinates: no unified header gives the x
+                     "hovertemplate": "%{x:.6g}, %{y:.6g}" if panel.equal_axes else "%{y:.6g}"}
             if line.texts:
                 # the point's run, its value, and beside them the curve's name -- what its colour
                 # stands for, read there on a card that draws no legend (RCWS)

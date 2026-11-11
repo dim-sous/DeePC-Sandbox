@@ -52,5 +52,5 @@ cache-keys = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # The roots are importable through the editable install; the repository root is on the path for
-# the entry points that stay there until the terminal lands (`import run`) and for `tests`.
+# `tune.py` (`import tune`) and for `tests`.
 pythonpath = ["."]

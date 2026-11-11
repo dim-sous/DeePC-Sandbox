@@ -19,7 +19,7 @@ import dataclasses
 
 import numpy as np
 
-from record import Number, Provenance, Series
+from record import Number, Provenance, Series, bound_refs
 from record import Record as _Record
 
 from .config import Config
@@ -44,6 +44,7 @@ class Record(_Record):
     inputs: list                    # input channel names
     outputs: list                   # output channel names
     input_units: list               # the unit of each input, the plant's own
+    input_bounds: np.ndarray        # (m, 2) each input's [lower, upper] bound: the plant's get_constraints, which its step clips to
     output_units: list              # the unit of each output, the plant's own
     plant_metrics: list             # the names the plant's compute_custom_metrics returned
     plant_metric_units: list        # their units, the plant's own (metric_units)
@@ -82,8 +83,9 @@ class Record(_Record):
                for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
         out += [Series(name=f"input-{c}".replace("_", "-"), x=t, x_label="Time [s]",
                        y_label=f"{c} [{unit}]", traces=((c, self.u[:, j]),), group=_INPUTS,
+                       refs=bound_refs(self.input_bounds[j], c, unit),
                        title=c, doc=f"The controller's {c} at each step, warm-up included, before "
-                                    f"the plant's own clipping")
+                                    f"the plant's own clipping; the plant's bounds on it")
                 for j, (c, unit) in enumerate(zip(self.inputs, self.input_units))]
         out += [Series(name=name, x=step, x_label="Solve [-]", y_label=f"{title} [{unit}]",
                        traces=((title, values),), group=_SOLVER, title=title,
@@ -105,6 +107,13 @@ class Record(_Record):
                            doc=f"The plant's {axis} after each step beside the waypoint of the "
                                f"same index, as the position RMSE compares them")
                     for j, axis in enumerate(("x", "y"))]
+            out.append(Series(name="path", x=(), x_label="x [m]", y_label="y [m]", title="Path",
+                              traces=(("Plant", self.position[:, 1]),
+                                      ("Reference", self.reference_position[:, 1])),
+                              trace_x=(self.position[:, 0], self.reference_position[:, 0]),
+                              equal_axes=True, group=_POSITION,
+                              doc="The plant's position in the plane at the start and after each "
+                                  "step, and the waypoints, on equal scales"))
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:

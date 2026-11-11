@@ -68,7 +68,8 @@ def test_every_declared_panel_draws_with_no_title_and_a_legend_only_for_several_
             panel = chart_of([(key, rec)], s.name)
             stem, title, legend, suptitle = next(x for x in seen if x[0] == s.name)
             assert title == "" and suptitle == []
-            assert legend == has_legend(panel) == (len(s.traces) > 1)
+            labels = {t for t, _ in s.traces} | {r for r, _ in s.refs} | {b[0] for b in s.bands}
+            assert legend == has_legend(panel) == (len(labels) > 1)
         seen.clear()
 
 

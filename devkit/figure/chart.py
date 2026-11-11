@@ -133,6 +133,15 @@ def _x(s: Series, x: str) -> tuple[np.ndarray, str]:
     return np.asarray(s.x, dtype=float), s.x_label
 
 
+def _trace_x(s: Series, j: int, xs: np.ndarray, x: str) -> np.ndarray:
+    """Trace ``j``'s abscissa: its own when the panel gives each trace one (``trace_x``, by
+    sample index under ``x="index"``), else the panel's ``xs``."""
+    if not s.trace_x:
+        return xs
+    own = np.asarray(s.trace_x[j], dtype=float)
+    return np.arange(len(own), dtype=float) if x == "index" else own
+
+
 def _edge(edge: Any, n: int) -> np.ndarray:
     return np.full(n, float(edge)) if np.ndim(edge) == 0 else np.asarray(edge, dtype=float)
 
@@ -149,11 +158,12 @@ def _band_owner(s: Series, label: str) -> int | None:
     return 0 if len(labels) == 1 else None
 
 
-def _alone(s: Series, xs: np.ndarray, points: bool) -> tuple[tuple, tuple, tuple]:
+def _alone(s: Series, xs: np.ndarray, points: bool, x: str = "own") -> tuple[tuple, tuple, tuple]:
     """One run's lines, bands and references: colours by position, the i-th trace slot i; a
     band its trace's colour (:func:`_band_owner`), a band about the panel the neutral."""
     n = len(xs)
-    lines = tuple(Line(label, xs, np.asarray(y, float), series_color(i), points=points)
+    lines = tuple(Line(label, _trace_x(s, i, xs, x), np.asarray(y, float), series_color(i),
+                       points=points)
                   for i, (label, y) in enumerate(s.traces))
     bands = tuple(Band(label, xs, _edge(lo, n), _edge(hi, n),
                        NEUTRAL if (owner := _band_owner(s, label)) is None else series_color(owner))
@@ -172,9 +182,11 @@ def _identical(held: list[tuple[str, Series]], x: str, kind: str) -> list[str]:
 
     def by_label(s: Series) -> dict[str, tuple[np.ndarray, ...]]:
         xs = _x(s, x)[0]
-        items = s.traces if kind == "traces" else [(b[0], b[1], b[2]) for b in s.bands]
+        if kind == "traces":
+            return {label: (_trace_x(s, j, xs, x), np.asarray(y, dtype=float))
+                    for j, (label, y) in enumerate(s.traces)}
         return {label: (xs, *(np.asarray(v, dtype=float) for v in rest))
-                for label, *rest in items}
+                for label, *rest in [(b[0], b[1], b[2]) for b in s.bands]}
 
     first, *others = [by_label(s) for _, s in held]
     return [label for label, arrays in first.items()
@@ -230,10 +242,10 @@ def chart_of(pairs: Pairs, name: str, *, runs: str = "one", colour_by: str = "ru
         panel = Panel(name, x_label, axes, first.doc)
     elif len(held) == 1:
         xs = _x(first, x)[0]
-        lines, bands, refs = _alone(first, xs, dots)
+        lines, bands, refs = _alone(first, xs, dots, x)
         panel = Panel(name, x_label, (Axes(first.y_label, lines, bands, refs, log),), first.doc)
     elif runs == "rows":
-        axes = tuple(Axes(run, *_alone(s, _x(s, x)[0], dots), log) for run, s in held)
+        axes = tuple(Axes(run, *_alone(s, _x(s, x)[0], dots, x), log) for run, s in held)
         panel = Panel(name, x_label, axes, first.doc, quantity=first.y_label)
     else:
         # a run wears the slot of its place among ALL the runs given, so a view that colours
@@ -264,14 +276,15 @@ def chart_of(pairs: Pairs, name: str, *, runs: str = "one", colour_by: str = "ru
             n = len(xs)
             own = [label for label, _ in s.traces if label not in same_lines]
             for j, (label, y) in enumerate(s.traces):
+                tx = _trace_x(s, j, xs, x)
                 if label in same_lines:
                     if k == 0:
-                        lines.append(Line(f"{every} — {label} (identical)", xs,
+                        lines.append(Line(f"{every} — {label} (identical)", tx,
                                           np.asarray(y, float),
                                           series_color(after + same_lines.index(label)),
                                           points=dots))
                     continue
-                lines.append(Line(run if len(own) == 1 else f"{run} — {label}", xs,
+                lines.append(Line(run if len(own) == 1 else f"{run} — {label}", tx,
                                   np.asarray(y, float), colour(i, j), dash(i, j), dots))
             for label, lo, hi in s.bands:
                 lo_, hi_ = _edge(lo, n), _edge(hi, n)
@@ -291,6 +304,8 @@ def chart_of(pairs: Pairs, name: str, *, runs: str = "one", colour_by: str = "ru
                      for pre, r in _shared(ref_items, len(held)))
         panel = Panel(name, x_label,
                       (Axes(first.y_label, tuple(lines), tuple(bands), refs, log),), first.doc)
+    if first.equal_axes and x == "own":       # metres against metres, not against an index
+        panel = dataclasses.replace(panel, equal_axes=True)
     return _finished(panel, log_x, log, x_range)
 
 

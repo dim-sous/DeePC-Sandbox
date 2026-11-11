@@ -135,8 +135,8 @@ Charts of Closed loop (bicycle run), by group -- `code name`: title · bottom ax
   - `output-e-heading`: e_heading · Time [s] · e_heading [rad] · e_heading -- e_heading at each step, warm-up included
   - `output-e-velocity`: e_velocity · Time [s] · e_velocity [m/s] · e_velocity -- e_velocity at each step, warm-up included
 - **Inputs**
-  - `input-steering`: steering · Time [s] · steering [rad] · steering -- The controller's steering at each step, warm-up included, before the plant's own clipping
-  - `input-acceleration`: acceleration · Time [s] · acceleration [m/s²] · acceleration -- The controller's acceleration at each step, warm-up included, before the plant's own clipping
+  - `input-steering`: steering · Time [s] · steering [rad] · steering, Lower bound of steering [rad], Upper bound of steering [rad] -- The controller's steering at each step, warm-up included, before the plant's own clipping; the plant's bounds on it
+  - `input-acceleration`: acceleration · Time [s] · acceleration [m/s²] · acceleration, Lower bound of acceleration [m/s²], Upper bound of acceleration [m/s²] -- The controller's acceleration at each step, warm-up included, before the plant's own clipping; the plant's bounds on it
 - **Solver**
   - `solve-time`: Solve time · Solve [-] · Solve time [s] · Solve time -- Wall-clock time of the solve at each solve
   - `cost`: J · Solve [-] · J [-] · J -- Objective value J at each solve
@@ -145,6 +145,7 @@ Charts of Closed loop (bicycle run), by group -- `code name`: title · bottom ax
 - **Position**
   - `position-x`: Position x · Step [-] · x [m] · Plant, Reference -- The plant's x after each step beside the waypoint of the same index, as the position RMSE compares them
   - `position-y`: Position y · Step [-] · y [m] · Plant, Reference -- The plant's y after each step beside the waypoint of the same index, as the position RMSE compares them
+  - `path`: Path · x [m] · y [m] · Plant, Reference -- The plant's position in the plane at the start and after each step, and the waypoints, on equal scales
 
 Numbers of Closed loop (bicycle run), by group -- `code name`: label [unit] -- hover:
 
@@ -168,8 +169,8 @@ Numbers of Closed loop (bicycle run), by group -- `code name`: label [unit] -- h
 Charts of Dataset (bicycle run), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
 
 - **Inputs**
-  - `input-steering`: steering · Sample [-] · steering [rad] · steering -- The recorded steering at each sample, episodes stacked end to end
-  - `input-acceleration`: acceleration · Sample [-] · acceleration [m/s²] · acceleration -- The recorded acceleration at each sample, episodes stacked end to end
+  - `input-steering`: steering · Sample [-] · steering [rad] · steering, Lower bound of steering [rad], Upper bound of steering [rad] -- The recorded steering at each sample, episodes stacked end to end; the plant's bounds on it
+  - `input-acceleration`: acceleration · Sample [-] · acceleration [m/s²] · acceleration, Lower bound of acceleration [m/s²], Upper bound of acceleration [m/s²] -- The recorded acceleration at each sample, episodes stacked end to end; the plant's bounds on it
 - **Outputs**
   - `output-e-lateral`: e_lateral · Sample [-] · e_lateral [m] · e_lateral -- The recorded e_lateral at each sample, episodes stacked end to end
   - `output-e-heading`: e_heading · Sample [-] · e_heading [rad] · e_heading -- The recorded e_heading at each sample, episodes stacked end to end

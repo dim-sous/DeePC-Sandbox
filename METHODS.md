@@ -22,7 +22,7 @@ controller is asked to drive the errors to zero.
 
 `tools/plants/bicycle_model.py`. State $x = [p_x,\ p_y,\ \psi,\ v]$ (position in m, heading in rad, speed in m/s;
 the code's `x, y, theta, v`), input $u = [\delta,\ a]$ (steering angle in rad, acceleration in m/s²). One
-step of length $T_s$ (`:178-188`):
+step of length $T_s$ (`:160-170`):
 
 ```math
 \begin{aligned}
@@ -33,11 +33,11 @@ p_x^+ &= p_x + T_s\, v \cos\psi, \qquad p_y^+ = p_y + T_s\, v \sin\psi, \\
 ```
 
 This is forward Euler; the reference point moves along the heading (no slip-angle term). No source for the
-model is cited anywhere in the repository. Defaults (`:95-107`): $T_s$ = 0.1 s, $L_{wb}$ = 2.5 m,
+model is cited anywhere in the repository. Defaults (`:77-89`): $T_s$ = 0.1 s, $L_{wb}$ = 2.5 m,
 $\delta_{max}$ = 0.5 rad, $a \in [-1, 1]$ m/s², reference speed $v_{ref}$ = 5 m/s, path amplitude
 $A$ = 5 m, path frequency $f$ = 0.05 Hz.
 
-**Outputs** (`:46-51`), against a waypoint $r = [r_x,\ r_y,\ r_\psi,\ r_v]$:
+**Outputs** (`:44-49`), against a waypoint $r = [r_x,\ r_y,\ r_\psi,\ r_v]$:
 
 ```math
 e_{lat} = -(p_x - r_x)\sin r_\psi + (p_y - r_y)\cos r_\psi, \qquad
@@ -48,7 +48,7 @@ e_v = v - r_v .
 There is no along-track error among the outputs: an offset along the path's tangent changes none of the
 three. The bicycle's position RMSE (§8), which is also the tuner's objective (§9), does include it.
 
-**Scenarios** (`:285-327`), at $t_k = k T_s$:
+**Scenarios** (`:267-309`), at $t_k = k T_s$:
 
 - `default`: $r_x = v_{ref}\, t + A \sin(2\pi f t)$, $r_y = A \sin(4\pi f t)$;
 - `lissajous`: $r_x = A \sin(2\pi f t)$, $r_y = A \sin(4\pi f t)$.
@@ -58,7 +58,7 @@ $r_{\psi,k} = \mathrm{atan2}(\Delta r_y, \Delta r_x)$ and $r_{v,k} = \lVert \Del
 waypoint repeating the one before. In both scenarios the reference speed $r_v$ therefore varies along the
 path; it is not $v_{ref}$.
 
-**Constraints** (`:208-218`): the input bounds equal the plant's own clipping bounds; the rate bounds are
+**Constraints** (`:190-200`): the input bounds equal the plant's own clipping bounds; the rate bounds are
 per sample, $|\Delta\delta| \le 0.3$ rad and $|\Delta a| \le 0.5$ m/s² between consecutive samples, so their
 value per second depends on $T_s$; output bounds sit on the speed error, $e_v \in [0, 10]$ (D7), and act only
 when $\lambda_{out} > 0$ (§4).
@@ -113,7 +113,7 @@ output $y_k$ is the one after the step. The recorded input $u_k$ is the one befo
 (D12). The baseline controller reads the error before the noise is added
 (D4). The episodes are then stacked end to end into one record of `T_data` samples (`:70`; D9).
 
-**Bicycle** (`tools/plants/bicycle_model.py:243-382`): each episode starts at $p = 0$, $\psi \sim U(-0.3, 0.3)$ rad,
+**Bicycle** (`tools/plants/bicycle_model.py:225-364`): each episode starts at $p = 0$, $\psi \sim U(-0.3, 0.3)$ rad,
 $v = \max(v_{ref}(1 + \Delta), 0.5)$ for $\Delta \in \{0, -0.4, 0.4, -0.7, 0.7\}$. Nominal reference: the
 straight line $\bar r_k = [(k+1)\, v_{ref} T_s,\ 0,\ 0,\ v_{ref}]$. Baseline:
 $\kappa(e) = [-0.3\, e_{lat} - 1.0\, e_\psi,\ -0.5\, e_v]$. Excitation: steering
@@ -246,7 +246,7 @@ waypoint $r_i$, at time $iT_s$. In the bicycle's data collection, the state afte
 $\bar r_k$ at $(k+1) v_{ref} T_s$, the same instant (D10). The positions behind the bicycle's position RMSE are
 compared at equal times (§8).
 
-## 6. Noise-adaptive regularisation (`--noise-adaptive`)
+## 6. Noise-adaptive regularisation (`noise_adaptive`)
 
 `src/deepc/noise_estimator.py`, `devkit/sim/simulation.py:122-136`. From the second solve on, the residual between the
 output recorded after a step and the output the previous solve predicted for it,
@@ -278,7 +278,7 @@ averaged over 15 random simulations for each $\epsilon$."
   and $\lambda_y$ at every step from an online estimate of its prediction residuals, and tightens the output
   bounds. The text of [2] mentions neither an online noise estimate nor an output tightening (D16).
 
-## 7. Online Hankel window (`--online-hankel`)
+## 7. Online Hankel window (`online_hankel`)
 
 `src/deepc/online_hankel.py`, `devkit/sim/simulation.py:159-163`.
 
@@ -312,10 +312,10 @@ real-time".
 
 ## 8. Metrics
 
-`run.py:58-101` and each plant's `compute_custom_metrics`:
+`devkit/sim/metrics.py` (`compute_metrics`, what `tune.py` scores by) and each plant's `compute_custom_metrics`:
 
 - **RMSE per output channel**, over all $T_{ini} + K$ samples, warm-up included.
-- **Bicycle** (`tools/plants/bicycle_model.py:269-281`): the RMSE of $p_x - r_x$, of $p_y - r_y$ and of their
+- **Bicycle** (`tools/plants/bicycle_model.py:251-263`): the RMSE of $p_x - r_x$, of $p_y - r_y$ and of their
   Euclidean norm (`rmse_position`). Each position is compared with the waypoint of the same time.
 - **Coupled masses** (`tools/plants/coupled_masses.py:198-205`): the RMSE of $(e_{x_1}, e_{x_2})$ jointly.
 - **Solve times**: mean, maximum and total wall-clock time of the `solve` call.
@@ -329,7 +329,7 @@ real-time".
 Optuna's TPE sampler, seed 42 (`tune.py:333-336`), minimises one metric per trial: `rmse_position` for the
 bicycle, `rmse_e_x1` for the masses. A trial that raises, or scores NaN or infinity, stops the study (D3). Each trial
 collects its data at seed 42 and runs the closed loop for `--sim-duration` (default 10 s) on the `--scenario`
-(default `default`). Search space (`tune.py:60-70`):
+(default `default`). Search space (`tune.py:61-71`):
 
 | setting | range | scale |
 |---|---|---|

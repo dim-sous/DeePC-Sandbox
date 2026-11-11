@@ -1,17 +1,27 @@
 {
   "made": {
-    "git_sha": "4d417f9",
+    "git_sha": "aecea4a",
     "git_dirty": true,
     "code_changed": [
+      " M devkit/README.md",
+      " M devkit/figure/chart.py",
+      " M devkit/figure/render.py",
+      " M devkit/figure/twin.py",
+      " M devkit/harness/closed_loop/__init__.py",
+      " M devkit/harness/closed_loop/config.py",
       " M devkit/harness/closed_loop/record.py",
       " M devkit/harness/closed_loop/run.py",
+      " M devkit/harness/dataset/record.py",
+      " M devkit/harness/dataset/run.py",
+      " M devkit/record/__init__.py",
       " M devkit/sim/simulation.py",
-      " M run.py",
-      " M src/deepc/controller.py",
-      " M src/deepc/regularization.py"
+      " M tools/plants/base.py",
+      " M tools/plants/bicycle_model.py",
+      "?? devkit/sim/bounds.py",
+      "?? devkit/sim/metrics.py"
     ],
-    "code_sha256": "81196b57ccfcc7013e044135bf0c27c7bb5822c8af658847e13a185f4a04735c",
-    "date": "2026-11-11T14:12:14+00:00",
+    "code_sha256": "d15471bf4ffd3f4d2234e167bb136169f95e241245dd8b49aa056f049ce725df",
+    "date": "2026-11-11T15:01:11+00:00",
     "versions": {
       "numpy": "2.4.2",
       "scipy": "1.17.1",
@@ -490,35 +500,16 @@
       }
     }
   },
-  "run_py": {
-    "run-py-bicycle": {
-      "argv": [
-        "run.py",
-        "--plant",
-        "bicycle",
-        "--sim-duration",
-        "3"
-      ],
-      "options": {
-        "plant": "bicycle",
-        "scenario": "default",
+  "metrics": {
+    "metrics-bicycle": {
+      "plant": "bicycle",
+      "scenario": "default",
+      "seed": 42,
+      "version": "bicycle_default",
+      "flags": {
         "noise_adaptive": false,
         "online_hankel": false,
-        "no_constraints": false,
-        "T_data": null,
-        "noise_std_output": null,
-        "seed": 42,
-        "Tini": null,
-        "N": null,
-        "sim_duration": 3.0,
-        "Ts": null,
-        "Q_diag": null,
-        "R_diag": null,
-        "lambda_g": null,
-        "lambda_y": null,
-        "lambda_out": null,
-        "reg_norm_g": null,
-        "reg_norm_sigma_y": null
+        "no_constraints": false
       },
       "config": {
         "m": 2,
@@ -554,37 +545,15 @@
       },
       "dropped": "every *solve_time_s metric (wall clock)"
     },
-    "run-py-coupled_masses": {
-      "argv": [
-        "run.py",
-        "--plant",
-        "coupled_masses",
-        "--scenario",
-        "sinusoidal",
-        "--no-constraints",
-        "--sim-duration",
-        "3"
-      ],
-      "options": {
-        "plant": "coupled_masses",
-        "scenario": "sinusoidal",
+    "metrics-coupled_masses": {
+      "plant": "coupled_masses",
+      "scenario": "sinusoidal",
+      "seed": 42,
+      "version": "coupled_masses_sinusoidal_nocon",
+      "flags": {
         "noise_adaptive": false,
         "online_hankel": false,
-        "no_constraints": true,
-        "T_data": null,
-        "noise_std_output": null,
-        "seed": 42,
-        "Tini": null,
-        "N": null,
-        "sim_duration": 3.0,
-        "Ts": null,
-        "Q_diag": null,
-        "R_diag": null,
-        "lambda_g": null,
-        "lambda_y": null,
-        "lambda_out": null,
-        "reg_norm_g": null,
-        "reg_norm_sigma_y": null
+        "no_constraints": true
       },
       "config": {
         "m": 2,

@@ -17,20 +17,21 @@ under `src/`, `tools/` and `devkit/`: every path and line number here was re-poi
 `c257f5f` to the new files by matching each line's text, so each still names the same code. **D1–D3
 are fixed** (PRs #8 and #9, at the end of each entry); **none of the others is yet**: the safety net
 (`tests/reference/`) freezes each as it behaves, and each waits for the Lab to show it before a
-branch fixes it and moves the frozen numbers on purpose.
+branch fixes it and moves the frozen numbers on purpose. `run.py` and its HTML report were retired
+in PR #10; a line of `run.py` named here is a line of it as it was.
 
 ---
 
 ## D1 — `--Ts` never reaches the plant
 
-- `run.py:558` and `tune.py:331` build the plant with no arguments, so it integrates at its
+- Line 558 of `run.py` and `tune.py:331` build the plant with no arguments, so it integrates at its
   constructor's default step: bicycle `Ts = 0.1` (`tools/plants/bicycle_model.py:95`, used at `:182`),
   coupled masses `Ts = 0.05` (`tools/plants/coupled_masses.py:38`, discretised at `:73`).
 - `build_deepc_config` sets the config's `Ts` from the plant, then lets the override replace it
   (`devkit/sim/config.py:22-23`). What reads the config's `Ts`: the step count
   (`src/deepc/config.py:63`), the reference's spacing (`devkit/sim/scenarios.py:31`), the results' time
-  axis (`devkit/sim/simulation.py:179`) and the report's plots (`run.py:113`, `:586`,
-  `tools/plants/bicycle_model.py:480`). What reads the plant's: its own step, the excitation signals
+  axis (`devkit/sim/simulation.py:179`) and the report's plots (lines 113 and 586 of `run.py`,
+  line 480 of `bicycle_model.py`). What reads the plant's: its own step, the excitation signals
   (`tools/plants/bicycle_model.py:352`, `tools/plants/coupled_masses.py:268`) and the data-collection
   reference (`devkit/sim/data_generation.py:53`).
 - `tune.py:62` searches `Ts` over [0.02, 0.2] through this path; the README's example runs
@@ -67,7 +68,7 @@ look right.
 
 ## D2 — an inaccurate solve counted as optimal
 
-- `run.py:85` and `devkit/sim/simulation.py:195` count a status as optimal when it contains the word
+- Line 85 of `run.py` and `devkit/sim/simulation.py:195` count a status as optimal when it contains the word
   `"optimal"`, so OSQP's `optimal_inaccurate` counts.
 - The frozen `bicycle-default` loop (`tests/reference/bicycle-default.npz`, 5 s) holds 3
   `optimal_inaccurate` of 50 statuses; `bicycle-noise-adaptive` 4 of 50,
@@ -81,12 +82,13 @@ into another.
 **Fixed 2026-11-11, PR #9**, with D3. The pointers above name the code before the fix (`4d417f9`).
 
 - One function, `solve_counts` (`devkit/sim/simulation.py`), counts every status by its own name;
-  the loop's printed line, the closed-loop piece and `run.py`'s metrics read it. `run.py`'s
-  `optimal_solve_pct` counts `status == "optimal"` only.
-- The safety net moved on purpose: `run-py-bicycle.json`'s `optimal_solve_pct` went from 100 to 90
-  (3 `optimal_inaccurate` of 30 solves), and both `run.py` metrics files gained the counts. No
-  frozen array moved.
-- Held by `tests/test_solve_outcomes.py` (`[D2]`) and the frozen `run.py` metrics.
+  the loop's printed line, the closed-loop piece and the metrics `tune.py` scores by read it
+  (`run.py`'s metrics until PR #10). `optimal_solve_pct` counts `status == "optimal"` only.
+- The safety net moved on purpose: `run-py-bicycle.json`'s (`metrics-bicycle.json` since PR #10)
+  `optimal_solve_pct` went from 100 to 90 (3 `optimal_inaccurate` of 30 solves), and both
+  metrics files gained the counts. No frozen array moved.
+- Held by `tests/test_solve_outcomes.py` (`[D2]`) and the frozen metrics
+  (`tests/reference/metrics-*.json`).
 
 ## D3 — failures that make no sound
 
@@ -109,9 +111,9 @@ code before the fix (`4d417f9`).
   answered on each solve; any other exception reaches the caller.
 - A solve that leaves no solution is flagged where the zero input is returned. The closed-loop
   record keeps both per solve (`solvers`, `zero_input`) and counts them (`solves_by_<solver>`,
-  `zero_inputs_applied`), as do `run.py`'s metrics.
+  `zero_inputs_applied`), as do the metrics `tune.py` scores by.
 - The excitation check returns its rank; the controller keeps it and $L\,m$, the closed-loop
-  record keeps both in `constants` and `run.py`'s metrics as numbers; the controller prints
+  record keeps both in `constants` and the metrics `tune.py` scores by as numbers; the controller prints
   nothing.
 - `tune.py`: a trial that raises, or scores NaN or infinity, stops the study.
 - Held by `tests/test_solve_outcomes.py` (`[D3]`). Open: whether the SCS retry and the zero input
@@ -134,10 +136,10 @@ the controller receives only what the plant reports.
 
 ## D5 — the online Hankel gate reads a switch it does not name
 
-- Under `--online-hankel`, a column is added only while the mean of the noise estimator's
+- Under `online_hankel`, a column is added only while the mean of the noise estimator's
   standard deviations is below `1.0` (`devkit/sim/simulation.py:159-162`); no source states the
   threshold.
-- The estimator is updated only under `--noise-adaptive` (`devkit/sim/simulation.py:122-124`).
+- The estimator is updated only under `noise_adaptive` (`devkit/sim/simulation.py:122-124`).
   Without it, its standard deviations stay at their initial zeros and the gate passes at
   every step.
 
@@ -148,7 +150,7 @@ to reporting, not acting.
 
 - `src/deepc/online_hankel.py:53`: "max_cols: 0 means use offline size + sim_steps headroom";
   the lines below use the offline size alone.
-- `tools/plants/bicycle_model.py:30`: the reference point is the "nearest waypoint"; the loop passes
+- `tools/plants/bicycle_model.py:28`: the reference point is the "nearest waypoint"; the loop passes
   the waypoint at the current step's index (`devkit/sim/simulation.py:156`, `path[step_idx]`).
 
 Rules: a comment states what the code does, checked against the lines below it, the day it is
@@ -156,7 +158,7 @@ written.
 
 ## D7 — the bicycle's output bounds sit on the speed error
 
-- `tools/plants/bicycle_model.py:215-217` bounds `e_velocity` (speed minus reference speed) to
+- `tools/plants/bicycle_model.py:197-199` bounds `e_velocity` (speed minus reference speed) to
   [0, 10], so with the bounds active the controller is asked to keep the speed at or above the
   reference speed.
 - They are active only while `lambda_out > 0` (`src/deepc/controller.py`, the output-constraint
@@ -172,7 +174,7 @@ Rules: a bound names the quantity it bounds, with its unit.
 `DeePCConfig.Q` and `.R` (`src/deepc/config.py:70`, `:74`), `build_data_matrices`
 (`src/deepc/hankel.py:40`; `src/deepc/online_hankel.py` splits the blocks itself),
 `SlidingHankelWindow.get_pe_rank` and `.get_sigma_min` (`src/deepc/online_hankel.py:145`,
-`:148`), `BicycleModel.position`, `.heading`, `.speed` (`tools/plants/bicycle_model.py:162-171`), and
+`:148`), `BicycleModel.position`, `.heading`, `.speed` (`tools/plants/bicycle_model.py:144-153`), and
 the locals `rmse_x1`, `rmse_x2` (`tools/plants/coupled_masses.py:200-201`). Found by searching the
 repository for each name's callers.
 
@@ -189,7 +191,7 @@ registry is the only place that knows which exist.
 - Counted at the plants' defaults (5 episodes; bicycle `T_data` 400, $L$ = 18; coupled masses
   `T_data` 600, $L$ = 24): 68 of the bicycle's 383 columns and 92 of the masses' 577 span a
   boundary.
-- The same holds for the online window (`--online-hankel`): its buffer is seeded with the last
+- The same holds for the online window (`online_hankel`): its buffer is seeded with the last
   $L - 1$ training samples (`src/deepc/online_hankel.py:79-82`) and then receives the loop's
   samples from step `hankel_warmup_steps` on (default 100), so its first $L - 1$ online columns
   join the end of the training data to the loop.
@@ -208,12 +210,12 @@ Rules: literature-grounded — several datasets are combined the way the literat
 
 - Closed loop: after step $i$ the state, at time $(i+1)T_s$, is compared with waypoint $r_i$,
   computed at time $iT_s$ (`devkit/sim/simulation.py:91-98`, `:154-156`; the scenarios'
-  $t_k = kT_s$, `tools/plants/bicycle_model.py:285-327`).
+  $t_k = kT_s$, `tools/plants/bicycle_model.py:267-309`).
 - Data collection (bicycle): after step $k$ the state is compared with the nominal waypoint at
-  $(k+1)\,v_{ref}T_s$ (`tools/plants/bicycle_model.py:371-374`, `devkit/sim/data_generation.py:53-61`), the
+  $(k+1)\,v_{ref}T_s$ (`tools/plants/bicycle_model.py:353-356`, `devkit/sim/data_generation.py:53-61`), the
   same instant.
 - The bicycle's position RMSE compares positions at equal times
-  (`devkit/sim/simulation.py:89`, `:214`; `tools/plants/bicycle_model.py:274-275`).
+  (`devkit/sim/simulation.py:89`, `:214`; `tools/plants/bicycle_model.py:256-257`).
 - Not measured.
 
 Rules: one quantity, one formula — the output the data holds and the output the loop gives the
@@ -221,7 +223,7 @@ controller come from one function, or the divergence is declared where it lives.
 
 ## D11 — a tightening that enters no constraint
 
-- Under `--noise-adaptive` the loop computes an output-bound tightening from the noise estimate
+- Under `noise_adaptive` the loop computes an output-bound tightening from the noise estimate
   and passes it to the controller every step (`devkit/sim/simulation.py:133-136`).
 - The tightening enters only the soft output bounds, which the QP holds only when
   `lambda_out > 0` (`src/deepc/controller.py:180-197`), and only on outputs with a finite bound
@@ -235,9 +237,9 @@ Rules: a setting the run did not use is refused or recorded as unused, never acc
 
 - During data collection the input $u_k$ = baseline + excitation is passed to the plant
   (`devkit/sim/data_generation.py:57-58`) and recorded as it was passed (`:64`). The bicycle clips
-  its inputs inside its step (`tools/plants/bicycle_model.py:178-179`) to $|\delta| \le 0.5$ rad and
+  its inputs inside its step (`tools/plants/bicycle_model.py:160-161`) to $|\delta| \le 0.5$ rad and
   $a \in [-1, 1]$ m/s²; its excitation alone reaches ±0.5 rad and ±2.5 m/s²
-  (`tools/plants/bicycle_model.py:335-358`).
+  (`tools/plants/bicycle_model.py:317-340`).
 - In the frozen bicycle training data (`tests/reference/bicycle-data.npz`; seed 42, plant
   defaults, `T_data` 400) 12.0 % of the steering samples and 33.8 % of the acceleration samples
   lie outside the clip. In the coupled masses' (`tests/reference/coupled_masses-data.npz`) none
@@ -262,7 +264,7 @@ Rules: literature-grounded — a condition the method rests on is checked as the
 
 ## D14 — the regulariser on $g$, and no low-rank step
 
-- Both plants default to `reg_norm_g = "L2"` (`tools/plants/bicycle_model.py:220-234`,
+- Both plants default to `reg_norm_g = "L2"` (`tools/plants/bicycle_model.py:202-216`,
   `tools/plants/coupled_masses.py:139-153`), which the QP implements as the squared 2-norm,
   `cp.sum_squares(self.g)` (`src/deepc/controller.py:137-140`).
 - [1, eq. (8)] regularises with $\lambda_g \lVert g \rVert_1$; [2, Remark 4.3] pairs robustness in
@@ -277,10 +279,10 @@ Rules: literature-grounded — a departure from the cited method is declared whe
 
 - [1, eq. (6)] penalises $\lVert y_k - r_{t+k} \rVert_Q^2$, with $y$ the system's outputs and $r$
   the reference.
-- The code's outputs are errors against a reference (`tools/plants/bicycle_model.py:46-51`,
+- The code's outputs are errors against a reference (`tools/plants/bicycle_model.py:44-49`,
   `tools/plants/coupled_masses.py:127`) and its cost reference is zero (`devkit/sim/simulation.py:141`); the
   training errors are taken against a nominal reference (bicycle: a straight line at $v_{ref}$,
-  `tools/plants/bicycle_model.py:371-374`; coupled masses: zero), the closed-loop errors against the
+  `tools/plants/bicycle_model.py:353-356`; coupled masses: zero), the closed-loop errors against the
   scenario's (`devkit/sim/simulation.py:156`).
 - The old CLAUDE.md recorded this as a lesson ("use error-based or shift-invariant outputs"),
   backed by no record (README, "Claims from before the rebuild").

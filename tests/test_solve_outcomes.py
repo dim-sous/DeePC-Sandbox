@@ -33,7 +33,7 @@ def _controller():
 def test_an_inaccurate_solve_is_counted_by_its_own_name() -> None:
     """[D2] ``run.py`` and the loop counted a status as optimal when it contained "optimal", so
     OSQP's ``optimal_inaccurate`` counted as optimal. One function counts every status exactly,
-    for the loop, the closed-loop piece and ``run.py``."""
+    for the loop, the closed-loop piece and the metrics ``tune.py`` scores by."""
     counts = solve_counts({"statuses": ["optimal", "optimal_inaccurate", "optimal"],
                            "solvers": ["OSQP", "OSQP", "SCS"], "zero_input": [False, False, True]})
     assert counts == {"solves_optimal": 2, "solves_optimal_inaccurate": 1, "solves_by_OSQP": 2,
