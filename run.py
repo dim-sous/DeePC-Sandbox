@@ -24,23 +24,16 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from control.config import DeePCConfig, build_deepc_config
+from deepc.config import DeePCConfig
+from plants import PLANT_REGISTRY
 from plants.base import PlantBase
-from plants.bicycle_model import BicycleModel
-from plants.coupled_masses import CoupledMasses
+from sim.config import build_deepc_config
 from sim.data_generation import collect_data
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = REPO_ROOT / "results"
-
-# ── Plant registry ───────────────────────────────────────────────────
-
-PLANT_REGISTRY: dict[str, type[PlantBase]] = {
-    "bicycle": BicycleModel,
-    "coupled_masses": CoupledMasses,
-}
 
 # ── Plot style ───────────────────────────────────────────────────────
 

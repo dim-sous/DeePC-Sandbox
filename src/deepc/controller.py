@@ -11,10 +11,10 @@ from __future__ import annotations
 import numpy as np
 import cvxpy as cp
 
-from control.config import DeePCConfig
-from control.online_hankel import SlidingHankelWindow
-from control.regularization import check_persistent_excitation
-from plants.base import Constraints
+from deepc.config import DeePCConfig
+from deepc.constraints import Constraints
+from deepc.online_hankel import SlidingHankelWindow
+from deepc.regularization import check_persistent_excitation
 
 
 def constraints_to_arrays(

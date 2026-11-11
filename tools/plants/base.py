@@ -8,21 +8,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-
-@dataclass
-class Constraints:
-    """Named constraint specification from a plant.
-
-    Keys are input/output channel names (matching input_names / output_names).
-    Missing keys default to +/-inf (unconstrained).
-    """
-
-    u_lb: dict[str, float] = field(default_factory=dict)
-    u_ub: dict[str, float] = field(default_factory=dict)
-    du_min: dict[str, float] = field(default_factory=dict)
-    du_max: dict[str, float] = field(default_factory=dict)
-    y_lb: dict[str, float] = field(default_factory=dict)
-    y_ub: dict[str, float] = field(default_factory=dict)
+from deepc.constraints import Constraints
 
 
 @dataclass

@@ -26,8 +26,9 @@ from pathlib import Path
 import numpy as np
 
 import run
-from control.config import DeePCConfig, build_deepc_config
+from deepc.config import DeePCConfig
 from plants.base import PlantBase
+from sim.config import build_deepc_config
 from sim.data_generation import collect_data
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation
@@ -36,7 +37,10 @@ REFERENCE_DIR = Path(__file__).resolve().parent
 MANIFEST = REFERENCE_DIR / "manifest.json"
 ROOT = REFERENCE_DIR.parent.parent
 #: The code the frozen numbers come from; ``make.py`` records a fingerprint of these files.
-CODE = ("control", "plants", "sim", "run.py")
+CODE = ("src", "tools", "devkit", "run.py")
+# The fingerprint in today's manifest.json was made over the pre-move paths ("control", "plants",
+# "sim", "run.py") at 45dc91b; the layout move changed no code behind it, but the hash covers the
+# paths too, so it changes at the next remake without any code having changed.
 #: The seed of every case's training data (``run.py``'s own default).
 SEED = 42
 #: The closed loops: plant, scenario, duration [s], the feature flags ``run.py`` sets, and the

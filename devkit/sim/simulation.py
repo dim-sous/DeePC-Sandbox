@@ -7,9 +7,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from control.config import DeePCConfig
-from control.controller import DeePCController, constraints_to_arrays
-from control.noise_estimator import NoiseEstimator
+from deepc.config import DeePCConfig
+from deepc.controller import DeePCController, constraints_to_arrays
+from deepc.noise_estimator import NoiseEstimator
 from plants.base import PlantBase
 
 

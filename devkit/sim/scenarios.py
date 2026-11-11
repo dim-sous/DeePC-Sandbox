@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from control.config import DeePCConfig
+from deepc.config import DeePCConfig
 from plants.base import PlantBase
 
 
