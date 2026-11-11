@@ -607,7 +607,7 @@ def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(
     assert "Wall-clock time of the solve" in html.unescape(title), "its description on the title's hover"
     assert not any("Wall-clock time" in w for w in _card_words(lab, "solve-time")), \
         "and not repeated under it (RCWS)"
-    assert "2 of 11 open" in lab.open_count.object
+    assert "2 of 12 open" in lab.open_count.object
     assert list(lab._lines) == ["Outputs", "Inputs", "Solver", "Position"], \
         "listed in the record's groups"
     assert all(f">{group}<" in line.objects[0].object for group, line in lab._lines.items())
@@ -829,7 +829,7 @@ def test_a_click_on_the_chart_list_builds_none_of_it_again(own_runs) -> None:
     assert all(lab.group_toggles()[group] is toggle for group, toggle in index.items())
     assert not lab.toggles()["cost"].value
     assert lab.group_toggles()["Solver"].label == "▸ Solver"
-    assert "1 of 11 open" in lab.open_count.object
+    assert "1 of 12 open" in lab.open_count.object
 
 
 def test_a_run_without_the_panel_is_the_figure_layers_refusal_on_the_card(own_runs) -> None:

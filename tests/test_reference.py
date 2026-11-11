@@ -62,13 +62,14 @@ def _difference(frozen: np.ndarray, now: np.ndarray) -> str:
 def test_every_frozen_file_is_a_case_and_every_case_is_frozen() -> None:
     """A case taken out of the registry would otherwise drop out of the net with its file left
     behind, and the suite stay green."""
-    npz, run_py = cases.frozen_names()
+    npz, metrics_files = cases.frozen_names()
     assert npz == set(cases.CASES), (f"files with no case: {sorted(npz - set(cases.CASES))}; "
                                      f"cases with no file: {sorted(set(cases.CASES) - npz)}")
-    assert run_py == set(cases.RUN_PY), (f"files with no case: {sorted(run_py - set(cases.RUN_PY))}"
-                                         f"; cases with no file: {sorted(set(cases.RUN_PY) - run_py)}")
+    assert metrics_files == set(cases.METRICS), (
+        f"files with no case: {sorted(metrics_files - set(cases.METRICS))}; "
+        f"cases with no file: {sorted(set(cases.METRICS) - metrics_files)}")
     assert set(MANIFEST["cases"]) == set(cases.CASES)
-    assert set(MANIFEST["run_py"]) == set(cases.RUN_PY)
+    assert set(MANIFEST["metrics"]) == set(cases.METRICS)
 
 
 @pytest.mark.parametrize("name", cases.CASES)
@@ -95,19 +96,19 @@ def test_the_case_produces_its_frozen_arrays(name: str) -> None:
                          + f". Made with {_versions()}")
 
 
-@pytest.mark.parametrize("name", list(cases.RUN_PY))
-def test_run_py_runs_under_its_frozen_conditions(name: str) -> None:
-    """Every option ``run.py`` parses, its defaults included, and every config field it builds."""
-    frozen = {k: v for k, v in MANIFEST["run_py"][name].items() if k != "dropped"}
-    assert cases.run_py_conditions(name) == frozen
+@pytest.mark.parametrize("name", list(cases.METRICS))
+def test_the_metrics_case_runs_under_its_frozen_conditions(name: str) -> None:
+    """The plant, scenario, seed, flags, tag and every config field the metrics case ran under."""
+    frozen = {k: v for k, v in MANIFEST["metrics"][name].items() if k != "dropped"}
+    assert cases.metrics_conditions(name) == frozen
 
 
-@pytest.mark.parametrize("name", list(cases.RUN_PY))
-def test_run_py_writes_its_report_and_its_frozen_metrics(name: str, tmp_path) -> None:
-    """``run.py`` end to end: a report and a metrics file are written, and every metric but
-    the wall-clock ones equals the frozen one."""
+@pytest.mark.parametrize("name", list(cases.METRICS))
+def test_the_metrics_tune_py_scores_by_equal_the_frozen_ones(name: str) -> None:
+    """``compute_metrics`` over the case's closed loop: every metric but the wall-clock ones
+    equals the frozen one (until PR #10, ``run.py``'s metrics file, end to end)."""
     frozen = json.loads((cases.REFERENCE_DIR / f"{name}.json").read_text())
-    now = cases.run_py_metrics(name, tmp_path)
+    now = cases.metrics_of(name)
     changed = {k: (frozen.get(k), now.get(k)) for k in set(frozen) | set(now)
                if not _same(frozen.get(k), now.get(k))}
     assert not changed, f"{name} metrics moved (frozen, now): {changed}. Made with {_versions()}"

@@ -13,7 +13,7 @@ import dataclasses
 
 import numpy as np
 
-from record import Number, Provenance, Series
+from record import Number, Provenance, Series, bound_refs
 from record import Record as _Record
 
 from .config import Config
@@ -30,6 +30,7 @@ class Record(_Record):
     inputs: list             # input channel names, in column order
     outputs: list            # output channel names, in column order
     input_units: list        # the unit of each input, the plant's own (input_units)
+    input_bounds: np.ndarray # (m, 2) each input's [lower, upper] bound: the plant's get_constraints, which its step clips to
     output_units: list       # the unit of each output, the plant's own (output_units)
     u: np.ndarray            # (T_data, m) the inputs as recorded
     y: np.ndarray            # (T_data, p) the outputs as recorded, noise included
@@ -46,11 +47,14 @@ class Record(_Record):
         for group, names, units, data in ((_INPUTS, self.inputs, self.input_units, self.u),
                                           (_OUTPUTS, self.outputs, self.output_units, self.y)):
             for j, (channel, unit) in enumerate(zip(names, units)):
+                bounded = group == _INPUTS
                 out.append(Series(
                     name=f"{group[:-1].lower()}-{channel}".replace("_", "-"), x=sample,
                     x_label="Sample [-]", y_label=f"{channel} [{unit}]",
                     traces=((channel, data[:, j]),), title=channel, pooled=("mean", "rms"),
-                    doc=f"The recorded {channel} at each sample, episodes stacked end to end",
+                    refs=bound_refs(self.input_bounds[j], channel, unit) if bounded else (),
+                    doc=f"The recorded {channel} at each sample, episodes stacked end to end"
+                        + ("; the plant's bounds on it" if bounded else ""),
                     group=group))
         return tuple(out)
 

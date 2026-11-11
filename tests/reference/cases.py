@@ -1,14 +1,16 @@
 """The safety net's cases: what today's code produces at stated conditions, frozen so that a
 change meant to move no number can show it moved none (CLAUDE.md, "a refactor proves itself").
 
-Every case runs the repository's own functions as ``run.py`` calls them -- ``collect_data``,
-``get_reference``, ``run_simulation``, ``run.main`` -- at seed ``SEED``, every setting at the
-plant's default except those the case names. Four kinds:
+Every case runs the repository's own functions -- ``collect_data``, ``get_reference``,
+``run_simulation``, ``compute_metrics`` -- at seed ``SEED``, every setting at the plant's default
+except those the case names. Four kinds:
 
 - ``<plant>-data``: the training data, at the plant's defaults;
 - ``<plant>-reference-<scenario>``: each scenario's reference path, at the plant's defaults;
 - a closed loop, named below: training data, reference and the DeePC loop, over its duration;
-- ``run-py-<plant>``: ``run.py`` end to end, its report written to a temporary folder.
+- ``metrics-<plant>``: the metrics ``tune.py`` scores a trial by, over a closed loop. Until PR #10
+  these were ``run-py-<plant>``, ``run.py`` end to end; the files moved with their contents
+  unchanged when ``run.py`` was retired.
 
 Solve times are wall clock and are not kept. The bugs recorded in ``docs/project/failures.md``
 are frozen too: a branch that fixes one moves these files on purpose (``make.py``).
@@ -19,17 +21,16 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import io
-import json
-import sys
 from pathlib import Path
 
 import numpy as np
 
-import run
 from deepc.config import DeePCConfig
+from plants import PLANT_REGISTRY
 from plants.base import PlantBase
 from sim.config import build_deepc_config
 from sim.data_generation import collect_data
+from sim.metrics import compute_metrics
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation
 
@@ -37,13 +38,10 @@ REFERENCE_DIR = Path(__file__).resolve().parent
 MANIFEST = REFERENCE_DIR / "manifest.json"
 ROOT = REFERENCE_DIR.parent.parent
 #: The code the frozen numbers come from; ``make.py`` records a fingerprint of these files.
-CODE = ("src", "tools", "devkit", "run.py")
-# The fingerprint in today's manifest.json was made over the pre-move paths ("control", "plants",
-# "sim", "run.py") at 45dc91b; the layout move changed no code behind it, but the hash covers the
-# paths too, so it changes at the next remake without any code having changed.
-#: The seed of every case's training data (``run.py``'s own default).
+CODE = ("src", "tools", "devkit")
+#: The seed of every case's training data (the dataset piece's default).
 SEED = 42
-#: The closed loops: plant, scenario, duration [s], the feature flags ``run.py`` sets, and the
+#: The closed loops: plant, scenario, duration [s], the feature flags, and the
 #: config fields set off the plant's defaults besides ``sim_duration``. The durations are off
 #: the plants' defaults (bicycle 60 s, coupled masses 30 s) to keep the suite short, and open.
 #: The coupled masses' default steps hold zero for their first 5 s (``_generate_step_sequence``),
@@ -58,23 +56,24 @@ CLOSED_LOOPS: dict[str, tuple[str, str, float, dict, dict]] = {
     "coupled_masses-default-no-constraints": ("coupled_masses", "default", 8.0,
                                               {"no_constraints": True}, {}),
 }
-#: ``run.py`` end to end, one per plant: the bicycle draws its own figures, the coupled masses
-#: the generic ones.
-RUN_PY: dict[str, tuple[str, ...]] = {
-    "run-py-bicycle": ("--plant", "bicycle", "--sim-duration", "3"),
-    "run-py-coupled_masses": ("--plant", "coupled_masses", "--scenario", "sinusoidal",
-                              "--no-constraints", "--sim-duration", "3"),
+#: The metrics ``tune.py`` scores a trial by, one per plant: plant, scenario, duration [s], the
+#: feature flags, and the ``version`` tag the metrics carry (``run.py``'s tag for the same run,
+#: kept so the frozen files are the ``run-py-<plant>`` files unchanged).
+METRICS: dict[str, tuple[str, str, float, dict, str]] = {
+    "metrics-bicycle": ("bicycle", "default", 3.0, {}, "bicycle_default"),
+    "metrics-coupled_masses": ("coupled_masses", "sinusoidal", 3.0, {"no_constraints": True},
+                               "coupled_masses_sinusoidal_nocon"),
 }
 
 def _plant(name: str) -> PlantBase:
-    return run.PLANT_REGISTRY[name]()
+    return PLANT_REGISTRY[name]()
 
 
 def _open_loop_cases() -> dict[str, tuple[str, str | None]]:
     """``{case: (plant, scenario or None)}``, read off the registry: a plant or a scenario
     added tomorrow is a case tomorrow, refused by the test until its file is made."""
     out: dict[str, tuple[str, str | None]] = {}
-    for plant_name in run.PLANT_REGISTRY:
+    for plant_name in PLANT_REGISTRY:
         out[f"{plant_name}-data"] = (plant_name, None)
         for scenario in _plant(plant_name).get_scenarios():
             out[f"{plant_name}-reference-{scenario}"] = (plant_name, scenario)
@@ -87,7 +86,7 @@ CASES: tuple[str, ...] = tuple(OPEN_LOOPS) + tuple(CLOSED_LOOPS)
 
 
 def config_of(name: str) -> DeePCConfig:
-    """The DeePCConfig the case runs under, built as ``run.py`` builds it."""
+    """The DeePCConfig the case runs under, built from the plant by ``build_deepc_config``."""
     if name in OPEN_LOOPS:
         return build_deepc_config(_plant(OPEN_LOOPS[name][0]))
     plant_name, _, duration, _, overrides = CLOSED_LOOPS[name]
@@ -143,46 +142,32 @@ def produce(name: str) -> dict[str, np.ndarray]:
     return out
 
 
-@contextlib.contextmanager
-def _patched(obj, attr: str, value):
-    old = getattr(obj, attr)
-    setattr(obj, attr, value)
-    try:
-        yield
-    finally:
-        setattr(obj, attr, old)
-
-
-def run_py_conditions(name: str) -> dict:
-    """Everything ``run.py`` runs under for case ``name``, as ``run.main`` builds it: the
-    arguments, every parsed option (its defaults included) and every DeePCConfig field."""
-    with _patched(sys, "argv", ["run.py", *RUN_PY[name]]):
-        args = run.parse_args()
-    config = run.build_config(args, _plant(args.plant))
-    return {"argv": ["run.py", *RUN_PY[name]], "options": vars(args),
-            "config": dataclasses.asdict(config)}
+def metrics_conditions(name: str) -> dict:
+    """Everything metrics case ``name`` runs under: the plant, the scenario, the seed, the
+    feature flags, the tag and every DeePCConfig field."""
+    plant_name, scenario, duration, flags, tag = METRICS[name]
+    return {"plant": plant_name, "scenario": scenario, "seed": SEED, "version": tag,
+            "flags": dataclasses.asdict(FeatureFlags(**flags)),
+            "config": dataclasses.asdict(build_deepc_config(_plant(plant_name),
+                                                            sim_duration=duration))}
 
 
 def frozen_names() -> tuple[set[str], set[str]]:
-    """The cases the reference folder holds files for: ``(*.npz stems, run-py *.json stems)``."""
+    """The cases the reference folder holds files for: ``(*.npz stems, metrics-*.json stems)``."""
     return ({p.stem for p in REFERENCE_DIR.glob("*.npz")},
-            {p.stem for p in REFERENCE_DIR.glob("run-py-*.json")})
+            {p.stem for p in REFERENCE_DIR.glob("metrics-*.json")})
 
 
-def run_py_metrics(name: str, out_dir: Path) -> dict:
-    """Run ``run.py`` end to end with case ``name``'s arguments, its report and metrics written
-    under ``out_dir``; return the metrics file without its wall-clock numbers
-    (``*solve_time_s``). A missing report or metrics file is refused."""
-    args = RUN_PY[name]
-    with (_patched(run, "RESULTS_DIR", Path(out_dir)),
-          _patched(sys, "argv", ["run.py", *args]),
-          contextlib.redirect_stdout(io.StringIO())):
-        run.main()
-    written = sorted(Path(out_dir).rglob("*"))
-    reports = [p for p in written if p.suffix == ".html"]
-    metrics = [p for p in written if p.name.endswith("_metrics.json")]
-    if len(reports) != 1 or len(metrics) != 1:
-        raise FileNotFoundError(f"run.py {' '.join(args)} wrote {[str(p) for p in written]}; "
-                                f"expected one report and one metrics file")
-    return {k: v for k, v in json.loads(metrics[0].read_text()).items()
+def metrics_of(name: str) -> dict:
+    """The metrics of case ``name``'s closed loop, as ``tune.py``'s trial computes them --
+    ``collect_data``, ``get_reference``, ``run_simulation``, ``compute_metrics`` -- without the
+    wall-clock ones (``*solve_time_s``)."""
+    plant_name, scenario, duration, flags, tag = METRICS[name]
+    plant = _plant(plant_name)
+    cfg = build_deepc_config(plant, sim_duration=duration)
+    with contextlib.redirect_stdout(io.StringIO()):          # the pipeline prints progress
+        u_data, y_data = collect_data(plant, cfg, seed=SEED)
+        path = get_reference(plant, scenario, cfg)
+        res = run_simulation(plant, cfg, FeatureFlags(**flags), u_data, y_data, path)
+    return {k: v for k, v in compute_metrics(res, plant, tag).items()
             if not k.endswith("solve_time_s")}

@@ -24,11 +24,11 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
 - **Controller.** The DeePC quadratic program in sparse form (inputs and outputs as decision variables), with
   regularisation of the Hankel weights and a slack on the past outputs, hard input and rate bounds, and
   optional soft output bounds. The outputs are tracking errors and the reference is zero.
-- **Variants**, both off by default: noise-adaptive regularisation (`--noise-adaptive`) and an online
-  Hankel window fed by closed-loop data (`--online-hankel`).
+- **Variants**, both off by default: noise-adaptive regularisation (`noise_adaptive`) and an online
+  Hankel window fed by closed-loop data (`online_hankel`).
 - **Tuning.** A Bayesian search over the controller's settings with Optuna.
-- **Stack.** CVXPY with OSQP (SCS as the fallback), Optuna's TPE sampler, Plotly for the reports, NumPy
-  and SciPy.
+- **Stack.** CVXPY with OSQP (SCS as the fallback), Optuna's TPE sampler, matplotlib and Plotly for
+  the charts (a still and the Lab's live twin), Plotly for `tune.py`'s report, NumPy and SciPy.
 
 The equations, the data collection, the controller, its variants, the metrics and their sources are in
 [METHODS.md](METHODS.md). The project is being rebuilt, first with the scaffolding that will expose its gaps
@@ -65,35 +65,12 @@ The Lab launches the same two commands for you, from a form over the settings, a
 itself. The suite's browser test drives it in Chromium: once per computer, `uv run playwright install
 chromium`.
 
-The older command still writes the HTML report:
+Bayesian tuning over the controller's settings (Optuna) writes its own report under `results/tune/`;
+a failed trial stops the study:
 
 ```bash
-# Run an experiment (default: bicycle model)
-uv run python run.py
-
-# Select a plant and scenario
-uv run python run.py --plant bicycle --scenario lissajous
-uv run python run.py --plant coupled_masses --scenario sinusoidal
-
-# Customize algorithm parameters (--Ts is the plant's step: the data and the loop both run at it)
-uv run python run.py --Ts 0.039 --N 8 --Tini 4 --T-data 600 --lambda-g 32
-
-# Run without constraints
-uv run python run.py --plant coupled_masses --no-constraints
-
-# Optional / experimental features (both off by default)
-uv run python run.py --online-hankel    # slide the Hankel window using closed-loop data
-uv run python run.py --noise-adaptive   # scale regularization from estimated noise
-
-# Bayesian parameter tuning (a failed trial stops the study)
 uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
-
-# See all options
-uv run python run.py --help
 ```
-
-Each run writes a self-contained HTML report with interactive Plotly charts and a metrics file to
-`results/<tag>/`.
 
 **Adding a plant.** Implement `PlantBase` from `tools/plants/base.py`:
 
@@ -105,11 +82,11 @@ class MyPlant(PlantBase):
     # Implement: step(), reset(), get_output(), get_constraints()
     # Implement: get_default_config_overrides(), get_scenarios()
     # Implement: get_data_collection_config(), make_episode_initial_state()
-    # Optional:  plot_training_data(), plot_simulation_results(), compute_custom_metrics()
+    # Optional:  get_position_from_state(), compute_custom_metrics()
     ...
 ```
 
-Then add it to `PLANT_REGISTRY` in `tools/plants/__init__.py` and run with `--plant my_plant`.
+Then add it to `PLANT_REGISTRY` in `tools/plants/__init__.py` and collect its data with `uv run deepc run dataset --set plant=my_plant`.
 
 ## Checks
 
@@ -120,7 +97,7 @@ uv run pytest
 The suite runs locally and is the gate for every change. It holds:
 
 - **The safety net** (`tests/reference/`). Today's numbers are frozen: training data, reference paths,
-  five closed loops and `run.py` end to end. The test compares the code against them byte for byte, along
+  five closed loops and the metrics `tune.py` scores by. The test compares the code against them byte for byte, along
   with every setting each case ran under.
 - **The layout's direction** (`tests/test_roots.py`). The controller (`src/`) imports neither the plants
   (`tools/`) nor the bench (`devkit/`), the plants never import the bench, and `src/` holds exactly the
@@ -142,7 +119,6 @@ numbers.
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
 | `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
 | `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the charts (`devkit/figure/`), the `deepc` command (`devkit/terminal/`) |
-| `run.py` | the command: data collection, closed loop, metrics, HTML report |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
 | `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the records and pieces (`test_record.py`, `test_harness.py`), the charts (`test_figure.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
@@ -160,7 +136,7 @@ Simulation only. The known problems are recorded in
 - **D3** (fixed, PR #9) solver failures were silent: a hidden SCS retry, a zero input applied, warnings that
   changed nothing, a tuner that scored a failed trial 1e6.
 - **D4** the training outputs are noisy and the closed-loop outputs are not.
-- **D5** the online Hankel gate reads an estimator that only runs under `--noise-adaptive`.
+- **D5** the online Hankel gate reads an estimator that only runs under `noise_adaptive`.
 - **D6** comments that describe other code.
 - **D7** the bicycle's output bounds sit on the speed error.
 - **D8** code nothing calls.

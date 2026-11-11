@@ -1,10 +1,9 @@
 """The closed-loop piece's settings: the saved dataset run it runs on, the scenario and its length,
-the controller's settings, and the three features ``run.py`` switches by flag. The step T_s is the
+the controller's settings, and the three optional features. The step T_s is the
 dataset run's (its plant's), not a setting here (D1).
 
 A setting left at ``None`` takes the code's own default -- the plant's
-(``get_default_config_overrides``), else ``DeePCConfig``'s -- exactly as ``run.py`` leaves a flag
-it was not given; the run saves what it resolved (``constants["deepc_config"]``). The settings of
+(``get_default_config_overrides``), else ``DeePCConfig``'s; the run saves what it resolved (``constants["deepc_config"]``). The settings of
 the two optional features apply only while their feature is on (``needs``). The labels and help
 lines follow the developer's pattern for the words a Lab user reads (CLAUDE.md;
 ``docs/project/lab-words.md``); the two features' groups show closed until opened (``folded``).

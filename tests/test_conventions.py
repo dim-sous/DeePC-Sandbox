@@ -38,7 +38,7 @@ FAILURES_MD = ROOT / "docs" / "project" / "failures.md"
 #: Folders a document may name that a fresh clone does not hold: made by use, or git-ignored.
 NOT_IN_GIT = ("references/", "results/", ".venv/")
 #: A backticked repository path: one with a folder (``devkit/sim/simulation.py``, ``tests/reference/``),
-#: or a file with a ``:line`` pointer (``run.py:40``), the pointer optional on the first and a
+#: or a file with a ``:line`` pointer (``tune.py:40``), the pointer optional on the first and a
 #: range allowed. A bare file name with no folder and no pointer is not checked: in a table row
 #: it is named relative to the folder the row is about.
 _PATH = re.compile(r"`(?P<path>[\w.][\w./-]*/[\w./-]*|[\w.-]+\.\w+(?=:))"

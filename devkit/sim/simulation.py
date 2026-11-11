@@ -15,7 +15,7 @@ from plants.base import PlantBase
 
 def solve_counts(results: dict) -> dict[str, int]:
     """Every solve of a run counted by its outcome, the one formula the loop's printed line, the
-    closed-loop piece and ``run.py``'s metrics read: ``solves_<status>`` per status, matched
+    closed-loop piece and ``sim.metrics.compute_metrics`` read: ``solves_<status>`` per status, matched
     exactly (D2); ``solves_by_<solver>`` per solver that answered; ``zero_inputs_applied``, the
     solves that left no solution, after which the controller's zero input was applied (D3)."""
     statuses, solvers = list(results["statuses"]), list(results["solvers"])

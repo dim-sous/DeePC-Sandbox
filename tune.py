@@ -24,12 +24,13 @@ import optuna
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from plants import PLANT_REGISTRY
 from plants.base import PlantBase
 from sim.config import build_deepc_config
 from sim.data_generation import collect_data
+from sim.metrics import compute_metrics
 from sim.scenarios import get_reference
 from sim.simulation import FeatureFlags, run_simulation
-from run import PLANT_REGISTRY, compute_metrics
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = REPO_ROOT / "results" / "tune"

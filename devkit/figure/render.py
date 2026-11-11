@@ -122,6 +122,8 @@ class Panel:
     log_x: bool = False
     x_range: tuple[float, float] | None = None
     x_ticks: tuple[tuple[float, str], ...] | None = None
+    #: One unit of the bottom axis as long as one of the ordinate (a path in metres).
+    equal_axes: bool = False
 
 
 def _labels(panel: Panel) -> set[str]:
@@ -187,6 +189,8 @@ def render(panel: Panel, out_dir: Path, prov, *, facts: dict[str, Any] | None = 
                     linewidth=LINE_WIDTH, label=broken(line.label), **style)
         if spec.log_y:
             ax.set_yscale("log", nonpositive="clip")
+        if panel.equal_axes:
+            ax.set_aspect("equal", adjustable="datalim")
         ax.set_ylabel(spec.y_label)
     bottom = axs[-1, 0]
     if panel.log_x:
@@ -196,6 +200,11 @@ def render(panel: Panel, out_dir: Path, prov, *, facts: dict[str, Any] | None = 
     if panel.x_range is not None:
         bottom.set_xlim(*panel.x_range)
     bottom.set_xlabel(panel.x_label)
+    if panel.equal_axes:
+        # the equal aspect moves the limits only when drawn; applied now, so the sidecar's
+        # xlim and ylim are the still's (code review, 2026-11-11)
+        for ax in axs[:, 0]:
+            ax.apply_aspect()
     if panel.quantity:
         fig.supylabel(panel.quantity, color=INK_SECONDARY, fontsize=10)
     if has_legend(panel):
@@ -210,6 +219,7 @@ def render(panel: Panel, out_dir: Path, prov, *, facts: dict[str, Any] | None = 
              "xlim": list(map(float, bottom.get_xlim())),
              "ylim": [list(map(float, ax.get_ylim())) for ax in axs[:, 0]],
              "log_y": [ax.log_y for ax in panel.axes], "log_x": panel.log_x,
+             "equal_axes": panel.equal_axes,
              "traces": [line.label for ax in panel.axes for line in ax.lines], **(facts or {})}
     paths = [save_figure(fig, out_dir, panel.name, facts, prov)]
     if table:
