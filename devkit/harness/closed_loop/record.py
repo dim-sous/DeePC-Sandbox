@@ -6,8 +6,9 @@ solve for the solver's own (``statuses``, ``cost``, ``sigma_y_norm``, ``lambda_g
 ``solve_time_s``). A value a solve left without one is NaN in its array, never dropped. Every
 number is a reduction of an array on this record. Solves are counted by status, each status its
 own number, so an inaccurate solve is never counted as an optimal one (D2). Every axis carries
-its unit, a channel's the plant's own (``input_units``, ``output_units``). Panel names and labels
-are placeholders (RCWS #96).
+its unit, a channel's the plant's own (``input_units``, ``output_units``). The words follow the
+developer's pattern (``docs/project/lab-words.md``). No chart declares a pooling statistic: the
+closed loop holds no seed of its own, so its runs are never replicates of one run.
 """
 
 from __future__ import annotations
@@ -22,6 +23,14 @@ from record import Record as _Record
 from .config import Config
 
 _OUTPUTS, _INPUTS, _SOLVER, _POSITION = "Outputs", "Inputs", "Solver", "Position"
+
+
+def _metric_words(name: str) -> str:
+    """A plant metric's words from its code name: ``rmse_position`` reads "Position RMSE"."""
+    if not name.startswith("rmse_"):
+        return name[:1].upper() + name[1:].replace("_", " ")
+    words = name[len("rmse_"):].replace("_", " ")
+    return f"{words[:1].upper()}{words[1:]} RMSE"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -50,7 +59,7 @@ class Record(_Record):
     numbers: dict
 
     component = "closed_loop"
-    label = "closed_loop"
+    label = "Closed loop"
     produced_by = "uv run deepc run closed_loop [config.json]"
 
     def status_counts(self) -> dict[str, int]:
@@ -59,51 +68,54 @@ class Record(_Record):
 
     def series(self) -> tuple[Series, ...]:
         t, step = self.time, np.arange(len(self.statuses))
-        out = [Series(name=f"output-{c}".replace("_", "-"), x=t, x_label="time [s]",
+        out = [Series(name=f"output-{c}".replace("_", "-"), x=t, x_label="Time [s]",
                       y_label=f"{c} [{unit}]", traces=((c, self.y[:, j]),), group=_OUTPUTS,
-                      doc=f"The {c} at each step, warm-up included (open words)")
+                      title=c, doc=f"{c} at each step, warm-up included")
                for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
-        out += [Series(name=f"input-{c}".replace("_", "-"), x=t, x_label="time [s]",
+        out += [Series(name=f"input-{c}".replace("_", "-"), x=t, x_label="Time [s]",
                        y_label=f"{c} [{unit}]", traces=((c, self.u[:, j]),), group=_INPUTS,
-                       doc=f"The controller's {c} at each step, warm-up included, before the "
-                           f"plant's own clipping (open words)")
+                       title=c, doc=f"The controller's {c} at each step, warm-up included, before "
+                                    f"the plant's own clipping")
                 for j, (c, unit) in enumerate(zip(self.inputs, self.input_units))]
-        out += [Series(name=name, x=step, x_label="solve [-]", y_label=label, traces=((label, values),),
-                       group=_SOLVER, doc=f"The {label} of each solve (open words)")
-                for name, label, values in (("solve-time", "solve time [s]", self.solve_time_s),
-                                            ("cost", "cost [-]", self.cost),
-                                            ("sigma-y-norm", "sigma_y norm [-]", self.sigma_y_norm),
-                                            ("lambda-g", "lambda_g [-]", self.lambda_g))]
+        out += [Series(name=name, x=step, x_label="Solve [-]", y_label=f"{title} [{unit}]",
+                       traces=((title, values),), group=_SOLVER, title=title,
+                       doc=f"{doc} at each solve")
+                for name, title, unit, doc, values in (
+                    ("solve-time", "Solve time", "s", "Wall-clock time of the solve",
+                     self.solve_time_s),
+                    ("cost", "J", "-", "Objective value J", self.cost),
+                    ("sigma-y-norm", "‖σ_y‖₂", "-", "2-norm of the past-output slack σ_y",
+                     self.sigma_y_norm),
+                    ("lambda-g", "λ_g", "-", "λ_g the solve used", self.lambda_g))]
         if self.position is not None and self.reference_position is not None:
             n = len(self.reference_position)
-            out += [Series(name=f"position-{axis}", x=np.arange(n), x_label="step [-]",
-                           y_label=f"{axis} [m]",
-                           traces=(("plant", self.position[:n, j]),
-                                   ("reference", self.reference_position[:, j])),
+            out += [Series(name=f"position-{axis}", x=np.arange(n), x_label="Step [-]",
+                           y_label=f"{axis} [m]", title=f"Position {axis}",
+                           traces=(("Plant", self.position[:n, j]),
+                                   ("Reference", self.reference_position[:, j])),
                            group=_POSITION,
                            doc=f"The plant's {axis} after each step beside the waypoint of the "
                                f"same index, as the position RMSE compares them; equal times only "
-                               f"while Ts is the plant's own (D1) (open words)")
+                               f"while T_s is the plant's own (D1)")
                     for j, axis in enumerate(("x", "y"))]
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:
         out = [Number(f"rmse_{c}", f"{c} RMSE", unit, headline=(j == 0), group=_OUTPUTS,
-                      doc=f"Root mean square of the {c} over every step, warm-up included "
-                          f"(open words)")
+                      doc=f"Root mean square of {c} over every step, warm-up included")
                for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
-        out += [Number(name, name, unit, group=_OUTPUTS,
-                       doc="The plant's own metric (compute_custom_metrics) (open words)")
+        out += [Number(name, _metric_words(name), unit, group=_OUTPUTS,
+                       doc="The plant's own metric (compute_custom_metrics)")
                 for name, unit in zip(self.plant_metrics, self.plant_metric_units)]
-        out += [Number(f"solves_{s}", f"solves {s}", group=_SOLVER,
-                       doc=f"Solves whose status is exactly {s!r} (open words)")
+        out += [Number(f"solves_{s}", f"Solves: {s.replace('_', ' ')}", group=_SOLVER,
+                       doc=f"Solves whose status is exactly {s!r}")
                 for s in self.status_counts()]
-        out += [Number("solve_time_mean_s", "mean solve time", "s", group=_SOLVER,
-                       doc="Mean wall-clock time of a solve (open words)"),
-                Number("solve_time_max_s", "longest solve time", "s", group=_SOLVER,
-                       doc="Longest wall-clock time of a solve (open words)"),
-                Number("sigma_y_norm_mean", "mean sigma_y norm", group=_SOLVER,
-                       doc="Mean 2-norm of the past-output slack (open words)"),
-                Number("sigma_y_norm_max", "largest sigma_y norm", group=_SOLVER,
-                       doc="Largest 2-norm of the past-output slack (open words)")]
+        out += [Number("solve_time_mean_s", "Mean solve time", "s", group=_SOLVER,
+                       doc="Mean wall-clock time of a solve"),
+                Number("solve_time_max_s", "Max solve time", "s", group=_SOLVER,
+                       doc="Longest wall-clock time of a solve"),
+                Number("sigma_y_norm_mean", "Mean ‖σ_y‖₂", group=_SOLVER,
+                       doc="Mean 2-norm of the past-output slack σ_y"),
+                Number("sigma_y_norm_max", "Max ‖σ_y‖₂", group=_SOLVER,
+                       doc="Largest 2-norm of the past-output slack σ_y")]
         return tuple(out)

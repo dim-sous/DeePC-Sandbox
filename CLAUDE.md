@@ -19,9 +19,11 @@ or a test. When in doubt, the rules win.
 - Entry points: `uv run deepc run <piece> [config.json] [--set k=v] [--sweep k=a,b]` (a piece,
   one JSON record per run under `results/<piece>/`; flags and examples: `devkit/README.md`);
   `uv run deepc draw <record.json>… [--panel …] [--number N --vs SETTING]` (stills beside the
-  records); `uv run python run.py [--plant …] [flags]` (the old HTML report).
+  records); `uv run lab [--no-open]` (the Lab: one local page over the records; it computes
+  nothing); `uv run python run.py [--plant …] [flags]` (the old HTML report).
   `tune.py` is set aside: its `Ts` search runs through `[D1]`.
-- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net,
+- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate; its browser test
+  needs `uv run playwright install chromium` once per computer. Its safety net,
   `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch
   that means to move the numbers, and that branch's PR says so.
 
@@ -33,8 +35,8 @@ or a test. When in doubt, the rules win.
 - **Pause before git on something the developer can JUDGE:** run the code review yourself
   (`/code-review`; say so in the PR), then hand off IN THE LAB — the address with its runs and
   charts open, what to click, what each chart shows; never an image file — or say plainly there
-  is nothing to drive (true until the Lab lands). No git write until they say so, each time; an
-  earlier approval does not carry over. Skill: `branch-handoff`. (BESS `[B6, B7]`)
+  is nothing to drive. No git write until they say so, each time; an earlier approval does not
+  carry over. Skill: `branch-handoff`. (BESS `[B6, B7]`)
 - Propose, then plan mode, then build: a short what/why/risks/dependencies note before any
   code, plan mode for anything non-trivial. One gap per branch; the smallest change that
   closes it, its cost in lines and compute time named; no abstraction for a future no branch
@@ -64,8 +66,8 @@ Three roots, one direction, as BESS's: `src/` is the controller a real system wo
 (`deepc`: Hankel matrices, the sparse QP, the excitation check, the constraints it reads, the
 noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
 hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
-registry); `devkit/` the bench (`sim`, `record`, `harness`, `terminal`: `devkit/README.md`;
-`figure`; the Lab to come). Imports run `src ← tools ← devkit` and stay flat (`import
+registry); `devkit/` the bench (`sim`, `record`, `harness`, `figure`, `terminal`, `lab`:
+`devkit/README.md`). Imports run `src ← tools ← devkit` and stay flat (`import
 deepc`, never `import src.deepc`), held by `tests/test_roots.py`; inside devkit, by
 `tests/test_devkit_layers.py`. `run.py` and `tune.py` stay at the root until a branch retires them.
 
@@ -84,8 +86,9 @@ The judgment calls no test can make yet:
 - Any value a block computes is surfaced with one line — kept by the record, plotted by the
   Lab, with no other edit (RCWS `dd18796` took ten files).
 - After any move, search code, docs and settings for the old names (RCWS #159).
-- The words a Lab user reads — labels, hovers, chart names, legends — are the developer's,
-  asked instance by instance, never decided (RCWS #96).
+- The words a Lab user reads — labels, hovers, chart names, legends — follow the developer's
+  pattern (2026-11-11): a capital first, no articles, acronyms and the standard mathematical
+  terms; each is listed in `docs/project/lab-words.md`, changed on their word (RCWS #96).
 
 ## Conventions & invariants
 

@@ -1,12 +1,13 @@
 ---
 name: figure-conventions
-description: Checklist for anything that draws or annotates a figure (the run.py report, a plant's plot hook, later a record's panel declaration or a Lab card). Figures describe; they never conclude.
-when_to_use: Writing or editing plotting code (run.py, tune.py, a plant's plot_* method, later devkit/figure/ or a piece's Record declaration), annotating a chart, or choosing what a hand-off shows.
+description: Checklist for anything that draws or annotates a figure (a record's panel declaration, a Lab card, a still, the run.py report, a plant's plot hook). Figures describe; they never conclude.
+when_to_use: Writing or editing plotting code (devkit/figure/, devkit/lab/, a piece's Record declaration, run.py, tune.py, a plant's plot_* method), annotating a chart, or choosing what a hand-off shows.
 paths:
   - run.py
   - tune.py
   - tools/plants/**/*.py
   - devkit/figure/**/*.py
+  - devkit/lab/**/*.py
   - devkit/harness/**/*.py
 allowed-tools: Read Grep Glob Edit Write Bash
 ---
@@ -47,19 +48,20 @@ that sentence goes in the hand-off, not in the figure.
 - Use the terms standard in the wider field (DeePC, Hankel, persistency of excitation, the
   literature's symbols: `Tini`, `N`, `λ_g`, `σ_y`), not only in this repo, and never give a
   word already in use here a second meaning.
-- The words a Lab user reads (chart names, labels, legends, hovers, units) are the
-  developer's to choose.
+- The words a Lab user reads (chart names, labels, legends, hovers, units) follow the
+  developer's pattern (a capital first, no articles, acronyms and the standard mathematical
+  terms), each listed in `docs/project/lab-words.md` and changed on their word.
 
 ## Every figure regenerates
 
-Today the figures are `run.py`'s HTML report (Plotly), drawn from the run that wrote it, and
-`tune.py`'s. Once the devkit lands, one panel spec is drawn three ways (the Lab's card, a
-still, the numbers as CSV) from what a record declares, as in BESS. Either way: never edit an
+One panel spec is drawn three ways (the Lab's card, a still, the numbers as CSV) from what a
+record declares, as in BESS (`devkit/figure/`); `run.py`'s HTML report and `tune.py`'s are the
+older figures, drawn from the run that wrote them. Either way: never edit an
 image by hand, and never write a one-off script whose output cannot be made again.
 
 ## What the developer's gate needs
 
-A branch that changes behaviour is handed over in the Lab once it exists (skill
+A branch that changes behaviour is handed over in the Lab (skill
 `branch-handoff`, BESS `[B7]`). Choose the runs and charts so that together they:
 
 1. reproduce a reference or known case,

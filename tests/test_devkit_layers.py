@@ -1,9 +1,9 @@
 """The shape of the devkit's layers and of every registered piece (BESS's
 ``tests/test_devkit_layers.py``, adapted).
 
-The generic layers -- ``record`` (settings + records), ``figure`` (stills) and ``terminal`` (the
-command) -- only ever
-touch a Config or a Record and never know what is inside: if a line of code in them names a
+The generic layers -- ``record`` (settings + records), ``figure`` (stills), ``terminal`` (the
+commands) and ``lab`` (the page) -- only ever touch a Config or a Record and never know what is
+inside: if a line of code in them names a
 piece, it is in the wrong layer. A piece is a package under ``harness/`` exposing exactly
 ``Config``, ``run`` and ``Record``. Reading the registry imports no piece.
 """
@@ -25,12 +25,15 @@ from record.config import Settings, fields_of
 
 ROOT = Path(__file__).resolve().parent.parent
 DEVKIT = ROOT / "devkit"
-GENERIC = ("record", "figure", "terminal")
+GENERIC = ("record", "figure", "terminal", "lab")
 #: Who may import whom among the devkit's packages. ``harness`` covers the registry and the
 #: pieces; ``sim`` is the bench's simulation code the pieces drive; ``figure`` draws what records
-#: declare and never reaches a piece.
+#: declare and never reaches a piece. The Lab reaches the figure layer for what a card draws
+#: (``figure.chart``, ``figure.twin``): it holds no drawing rule of its own, and that every chart
+#: on the page IS the figure layer's is held by ``tests/test_lab.py``, not by this table.
 _MAY_IMPORT = {"record": set(), "sim": set(), "harness": {"record", "sim"},
-               "figure": {"record"}, "terminal": {"record", "harness", "figure"}}
+               "figure": {"record"}, "terminal": {"record", "harness", "figure"},
+               "lab": {"record", "harness", "terminal", "figure"}}
 
 
 def _sources(package: str) -> list[Path]:

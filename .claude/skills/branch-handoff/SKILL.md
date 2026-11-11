@@ -1,6 +1,6 @@
 ---
 name: branch-handoff
-description: Take a finished branch to the developer's gate and stop there — the whole suite run locally, the code review run, the runs made, then the hand-off in the Lab (the address with the runs and charts open, what to click, what each chart shows), or plainly "nothing to drive" until the Lab exists. Nothing is committed, pushed or merged until the developer says so.
+description: Take a finished branch to the developer's gate and stop there — the whole suite run locally, the code review run, the runs made, then the hand-off in the Lab (the address with the runs and charts open, what to click, what each chart shows), or plainly "nothing to drive" when the branch has nothing to judge. Nothing is committed, pushed or merged until the developer says so.
 when_to_use: A branch's code and tests are finished; before any git write; when asked to "wrap up", "hand off", "finish the branch", or "is this ready to merge".
 argument-hint: "[branch topic]"
 allowed-tools: Read Grep Glob Bash
@@ -36,9 +36,10 @@ says the review was run, how many findings it made, and how many were fixed (BES
 
 ## 4. Make the runs the developer will look at
 
-Until the terminal lands: `uv run python run.py [--plant …] [--scenario …] [flags]`, which
-writes `results/<tag>/`. Choose the runs so that together they reproduce a reference or known
-case, show what the branch changes, and expose its limits. A refactor proves itself by NOT
+`uv run deepc run <piece> [--set k=v] [--sweep k=a,b] --name <name>`, which writes
+`results/<piece>/<name>.json` (`devkit/README.md`), or the same from the Lab's form. Choose the
+runs so that together they reproduce a reference or known case, show what the branch changes,
+and expose its limits. A refactor proves itself by NOT
 changing the numbers (BESS `[B4]`).
 
 ## 5. Name the conditions every number came from
@@ -50,18 +51,20 @@ capability.
 
 ## 6. Check the Lab shows it
 
-Once the Lab exists: open the address you will hand over in headless Chromium and check that
-every chart named in it draws and that no error shows on the page. Until then, skip this step
-and say so.
+Open the address you will hand over in headless Chromium and check that every chart named in
+it draws and that no error shows on the page; `tests/test_lab_browser.py` shows how to serve the
+page and drive it. If the developer already has a Lab running, the new runs appear in it after
+Refresh.
 
 ## 7. Pause and hand off, in the Lab
 
 Give the developer, in plain words (skill `plain`):
 
 - **What changed**, and which gap it closes.
-- **Where to look in the Lab:** the address with the runs and charts open, and what to click.
-  Until the Lab exists, say plainly there is nothing to drive, and name what they can read
-  instead (a file, a command's output).
+- **Where to look in the Lab:** the address with the runs and charts open
+  (`http://127.0.0.1:8765/?shown=a,b&open=chart-1,chart-2`), and what to click. On their
+  computer: `uv run lab` (`--no-open` prints the address instead of opening a browser); from a
+  cloud session, the page served there and its port reported to the app.
 - **What each chart shows, described and not concluded**: what is on each axis, what each
   trace is, and what was run to make it. Never hand over an image file to open (BESS `[B7]`).
 - If the branch has nothing the developer can judge, say so plainly (BESS `[B6]`).

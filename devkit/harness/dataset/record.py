@@ -3,7 +3,8 @@
 The data is the record ``collect_data`` returns: the episodes stacked end to end, so the sample
 index runs across episode boundaries (``episode_starts``; D9). Every number is a reduction of an
 array on this record. Every axis carries its unit, a channel's the plant's own (``input_units``,
-``output_units``). Panel names and labels are placeholders (RCWS #96).
+``output_units``). The words follow the developer's pattern (``docs/project/lab-words.md``); the
+inputs and outputs may be pooled across runs that differ in their seed alone (``pooled``).
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ class Record(_Record):
     numbers: dict
 
     component = "dataset"
-    label = "dataset"
+    label = "Dataset"
     produced_by = "uv run deepc run dataset [config.json]"
 
     def series(self) -> tuple[Series, ...]:
@@ -47,16 +48,15 @@ class Record(_Record):
             for j, (channel, unit) in enumerate(zip(names, units)):
                 out.append(Series(
                     name=f"{group[:-1].lower()}-{channel}".replace("_", "-"), x=sample,
-                    x_label="sample [-]", y_label=f"{channel} [{unit}]",
-                    traces=((channel, data[:, j]),),
-                    doc=f"The recorded {channel} at each sample, episodes stacked end to end "
-                        f"(open words)", group=group))
+                    x_label="Sample [-]", y_label=f"{channel} [{unit}]",
+                    traces=((channel, data[:, j]),), title=channel, pooled=("mean", "rms"),
+                    doc=f"The recorded {channel} at each sample, episodes stacked end to end",
+                    group=group))
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:
         return tuple(Number(f"{kind}_rms_{channel}", f"{channel} RMS", unit, group=group,
-                            doc=f"Root mean square of the recorded {channel} over all samples "
-                                f"(open words)")
+                            doc=f"Root mean square of the recorded {channel} over all samples")
                      for kind, group, names, units in (("u", _INPUTS, self.inputs, self.input_units),
                                                        ("y", _OUTPUTS, self.outputs, self.output_units))
                      for channel, unit in zip(names, units))

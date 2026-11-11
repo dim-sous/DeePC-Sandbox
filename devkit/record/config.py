@@ -8,11 +8,15 @@ outside the choices in its own words. What param has no slot for rides in ``meta
 
 - ``group`` (required): the heading a form puts the setting under;
 - ``unit``: the unit a person types it in;
+- ``lines``: each choice's own line, ``{choice: one line}``; none here yet;
 - ``needs``: what switches the setting on -- ``{other_setting: {"in": [named values]}}``. A value
   set behind a closed gate is refused on construction (:func:`gated`), because the run would
   ignore it and the saved config would claim it;
 - ``replicate``: ``True`` for a setting that only re-draws the noise (a seed);
-- ``record_of``: on a path setting, the piece whose saved run it names.
+- ``draws``: on a replicate, the setting that counts the draws a run makes from it (run i of
+  ``n`` uses ``seed + i``), so a figure pooling runs can tell when two share a draw; none here;
+- ``record_of``: on a path setting, the piece whose saved run it names;
+- ``folded``: the form shows the setting's group closed until it is opened.
 
 A setting whose default is ``None`` means "the plant's own": the piece resolves it when it runs
 and saves what it resolved. A list setting holds numbers (the Q and R weights): JSON or commas
@@ -88,14 +92,18 @@ def fields_of(cls: type) -> list[dict[str, Any]]:
         meta = p.metadata or {}
         numeric = isinstance(p, param.Number)
         bounds = (getattr(p, "bounds", None) if numeric else None) or (None, None)
+        incl = (getattr(p, "inclusive_bounds", None) if numeric else None) or (True, True)
         out.append({
             "name": name, "type": _type_text(p), "default": p.default,
             "label": p.label or name, "unit": meta.get("unit", ""), "group": meta["group"],
-            "doc": (p.doc or "").strip(),
+            "doc": (p.doc or "").strip(), "lines": meta.get("lines"),
             "choices": list(p.objects) if isinstance(p, param.Selector) else None,
             "low": bounds[0], "high": bounds[1], "code_default": p.default is None,
+            "low_exclusive": bounds[0] is not None and not incl[0],
+            "high_exclusive": bounds[1] is not None and not incl[1],
             "needs": meta.get("needs"), "replicate": bool(meta.get("replicate")),
-            "record_of": meta.get("record_of", ""),
+            "draws": meta.get("draws"), "record_of": meta.get("record_of", ""),
+            "folded": bool(meta.get("folded")),
         })
     return out
 
