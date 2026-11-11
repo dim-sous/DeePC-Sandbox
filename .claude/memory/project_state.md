@@ -30,6 +30,7 @@ on the developer's computer ([[multi-device]]).
 | #12 | Session notes in the repo (`.claude/memory/`) |
 | #13 | The bicycle deleted (no source for its model); position history, Position RMSE, Path chart gone; safety net gains the masses' online-Hankel and noise-adaptive cases, remade on the developer's computer |
 | #14 | Rewrite branch 1: the `system` piece (typed rows x', y, θ; Lab row editor), `tools/system/` (SymPy parser, RK45 `hold`), the no-units rule, `docs/project/design.md` |
+| #15 | Rewrite branch 2: the `open_loop` piece (excitation, actuator clip, typed disturbances d, y_k = h(x_k) + noise; numbers PE order, SNR, clipped, step time); the old `dataset` kept until branch 3 |
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
@@ -42,10 +43,28 @@ evening. The rewrite is three branches: (1) `system-generator` — the `system` 
 changed in CLAUDE.md and the figure skill. Handed off once with f/h as `;` lines, x0, bounds and a
 free-response chart; the developer redid it ("the current way to define the odes feels off"):
 labelled rows (+/✕, a new Lab row editor for list settings declaring `rows`), θ values in the
-System tab, no chart, no x0/bounds — rebuilt, merged as PR #14 on 2026-11-11; (2) `open_loop` (today's
-`dataset`, renamed: "dataset sounds weird") on a system run, with x0, bounds, T_s, excitation,
-noise, tolerances; (3) the closed loop on [1, eq. (8)] tracking y, deleting the old pipeline and
+System tab, no chart, no x0/bounds — rebuilt, merged as PR #14 on 2026-11-11; (2) `open_loop`
+(branch `open-loop`, built and handed off 2026-11-11): a saved system run (`harness.system.
+system_of`, checked) simulated from x0, u_k i.i.d. uniform on its own range per input (as [1,
+§VI-B]), clipped to the actuator bounds and counted, y_k = h(x_k) + noise (as [1, eq. (1)]; the
+draft's h(x_{k+1}) was the old code's), true x recorded; the old `dataset` stays until (3) — the
+developer's choices 2d–2g in design.md. After the first hand-off they asked for process noise
+(typed disturbances d1… in System rows, σ_d in Open loop, drawn per sample and held: 2h) and
+useful numbers (PE order of u by the controller's own check, SNR per output, clipped, step time:
+2i) — merged as PR #15 on 2026-11-11; (3) the closed loop on [1, eq. (8)] tracking y, deleting the old pipeline and
 making a new safety net. The queue below predates it and is superseded where the design says so.
+
+**Asked for next (2026-11-11, during the open-loop review):** plots on the System tab "useful
+for understanding the system (bode plots, Nyquist plots, Nichols plots, Root locus plots,
+step/impulse/ramp response plots, 2d phase portraits etc)". Its own branch after `open-loop`.
+Decided the same evening: "the linearization is not fixed but defined by the user during plot
+request" — the operating point (x*, u*) is part of each plot request, not of the system run.
+And: "the system tab number should be number that reflect the system (critical points and their
+nature, etc)" — equilibria f(x*, u*, 0) = 0 and their type from the Jacobian's eigenvalues, in
+place of the sizes n, m, p, q, r. Open: which input-output pairs for a MIMO system, the library
+(python-control, a mature one, would be a new dependency), how a plot request is made in the Lab,
+at which u and in what region equilibria are sought (a pendulum has one at every kπ), symbolic
+(SymPy) or numerical solving.
 
 **Next, in the order agreed** (the developer picks; propose, then plan mode, then build):
 1. **Test speed** — the suite took 148 s on 2026-11-11, measured with `--durations`: about 70 %

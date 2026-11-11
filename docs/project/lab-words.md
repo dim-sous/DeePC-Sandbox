@@ -21,7 +21,7 @@ classes' names (e_x1, F1, …) and units until the rewrite replaces them (`docs/
 
 ## 1. Page
 
-- header: DeePC Lab · the pieces' names: Closed loop · Dataset · System
+- header: DeePC Lab · the pieces' names: Closed loop · Dataset · System · Open loop
 - job state: Idle · Running… · Done · Ended with exit N
 - header buttons: Stop · Refresh · New run; the folder beside them: results/closed_loop · N records
 - headings: Runs · Compare · Figures; beside Compare's settings choice: Settings
@@ -184,7 +184,7 @@ Numbers of Dataset (coupled masses run), by group -- `code name`: label [unit] -
 Settings, by group -- `code name`: label · its rows · add button -- help line (no units):
 
 - **States**
-  - `f`: x' · rows x1' =, x2' =, … · + State -- One row per state: x_i' as an expression in x1…, u1…, theta1… and sin cos tan exp log sqrt tanh abs pi
+  - `f`: x' · rows x1' =, x2' =, … · + State -- One row per state: x_i' as an expression in x1…, u1…, the disturbances d1…, theta1… and sin cos tan exp log sqrt tanh abs pi
 - **Outputs**
   - `h`: y · rows y1 =, y2 =, … · + Output -- One row per output: y_j as an expression in x1…, theta1… and the same functions
 - **Parameters**
@@ -199,3 +199,60 @@ Numbers of System, by group -- `code name`: label -- hover:
   - `m`: m -- The number of inputs, u1…um
   - `p`: p -- The number of outputs, y1…yp: one per output row
   - `q`: q -- The number of parameters, theta1…thetaq
+  - `r`: r -- The number of disturbance inputs, d1…dr: where the unmodelled disturbance enters
+
+### Open loop (`open_loop`)
+
+Settings, by group -- `code name`: label -- help line (no units):
+
+- **System**
+  - `system_run`: System run -- The saved system run simulated; read again first and checked against the file
+  - `x0`: x0 -- The initial state, one value per state
+- **Inputs**
+  - `u_min`: u_min -- The lower actuator bound of each input, which the plant clips u to; -inf for none
+  - `u_max`: u_max -- The upper actuator bound of each input, which the plant clips u to; inf for none
+  - `u_exc_min`: u_exc_min -- The lower end of each input's excitation, drawn i.i.d. uniform at every sample
+  - `u_exc_max`: u_exc_max -- The upper end of each input's excitation, drawn i.i.d. uniform at every sample
+- **Simulation**
+  - `Ts`: T_s -- The sampling time: the input is held over it and the output measured at its ends
+  - `T`: T -- The number of samples simulated, from x0
+  - `sigma`: σ -- The standard deviation of the Gaussian noise added to every output at every sample
+  - `sigma_d`: σ_d -- The standard deviation of each disturbance d1… the system's rows name, drawn Gaussian at every sample and held over T_s; [] for a system with none
+  - `seed`: Seed -- The seed of the excitation, the measurement noise and the disturbances
+- **Integrator** (folded)
+  - `rtol`: rtol -- RK45's relative tolerance over each step
+  - `atol`: atol -- RK45's absolute tolerance over each step
+
+Charts of Open loop (default run, the two masses), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
+
+- **Inputs**
+  - `u1`: u1 · t · u1 · u1, Lower bound of u1, Upper bound of u1 -- The u1 the plant applied at each sample, held over T_s; its actuator bounds
+  - `u2`: u2 · t · u2 · u2, Lower bound of u2, Upper bound of u2 -- The u2 the plant applied at each sample, held over T_s; its actuator bounds
+- **Outputs**
+  - `y1`: y1 · t · y1 · y1 -- y1 measured at each sample, noise included
+  - `y2`: y2 · t · y2 · y2 -- y2 measured at each sample, noise included
+  - `y3`: y3 · t · y3 · y3 -- y3 measured at each sample, noise included
+  - `y4`: y4 · t · y4 · y4 -- y4 measured at each sample, noise included
+- **States**
+  - `x1`: x1 · t · x1 · x1 -- The true x1 at each sample, which the controller never reads
+  - `x2`: x2 · t · x2 · x2 -- The true x2 at each sample, which the controller never reads
+  - `x3`: x3 · t · x3 · x3 -- The true x3 at each sample, which the controller never reads
+  - `x4`: x4 · t · x4 · x4 -- The true x4 at each sample, which the controller never reads
+- **Disturbances**
+  - `d1`: d1 · t · d1 · d1 -- The disturbance d1 held over each step, which the controller never reads
+  - `d2`: d2 · t · d2 · d2 -- The disturbance d2 held over each step, which the controller never reads
+
+Numbers of Open loop, by group -- `code name`: label -- hover:
+
+- **Inputs**
+  - `pe_order`: PE order of u -- The largest L at which the input's Hankel matrix H_L(u) has full row rank L·m: persistency of excitation of order L
+  - `clipped`: Clipped inputs -- Input samples the actuator bounds changed, over all inputs
+- **Outputs**
+  - `y1_snr`: y1 SNR -- Variance of the noise-free y1, h(x), over the measurement noise's variance σ²
+  - `y2_snr`: y2 SNR -- Variance of the noise-free y2, h(x), over the measurement noise's variance σ²
+  - `y3_snr`: y3 SNR -- Variance of the noise-free y3, h(x), over the measurement noise's variance σ²
+  - `y4_snr`: y4 SNR -- Variance of the noise-free y4, h(x), over the measurement noise's variance σ²
+- **Cost**
+  - `step_time_mean`: Mean step time -- Mean wall-clock seconds of one sampling step: the clip and the integration
+  - `step_time_std`: Step time std -- Standard deviation of the wall-clock seconds of one sampling step
+  - `step_time_max`: Max step time -- Longest wall-clock seconds of one sampling step

@@ -1,5 +1,6 @@
-"""The system piece's settings: the system as typed rows, x' = f(x, u, θ) one row per state and
-y = h(x, θ) one row per output, and the values of θ. The initial state, the input bounds and the
+"""The system piece's settings: the system as typed rows, x' = f(x, u, d, θ) one row per state
+(d the disturbance inputs, where the unmodelled disturbance enters) and y = h(x, θ) one row per
+output, and the values of θ. The initial state, the input bounds and the
 sampling time are the open-loop simulation's (the developer, 2026-11-11). The names are the
 developer's: inputs u, outputs y, states x, parameters θ; no units.
 """
@@ -22,12 +23,14 @@ class Config(Settings):
     # The coupled masses of tools/plants/coupled_masses.py at its defaults, m1 = m2 = 1 and
     # θ = [k1 = k2, k12, c1 = c2, c12] = [2, 1, 0.3, 0.1], typed out (the developer's pick,
     # 2026-11-11). Copied, not read: that plant class is deleted by the rewrite's third branch.
+    # The disturbances d1, d2 act as forces on the two masses, beside u1, u2 (the developer's
+    # preview, 2026-11-11).
     f = param.List(
-        ["x2", "-(theta1 + theta2)*x1 - (theta3 + theta4)*x2 + theta2*x3 + theta4*x4 + u1",
-         "x4", "theta2*x1 + theta4*x2 - (theta1 + theta2)*x3 - (theta3 + theta4)*x4 + u2"],
+        ["x2", "-(theta1 + theta2)*x1 - (theta3 + theta4)*x2 + theta2*x3 + theta4*x4 + u1 + d1",
+         "x4", "theta2*x1 + theta4*x2 - (theta1 + theta2)*x3 - (theta3 + theta4)*x4 + u2 + d2"],
         item_type=str, label="x'",
-        doc="One row per state: x_i' as an expression in x1…, u1…, theta1… and sin cos tan exp "
-            "log sqrt tanh abs pi",
+        doc="One row per state: x_i' as an expression in x1…, u1…, the disturbances d1…, "
+            "theta1… and sin cos tan exp log sqrt tanh abs pi",
         metadata={"group": X, "rows": {"label": "x{}'", "add": "+ State"}})
     h = param.List(
         ["x1", "x2", "x3", "x4"], item_type=str, label="y",

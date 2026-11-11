@@ -21,7 +21,7 @@ class Record(_Record):
     config: Config
     provenance: Provenance | None
     constants: dict          # the rows as SymPy read them: f_read (x_i'), h_read (y_j)
-    numbers: dict            # the sizes n, m, p, q
+    numbers: dict            # the sizes n, m, p, q, r
 
     component = "system"
     label = "System"
@@ -35,4 +35,6 @@ class Record(_Record):
                      for name, doc in (("n", "The number of states, x1…xn: one per state row"),
                                        ("m", "The number of inputs, u1…um"),
                                        ("p", "The number of outputs, y1…yp: one per output row"),
-                                       ("q", "The number of parameters, theta1…thetaq")))
+                                       ("q", "The number of parameters, theta1…thetaq"),
+                                       ("r", "The number of disturbance inputs, d1…dr: where "
+                                             "the unmodelled disturbance enters")))

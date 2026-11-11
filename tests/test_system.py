@@ -23,7 +23,7 @@ def _masses():
 
 def test_the_default_system_reads_as_typed_with_theta_kept_as_symbols() -> None:
     plant = _masses()
-    assert (plant.n, plant.m, plant.p, plant.q) == (4, 2, 4, 4)
+    assert (plant.n, plant.m, plant.p, plant.q, plant.r) == (4, 2, 4, 4, 2)
     assert plant.theta == (2.0, 1.0, 0.3, 0.1)
     assert "theta1" in plant.f_read[1] and plant.h_read == ("x1", "x2", "x3", "x4")
 
@@ -53,6 +53,9 @@ def test_the_default_system_reads_as_typed_with_theta_kept_as_symbols() -> None:
     (["()", "u1"], ["x1"], [], "is not an expression (it reads as ()"),
     (["9^9^9*x1 + u1"], ["x1"], [], "holds a constant too large for a float"),
     (["-theta1*x1 + u1"], ["x1"], [float("nan")], "θ1 = nan is not finite"),
+    (["-x1 + u1"], ["x1 + d1"], [], "an output row names a disturbance"),
+    (["-x1 + u1 + 0*d1"], ["x1"], [], "d1 acts in no state row as read"),
+    (["-x1 + u1 + d2"], ["x1"], [], "d1 acts in no state row as read"),
 ])
 def test_what_the_parser_cannot_read_is_refused_in_words(f, h, theta, words) -> None:
     """``parse_expr`` evaluates Python, so anything outside the expression grammar is refused
@@ -79,24 +82,27 @@ def test_the_integrator_matches_the_exact_sampled_linear_system() -> None:
     U = np.random.default_rng(42).uniform(-5, 5, size=(600, 2))
     x = exact = np.array([0.5, 0.0, -0.5, 0.0])
     worst = 0.0
+    no_d = np.zeros(plant.r)                              # the nominal plant: no disturbance
     for u in U:
-        x, exact = hold(plant.f, x, u, (0.0, Ts))[1][-1], Ad @ exact + Bd @ u
+        x = hold(lambda x_, u_: plant.f(x_, u_, no_d), x, u, (0.0, Ts))[1][-1]
+        exact = Ad @ exact + Bd @ u
         worst = max(worst, float(np.abs(x - exact).max()))
     assert (RTOL, ATOL) == (1e-9, 1e-12) and worst < 1e-8, worst
 
 
 def test_the_integrator_matches_closed_forms() -> None:
     decay = parse(["-theta1*x1 + u1"], ["x1"], [1.0])
-    t, x = hold(decay.f, np.array([2.0]), np.zeros(1), (0.0, 3.0))
+    t, x = hold(lambda x_, u_: decay.f(x_, u_, np.zeros(0)), np.array([2.0]), np.zeros(1),
+                (0.0, 3.0))
     assert np.allclose(x[:, 0], 2.0 * np.exp(-t), rtol=1e-8, atol=1e-11)
-    ramp = parse(["u1"], ["x1"], [])
-    assert hold(ramp.f, np.array([1.0]), np.array([0.5]), (0.0, 2.0))[1][-1] == \
-        pytest.approx([2.0], abs=1e-11)
+    ramp = parse(["u1 + d1"], ["x1"], [])                 # x1' = u1 + d1, both held
+    assert hold(lambda x_, u_: ramp.f(x_, u_, np.array([0.25])), np.array([1.0]),
+                np.array([0.5]), (0.0, 2.0))[1][-1] == pytest.approx([2.5], abs=1e-11)
 
 
 def test_the_system_run_records_its_rows_as_read_and_its_sizes(tmp_path) -> None:
     rec = SYSTEM.run(SYSTEM.Config())
-    assert rec.numbers == {"n": 4, "m": 2, "p": 4, "q": 4}
+    assert rec.numbers == {"n": 4, "m": 2, "p": 4, "q": 4, "r": 2}
     assert rec.constants["h_read"] == ["x1", "x2", "x3", "x4"] and rec.series() == ()
     again = SYSTEM.Record.load(rec.save(tmp_path / "s.json"))
     assert again.config.f == rec.config.f and again.numbers == rec.numbers
@@ -106,6 +112,6 @@ def test_a_list_of_rows_round_trips_through_the_command_line_words() -> None:
     cfg = with_overrides(SYSTEM.Config(), [("f", '["x2", "-sin(x1) - theta1*x2 + u1"]'),
                                            ("h", '["x1"]'), ("theta", "[0.2]")])
     assert cfg.f == ["x2", "-sin(x1) - theta1*x2 + u1"] and cfg.theta == [0.2]
-    assert SYSTEM.run(cfg).numbers == {"n": 2, "m": 1, "p": 1, "q": 1}
+    assert SYSTEM.run(cfg).numbers == {"n": 2, "m": 1, "p": 1, "q": 1, "r": 0}
     with pytest.raises(ValueError, match="is not a JSON list of texts"):
         with_overrides(SYSTEM.Config(), [("f", "x2, -x1 + u1")])

@@ -67,29 +67,56 @@ over the run (states range −1.7 … 2.3) and time per step:
 **Decided (1a)**, the developer, 2026-11-11: default tolerances rtol 1e-9, atol 1e-12, both
 settings of the open-loop simulation.
 
-## 2. `open_loop` (today's `dataset`, renamed) — simulate the plant
+## 2. `open_loop` — simulate the plant (built on branch 2, `open-loop`)
 
 **The form.** The system run; $x_0$; the input bounds $u_{min}, u_{max}$ (the actuator limits,
 which clip $u$ before it is held); $T_s$; $T$ samples; the excitation; the measurement noise; the
 seed; the integrator tolerances (the developer, 2026-11-11: "Bounds, initial conditions, sampling
 rates etc live in the open loop tab").
 
-**What it does.** From $x_0$, clip $u_k$ to the bounds, hold it, integrate one step, record
-$y_k = h(x_{k+1}) + n_k$,
-$n_k \sim \mathcal N(0, \sigma^2 I)$. Records $u$, $y$, and the true $x$ (for the charts only —
-the controller never reads $x$).
+**What it does.** From $x_0$, at every sample $k$: measure $y_k = h(x_k) + n_k$,
+$n_k \sim \mathcal N(0, \sigma^2 I)$; draw $u_k$; clip it to the bounds, hold it, integrate one
+step. Records the applied $u$, $y$, and the true $x$ (for the charts only — the controller never
+reads $x$). An earlier draft of this line had $y_k = h(x_{k+1})$, copied from the old code; see 2e.
 
 **Decided (2a)**, 2026-11-11: one trajectory from $x_0$. Several episodes stacked end to end would
 put columns across a reset into the Hankel matrix (D9); episodes come later, combined as the
 mosaic-Hankel matrix of [6, eq. (8)].
 
-**Decided (2b)**, 2026-11-11: the excitation is i.i.d. uniform within the input bounds, its
-amplitude a fraction of them (a setting). What [1] used in its simulations is read before this is
-built (the papers are not on the developer's computer; `references/` is git-ignored).
+**Decided (2b)**, 2026-11-11: the excitation is i.i.d. uniform. [1, §VI-B] (read 2026-11-11 in the
+arXiv HTML rendering of v2, not the PDF): "Drawing the input sequence from a uniformly distributed
+random variable ensured that the data was persistently exciting"; its range is not stated there.
+Its range, per input, is its own setting, separate from the actuator bounds (2f).
 
 **Decided (2c)**, 2026-11-11: no baseline controller — open loop, excitation only. An unstable
 system's data diverges and the record says so; a typed feedback $u = -K y +$ excitation can come
 later on its own branch.
+
+**Decided (2d)**, 2026-11-11: the old `dataset` piece stays beside `open_loop` until branch 3
+deletes it with the old closed loop, so the Lab works end to end at every merge.
+
+**Decided (2e)**, 2026-11-11: the output at sample $k$ is $h(x_k)$, as [1, eq. (1)]: $y(t) = Cx(t) +
+Du(t)$, the output from the state at the same time.
+
+**Decided (2f)**, 2026-11-11: the excitation range is its own setting per input
+($u_{exc,min}, u_{exc,max}$); the actuator bounds may be $\pm\infty$ (none) and clip what reaches
+the plant, the clipped samples counted in the record.
+
+**Decided (2g)**, 2026-11-11: the defaults are the values today's two-masses runs use: $x_0 = [0.5,
+0, -0.5, 0]$, bounds $\pm 5$, excitation $\pm 3$, $T_s = 0.05$, $T = 600$, $\sigma = 0.005$,
+seed 42; another system needs $x_0$ and the bounds typed to its size.
+
+**Decided (2h)**, 2026-11-11 (the developer: "there is no process noise ... unmodelled disturbance
+is absent"): System rows may name disturbance inputs $d_1, d_2, \dots$ where they physically
+enter (state rows only); Open loop sets each one's standard deviation $\sigma_d$, and $d_k \sim
+\mathcal N(0, \mathrm{diag}(\sigma_d^2))$ is drawn per sample and held over $T_s$, like $u$. The
+default system names $d_1$, $d_2$ beside $u_1$, $u_2$ on the two force rows; $\sigma_d = [0.1,
+0.1]$. The closed loop (branch 3) applies the same disturbance.
+
+**Decided (2i)**, 2026-11-11 (the developer: "the RMS of the output ... does not carry insightful
+value"): an open-loop run's numbers are the PE order of $u$ (the largest $L$ at which $H_L(u)$ has
+full row rank), the SNR of each output (variance of $h(x)$ over $\sigma^2$), the clipped inputs and
+the step time (mean, standard deviation, maximum).
 
 ## 3. `closed_loop` — control it with DeePC
 

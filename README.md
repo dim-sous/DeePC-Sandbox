@@ -17,9 +17,13 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
   ($\dot x_i = f_i(x, u, \theta)$), one per output equation ($y_j = h_j(x, \theta)$), and the values
   of the parameter vector $\theta$, in `x1…`, `u1…`, `theta1…`. SymPy reads and checks them
   ([METHODS.md](METHODS.md) §10); nothing is simulated there. It is the first piece of a rewrite
-  ([docs/project/design.md](docs/project/design.md)): the open-loop simulation (initial state,
-  input bounds, sampling time) and the closed loop on it come next; the dataset and closed-loop
-  pieces below still run on the plant class until they are replaced.
+  ([docs/project/design.md](docs/project/design.md)).
+- **Open loop.** The `open_loop` piece simulates a saved system run from $x_0$: an i.i.d. uniform
+  excitation per input, clipped to the actuator bounds, and a Gaussian disturbance where the
+  system's rows name one ($d_1, \dots$), both held over $T_s$ and integrated by RK45; the outputs
+  measured as $y_k = h(x_k)$ plus Gaussian noise (§11). Its numbers: the PE order of $u$, each
+  output's SNR, the clipped inputs, the step time. The closed loop on it comes
+  next; the dataset and closed-loop pieces below still run on the plant class until then.
 - **Plants.**
 
   | Plant | Type | Inputs | Outputs | Scenarios |
@@ -62,6 +66,7 @@ its numbers and the commit; [devkit/README.md](devkit/README.md) has an example 
 ```bash
 uv run deepc run system                        # the two masses typed, read and checked -> results/system/default.json
 uv run deepc run system --set 'f=["x2", "-sin(x1) - theta1*x2 + u1"]' --set 'h=["x1"]' --set 'theta=[0.2]' --name pendulum
+uv run deepc run open_loop                     # that system simulated open loop -> results/open_loop/default.json
 uv run deepc run dataset                       # training data from the coupled masses -> results/dataset/default.json
 uv run deepc run closed_loop                   # DeePC on that data -> results/closed_loop/default.json
 uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
