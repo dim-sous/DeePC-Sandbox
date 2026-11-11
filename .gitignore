@@ -13,3 +13,5 @@ results/
 .venv
 
 .vscode/
+# Papers and literature notes: on each computer only (the repository is public)
+references/
