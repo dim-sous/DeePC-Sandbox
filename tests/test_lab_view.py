@@ -2,9 +2,8 @@
 
 A screen is validated by DRIVING it, never by a checklist (RCWS's own Lab incident: four designs
 passed their checklists and were rejected on first contact). These tests drive the widgets a
-person touches -- not the handlers behind them -- with ``launch``, ``capture``, ``every`` and
-``toast`` injected, and two of them drive the real ``uv run deepc run`` and ``uv run deepc draw``
-through the page end to end.
+person touches -- not the handlers behind them -- with ``launch``, ``every`` and ``toast``
+injected, and one of them drives the real ``uv run deepc run`` through the page end to end.
 """
 
 from __future__ import annotations
@@ -88,25 +87,10 @@ class _Launcher:
         self.job.returncode = returncode
 
 
-class _Capture:
-    """A ``capture`` that records the argv and answers as told, or raises."""
-
-    def __init__(self, code: int = 0, output: str = "", raises: Exception | None = None) -> None:
-        self.argvs: list[list[str]] = []
-        self.code, self.output, self.raises = code, output, raises
-
-    def __call__(self, argv, cwd=None) -> tuple[int, str]:
-        self.argvs.append(list(argv))
-        if self.raises is not None:
-            raise self.raises
-        return self.code, self.output
-
-
-def _lab(two_runs, capture=None) -> tuple[Lab, _Launcher, _Ticker, list[str]]:
+def _lab(two_runs) -> tuple[Lab, _Launcher, _Ticker, list[str]]:
     root, out_dir = two_runs
     launcher, ticker, toasts = _Launcher(), _Ticker(), []
-    lab = Lab(root, out_dir, launch=launcher, every=ticker, toast=toasts.append,
-              capture=capture or _Capture(), schedule=lambda work: work())
+    lab = Lab(root, out_dir, launch=launcher, every=ticker, toast=toasts.append)
     lab.page()
     return lab, launcher, ticker, toasts
 
@@ -195,9 +179,10 @@ def _control(lab: Lab, panel: str, words: str) -> pn.widgets.Toggle:
                 if isinstance(o, pn.widgets.Toggle) and o.name == words)
 
 
-def _save_button(lab: Lab, panel: str) -> pn.widgets.Button:
-    top = _card(lab, panel).objects[0]
-    return next(o for o in top.objects if isinstance(o, pn.widgets.Button) and o.name == "Save")
+def _figure(lab: Lab, panel: str) -> dict | None:
+    """The figure a card draws, as its Plotly pane holds it; ``None`` when it draws none."""
+    pane = next((o for o in _card(lab, panel).objects if isinstance(o, pn.pane.Plotly)), None)
+    return None if pane is None else pane.object
 
 
 def _columns(lab: Lab) -> list[str]:
@@ -594,13 +579,12 @@ def test_the_newest_run_is_shown_and_charted_and_ticking_another_adds_it_and_a_c
 
 
 def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(own_runs) -> None:
-    capture = _Capture()
-    lab, *_ = _lab(own_runs, capture)
+    lab, launcher, *_ = _lab(own_runs)
     _tabs(lab)["solve-time"].value = True
-    assert capture.argvs == [], "a chart is drawn by the figure layer in the page, not a subprocess"
+    assert launcher.argvs == [], "a chart is drawn by the figure layer in the page, not a subprocess"
     assert [lab.cards_box.objects.index(_card(lab, p))
             for p in ("output-e-lateral", "solve-time")] == [0, 1], "cards in the record's declared order"
-    fig = lab._panes[_card_of(lab, "solve-time").id][0].object
+    fig = _figure(lab, "solve-time")
     assert fig["layout"]["yaxis"]["title"]["text"] == "Solve time [s]", "the record's own words"
     assert fig["layout"]["xaxis"]["title"]["text"] == "Solve [-]"
     title = _card(lab, "solve-time").objects[0].objects[0].object
@@ -618,15 +602,13 @@ def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(
 def test_a_control_a_card_cannot_use_is_greyed_with_the_reason_on_its_hover(own_runs) -> None:
     lab, *_ = _lab(own_runs)
     greyed = _greyed(lab, "output-e-lateral")
-    assert greyed["Run | Quantity"] == "One run shown"
-    assert greyed["Overlay | Split | Mean | RMS"] == "One run shown"
-    assert greyed["Log x"] == "Its bottom axis holds 1 value(s) at or below zero"
+    assert greyed == {"Overlay | Split | Mean | RMS": "One run shown"}, "its one control"
     _tick(lab, "first")
     greyed = _greyed(lab, "output-e-lateral")
     assert greyed["Mean"] == "The chart declares no statistic", \
         "the figure layer's own words, begun with a capital"
     assert greyed["RMS"] == "The chart declares no statistic"
-    assert "Run | Quantity" not in greyed
+    assert len(greyed) == 2
 
 
 def test_runs_that_differ_in_their_seed_alone_pool_on_a_card_into_one_line(own_runs) -> None:
@@ -641,24 +623,9 @@ def test_runs_that_differ_in_their_seed_alone_pool_on_a_card_into_one_line(own_r
     _tabs(lab)["output-e-lateral"].value = True
     assert "Mean" not in _greyed(lab, "output-e-lateral")
     _control(lab, "output-e-lateral", "Mean").value = True
-    fig = lab._panes[_card_of(lab, "output-e-lateral").id][0].object
+    fig = _figure(lab, "output-e-lateral")
     names = [t["name"] for t in fig["data"] if t.get("showlegend") is not False]
     assert names == ["Mean of 2 runs · e_lateral"]
-    assert _greyed(lab, "output-e-lateral")["Run | Quantity"] == \
-        "The pooled runs are one line per quantity"
-
-
-def test_a_table_in_a_cards_place_is_the_numbers_on_its_chart(own_runs) -> None:
-    lab, *_ = _lab(own_runs)
-    _tabs(lab)["position-x"].value = True
-    _control(lab, "position-x", "Table").value = True
-    record = lab._record_of(lab.shown_runs()[0])[0]
-    position = next(s for s in record.series() if s.name == "position-x")
-    body = next(o for o in _card(lab, "position-x").objects if isinstance(o, pn.pane.HTML)
-                and "<table>" in o.object)
-    assert "<th>Plant</th>" in body.object and "<th>Reference</th>" in body.object
-    assert f"<td>{float(position.traces[0][1][0]):.6g}</td>" in body.object
-    assert _card_of(lab, "position-x").id not in lab._panes, "a table in the chart's place"
 
 
 def test_a_number_clicked_in_the_compare_table_is_a_card_every_run_a_point(own_runs) -> None:
@@ -675,47 +642,6 @@ def test_a_number_clicked_in_the_compare_table_is_a_card_every_run_a_point(own_r
     assert greyed["All | Mean | RMS"] == "No colour holds two runs at one value"
     lab.compare_table._handle_msg({"number": "rmse_position"})
     assert not [c for c in lab.cards if c.kind == "numbers"], "asked again, it closes"
-
-
-def test_save_draws_the_card_exactly_as_shown_and_the_folder_is_listed(own_runs) -> None:
-    root, out_dir = own_runs
-    capture = _Capture(output=f"{out_dir}/closed_loop/second+first/output-e-lateral.png\n")
-    lab, *_ = _lab(own_runs, capture)
-    _tick(lab, "first")
-    _control(lab, "output-e-lateral", "Split").value = True
-    lab._panes[_card_of(lab, "output-e-lateral").id][0].relayout_data = {"xaxis.range[0]": 0.2,
-                                                                         "xaxis.range[1]": 0.8}
-    _save_button(lab, "output-e-lateral").clicks += 1
-    [argv] = capture.argvs
-    assert argv[:6] == ["uv", "run", "deepc", "draw",
-                        os.path.join(out_dir, "closed_loop", "second.json"),
-                        os.path.join(out_dir, "closed_loop", "first.json")]
-    words = " ".join(argv[6:])
-    assert "--panel output-e-lateral" in words and "--runs rows" in words \
-        and "--x-range=0.2,0.8" in words
-    assert "--colour-by" not in words, "a greyed control travels as nothing"
-    assert f"{out_dir}/closed_loop/second+first/output-e-lateral.png" in _console(lab)
-    assert "Wrote" in _card_words(lab, "output-e-lateral")[-1], \
-        "the card's foot says what its save wrote"
-    assert lab.console.visible and "exit 0" in lab.last_line.object
-
-
-def test_a_refused_draw_says_so_in_the_terminal_and_is_not_latched(own_runs) -> None:
-    capture = _Capture(raises=ValueError("a command is in progress: uv run deepc run closed_loop"))
-    lab, *_ = _lab(own_runs, capture)
-    _save_button(lab, "output-e-lateral").clicks += 1
-    assert "refused: a command is in progress" in _console(lab)
-    capture.raises = None
-    _save_button(lab, "output-e-lateral").clicks += 1
-    assert len(capture.argvs) == 2, "asked again: the reason it was refused had passed"
-
-
-def test_a_draw_that_cannot_start_leaves_the_page_readable(own_runs) -> None:
-    capture = _Capture(raises=FileNotFoundError(2, "No such file or directory", "uv"))
-    lab, *_ = _lab(own_runs, capture)
-    _save_button(lab, "output-e-lateral").clicks += 1
-    assert "could not be started" in _console(lab) and "FileNotFoundError" in _console(lab)
-    assert lab.page().get_root() is not None
 
 
 def _on_show(lab: Lab) -> list[str]:
@@ -845,7 +771,7 @@ def test_a_run_without_the_panel_is_the_figure_layers_refusal_on_the_card(own_ru
             row["panels"] = ["output-e-lateral"]
     _tick(lab, "first")
     _tabs(lab)["cost"].value = True
-    assert _rows_of(lab, "cost") == [] and _card_of(lab, "cost").id not in lab._panes
+    assert _rows_of(lab, "cost") == [] and _figure(lab, "cost") is None
     assert any("First declare no panel 'cost'" in w for w in _card_words(lab, "cost"))
     subs = [o.object for o in lab.tabs.select(pn.pane.HTML)]
     assert any("1 of 2 runs" in s for s in subs)
@@ -936,19 +862,6 @@ def test_deleting_a_run_asks_first_and_then_takes_only_its_record(own_runs) -> N
     assert _names(lab) == ["second"]
 
 
-def test_a_zoom_on_one_chart_reaches_the_others_on_the_same_axis_and_a_reset_too(own_runs) -> None:
-    lab, *_ = _lab(own_runs)
-    _tabs(lab)["input-steering"].value = True
-    lateral, steering = (lab._panes[_card_of(lab, p).id][0]
-                         for p in ("output-e-lateral", "input-steering"))
-    lateral.relayout_data = {"xaxis.range[0]": 0.2, "xaxis.range[1]": 0.8}
-    assert steering.object["layout"]["xaxis"]["range"] == [0.2, 0.8]
-    assert "range" not in lateral.object["layout"]["xaxis"], "the source is left alone"
-    steering.relayout_data = {"xaxis.autorange": True}
-    assert "range" not in lateral.object["layout"]["xaxis"]
-    assert lateral.object["layout"]["xaxis"].get("autorange") is True
-
-
 def test_a_bar_sets_the_centreline_on_its_children_and_the_form_is_one_set_of_tracks(own_runs) -> None:
     """The two shapes the page is laid out with, and why neither is the obvious one.
 
@@ -986,40 +899,6 @@ def test_a_bar_sets_the_centreline_on_its_children_and_the_form_is_one_set_of_tr
     for g in grids:
         assert g.ncols == 6 and skin.FORM_GRID in (g.stylesheets or []), \
             "every section wears the same six tracks, or the sections do not line up"
-
-
-def test_the_seconds_the_page_is_on_outlive_the_next_render(own_runs) -> None:
-    """A card is rebuilt from the record on every render and the figure layer draws it on all of
-    its time, so the page has to put the zoom back or a tick would undo it."""
-    lab, *_ = _lab(own_runs)
-    pane = lambda p: lab._panes[_card_of(lab, p).id][0]
-    pane("output-e-lateral").relayout_data = {"xaxis.range[0]": 0.2, "xaxis.range[1]": 0.8}
-    _tick(lab, "first")                                   # a render: another run on every card
-    assert pane("output-e-lateral").object["layout"]["xaxis"]["range"] == [0.2, 0.8]
-    _tabs(lab)["input-steering"].value = True
-    assert pane("input-steering").object["layout"]["xaxis"]["range"] == [0.2, 0.8], \
-        "a chart opened while the others are zoomed is on the same seconds"
-    pane("output-e-lateral").relayout_data = {"xaxis.autorange": True}
-    _tick(lab, "first", on=False)
-    assert "range" not in pane("output-e-lateral").object["layout"]["xaxis"], "a reset outlives it too"
-
-
-def test_a_real_save_from_the_page_writes_the_still_beside_the_record(own_runs) -> None:
-    """End to end: the page asks the real `uv run deepc draw`, and the files are where the
-    terminal said."""
-    root, out_dir = own_runs
-    folder = Path(root) / out_dir / "closed_loop" / "first"
-    shutil.rmtree(folder, ignore_errors=True)
-    lab = Lab(root, out_dir, every=_Ticker(), toast=lambda _w: None, schedule=lambda work: work())
-    lab.page()
-    lab.run_list.shown = ["first"]
-    _tabs(lab)["cost"].value = True
-    _control(lab, "cost", "Table").value = True
-    _save_button(lab, "cost").clicks += 1
-    assert (folder / "cost.png").is_file() and (folder / "cost.png").stat().st_size > 1000
-    assert (folder / "cost.png.json").is_file() and (folder / "cost.csv").is_file()
-    assert f"{out_dir}/closed_loop/first/cost.png" in _console(lab) and "exit 0" in lab.last_line.object
-    assert [f["name"] for f in lab.folders] == ["first"], "listed under the saved stills"
 
 
 def test_the_page_renders_with_two_runs_and_every_kind_of_card(own_runs) -> None:

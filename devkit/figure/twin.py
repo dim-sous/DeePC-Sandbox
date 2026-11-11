@@ -1,7 +1,7 @@
 """The still's live twin: one :class:`figure.render.Panel` -> a plotly figure, as a plain dict.
 
-It draws the panel spec the PNG renderer draws (lines, bands, references, dashes, colours, the
-log flags, the x range, the labels), so a chart on the Lab's page and the still ``deepc draw``
+It draws the panel spec the PNG renderer draws (lines, bands, references, dashes, colours,
+equal scales, the labels), so a chart on the Lab's page and the still ``deepc draw``
 writes are ONE drawing with no second set of rules to drift. The layer imports no plotly: a
 figure is a dict, and the page's Plotly pane serialises it. Its layout -- the legend, the hover,
 the heights, the rows labelled above -- is RCWS's ``render.interactive_figure``
@@ -102,7 +102,6 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
         domain = [round(max(0.0, top - h), 6), round(min(1.0, top), 6)]
         layout[axis_key] = {**_axis("" if stacked else broken(ax.y_label, "<br>")),
                             "domain": domain, "anchor": "x",
-                            "type": "log" if ax.log_y else "linear",
                             **({"scaleanchor": "x", "scaleratio": 1} if panel.equal_axes else {})}
         if stacked:
             layout["annotations"].append({
@@ -151,13 +150,9 @@ def figure_of(panel: Panel, legend: bool = True) -> dict[str, Any]:
             "yanchor": "middle", "xshift": -60, "textangle": -90, "showarrow": False,
             "text": html.escape(panel.quantity), "font": {"size": 12, "color": INK}})
     xaxis: dict[str, Any] = {**_axis(panel.x_label), "anchor": f"y{n}" if stacked else "y",
-                             "domain": [0, 1], "type": "log" if panel.log_x else "linear"}
+                             "domain": [0, 1]}
     if panel.x_ticks:
         xaxis.update({"tickvals": [p for p, _ in panel.x_ticks],
                       "ticktext": [w for _, w in panel.x_ticks]})
-    if panel.x_range is not None:
-        # plotly holds a log axis's range as powers of ten
-        rng = np.log10(panel.x_range).tolist() if panel.log_x else list(panel.x_range)
-        xaxis.update({"range": rng, "autorange": False})
     layout["xaxis"] = xaxis
     return {"data": data, "layout": layout}

@@ -95,7 +95,6 @@ class Series:
     traces: tuple[tuple[str, Any], ...]              # (legend label, (M,) values)
     refs: tuple[tuple[str, float], ...] = ()         # (label, constant value)
     bands: tuple[tuple[str, Any, Any], ...] = ()     # (label, lo, hi): scalars or (M,) arrays
-    log_y: bool = False
     doc: str = ""
     group: str = ""                                  # the heading a listing puts it under
     #: The words a listing and a card show for the panel; left out, its name. The name stays the

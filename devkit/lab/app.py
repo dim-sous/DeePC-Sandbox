@@ -1,7 +1,7 @@
 """The Lab's page on Panel -- one :class:`Lab` per browser session, one screen.
 
-The piece's runs on the left (a list to tick, filter and delete from, the ticked runs compared
-column by column, and the folders of stills a save wrote), their cards on the right -- each the
+The piece's runs on the left (a list to tick, filter and delete from, and the ticked runs
+compared column by column), their cards on the right -- each the
 figure layer's own drawing of what the records declare: a panel over the shown runs, or a summary
 number against the setting that varies -- a draggable split between the two, the form over the
 Config's groups in a drawer that opens from "New run" or a run's "use", and the terminal's own
@@ -24,16 +24,13 @@ import dataclasses
 import functools
 import html
 import sys
-import threading
 import traceback
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import panel as pn
-from panel.io.state import set_curdoc
 
-from figure.chart import INDEX_LABEL, chart_of, distinct, pool_refusal, sweep_of, telling
-from figure.render import log_refusal, table_of
+from figure.chart import chart_of, distinct, pool_refusal, sweep_of
 from figure.style import series_color
 from figure.twin import figure_of
 from record import capital
@@ -41,7 +38,7 @@ from record import capital
 from . import jobs, shaping, skin, state, view
 from .compare import CompareTable
 from .form import Form
-from .runlist import RunList, StillList
+from .runlist import RunList
 from .split import DEFAULT_PX, Split
 
 _POLL_MS = 700
@@ -65,8 +62,6 @@ _GROUP_PX = skin.LABEL_PX
 _INDEX_COLUMNS = 3
 #: The words of the compare table's settings choice, and what each asks for (``view.SETTINGS``).
 _SETTINGS = {"None": "none", "Differing": "differ", "All": "all"}
-#: A number card's height and the most rows a table in a card's place shows before it scrolls.
-_TABLE_PX = 420
 
 
 def _shown_in_page(exc: BaseException) -> None:
@@ -83,36 +78,6 @@ def _toast(words: str) -> None:
 
 def _every(callback: Callable[[], None], period_ms: int) -> Any:
     return pn.state.add_periodic_callback(callback, period=period_ms)
-
-
-def _in_a_thread(work: Callable[[], None]) -> None:
-    """Run ``work`` off the event loop: a draw takes seconds and would otherwise freeze every
-    session this server holds.
-
-    ``pn.state.curdoc`` is a context variable a plain thread does not inherit, so the session's
-    document is bound explicitly: with it, :func:`_on_page` (``pn.state.execute``) schedules
-    every change to the page on the session's own loop, under its lock, and a failure reaches
-    the session's notifications rather than only the server's log.
-    """
-    doc = pn.state.curdoc
-
-    def guarded() -> None:
-        try:
-            work()
-        except Exception as exc:
-            _on_page(lambda: _shown_in_page(exc))
-
-    def bound() -> None:
-        with set_curdoc(doc):
-            guarded()
-
-    threading.Thread(target=bound if doc is not None else guarded, daemon=True).start()
-
-
-def _on_page(change: Callable[[], None]) -> None:
-    """Apply ``change`` to the page from wherever this is called: on the session's loop when
-    there is one (scheduled, so a thread never touches the document unlocked), else now."""
-    pn.state.execute(change)
 
 
 def _html(text: str, *, title: str = "", style: str = "", **kw: Any) -> pn.pane.HTML:
@@ -158,36 +123,25 @@ def _tab_cell(toggle: pn.widgets.Toggle, note: str) -> pn.Column:
                      sizing_mode="fixed", styles={"flex": "1 1 auto", "max-width": "none"})
 
 
-def _six(value: Any) -> str:
-    """A number at six significant digits, as a table in a card's place writes it."""
-    if isinstance(value, float):
-        return f"{value:.6g}"
-    return "" if value is None else str(value)
-
-
 def _colour(i: int) -> str:
     """The colour the i-th shown run's lines wear on one plot (``figure.style.series_color``)."""
     return series_color(i)
 
 
 class Lab:
-    """The page's state for one browser session. ``launch``, ``capture``, ``schedule``, ``every``
-    and ``toast`` are injectable so the page can be driven in Python (the tests do)."""
+    """The page's state for one browser session. ``launch``, ``every`` and ``toast`` are
+    injectable so the page can be driven in Python (the tests do)."""
 
     def __init__(self, root: str, out_dir: str, *,
                  launch: Callable[..., jobs.Job] = jobs.launch,
-                 capture: Callable[..., tuple[int, str]] = jobs.capture,
-                 schedule: Optional[Callable[[Callable[[], None]], None]] = None,
                  every: Callable[[Callable[[], None], int], Any] = _every,
                  toast: Callable[[str], None] = _toast) -> None:
         self.root, self.out_dir = root, out_dir
-        self.launch, self.capture, self.every, self.toast = launch, capture, every, toast
-        self.schedule = schedule or _in_a_thread
+        self.launch, self.every, self.toast = launch, every, toast
         self.pieces = state.pieces()
         self.piece = self.pieces[0]
         self.form = Form(self.piece)
         self.records: list[dict[str, Any]] = []
-        self.folders: list[dict[str, Any]] = []
         self.job: Optional[jobs.Job] = None
         self._ticker: Any = None
         self._controls: dict[str, Any] = {}
@@ -207,16 +161,8 @@ class Lab:
         #: per file: the version read, the record (``None`` when refused, with the words why) and
         #: what it draws -- its charts and their groups, read once with it (``_drawable``)
         self._loaded: dict[str, tuple[float, Any, str, Optional[tuple]]] = {}
-        #: card id -> (the chart on its card, the words under its bottom axis)
-        self._panes: dict[int, tuple[pn.pane.Plotly, str]] = {}
         #: card id -> the runs its chart draws, in the order shown
         self.drawn: dict[int, list[str]] = {}
-        #: bottom-axis words -> the range every chart over that abscissa is on (None: all of
-        #: it), kept by the page because a chart's own dict does not learn what the browser
-        #: zoomed it to
-        self._ranges: dict[str, Any] = {}
-        self._syncing = False                       # a zoom being pushed to the other charts
-        self._saving = False
         self._answer: Optional[Callable[[], None]] = None   # what the dialog's yes does
         self._history: list[str] = []               # the terminal's finished lines, as HTML
         self._folded: Optional[jobs.Job] = None     # the job whose output is in the history
@@ -236,7 +182,7 @@ class Lab:
         self.refresh = _widget(pn.widgets.Button, label="Refresh", width=72)
         self.refresh.on_click(lambda _e: self.reload())
 
-        # -- the left pane: the runs, the shown ones compared, the stills saved
+        # -- the left pane: the runs, the shown ones compared
         self.runs_count = _html("", style=_DIM, stylesheets=[skin.BAR_FILL])
         self.run_filter = _tool(pn.widgets.TextInput, placeholder="Filter runs",
                                 sizing_mode="stretch_width")
@@ -261,11 +207,6 @@ class Lab:
                                           styles={"background": skin.PAPER,
                                                   "border-radius": "6px", "overflow": "auto"})
         self.compare_table.on_number = self.open_number
-        self.saved_count = _html("", style=_DIM)
-        self.saved_list = StillList(rows=[], sizing_mode="stretch_width",
-                                    empty="Nothing saved yet: Save on a card writes its still "
-                                          "here")
-        self.saved_list.on_delete = self._ask_delete_folder
 
         # -- the right pane: the cards
         self.open_count = _html("", style=_DIM)
@@ -355,10 +296,9 @@ class Lab:
 
     # ------------------------------------------------------------------ reading
     def reload(self) -> None:
-        """Re-read the records and the stills on disk and redraw everything that shows them."""
+        """Re-read the records on disk and redraw everything that shows them."""
         self.records = state.records(self.root, self.out_dir)
         self._offer_saved()
-        self.folders = state.folders(self.root, self.out_dir, self.piece["name"])
         # the piece's own: with two pieces, every piece's count stood beside one piece's folder
         n = len(self.runs())
         self.where.object = (f"<span style='{_MONO};font-size:12px;{_DIM}'>"
@@ -419,7 +359,6 @@ class Lab:
         self._draw_compare()
         self._draw_tabs()
         self._draw_cards()
-        self._draw_saved()
         self._draw_url()
 
     # ------------------------------------------------------------------ the runs
@@ -482,27 +421,10 @@ class Lab:
             rows=[{**row, "open": row["kind"] == "number" and row["key"] in opened}
                   for row in rows])
 
-    # ------------------------------------------------------------------ the stills, deleting
-    def _draw_saved(self) -> None:
-        n = len(self.folders)
-        self.saved_count.object = (f"<span style='{_DIM}'>{n} folder{'s' if n != 1 else ''}"
-                                   f"</span>" if n else "")
-        rows = []
-        for f in self.folders:
-            tables = f" and {f['tables']} table{'s' if f['tables'] != 1 else ''}" if f["tables"] else ""
-            held = f"{len(f['pictures'])} still{'s' if len(f['pictures']) != 1 else ''}{tables}"
-            rows.append({"name": f["name"],
-                         "when": f"{view.when({'provenance': {'date': _iso(f['mtime'])}})} · {held}",
-                         "hover": ", ".join(f["pictures"])})
-        self.saved_list.rows = rows
-
+    # ------------------------------------------------------------------ deleting
     def _ask_delete_run(self, name: str) -> None:
         self._ask(f"Delete {self.out_dir}/{self.piece['name']}/{name}.json?",
                   functools.partial(self._delete, records=[name]))
-
-    def _ask_delete_folder(self, name: str) -> None:
-        self._ask(f"Delete the stills in {self.out_dir}/{self.piece['name']}/{name}/?",
-                  functools.partial(self._delete, folders=[name]))
 
     def _ask(self, question: str, then: Callable[[], None]) -> None:
         self.question.object = f"<p style='font-size:14px'>{html.escape(question)}</p>"
@@ -521,10 +443,9 @@ class Lab:
         self._answer = None
         self.asking.hide()
 
-    def _delete(self, records: tuple = (), folders: tuple = ()) -> None:
+    def _delete(self, records: tuple = ()) -> None:
         try:
-            gone = jobs.delete(self.piece["name"], records, folders, root=self.root,
-                               out_dir=self.out_dir)
+            gone = jobs.delete(self.piece["name"], records, root=self.root, out_dir=self.out_dir)
         except ValueError as exc:
             self._print([f"refused: {exc}"], kind="refused")
             self.toast(f"Not deleted: {exc}")
@@ -735,7 +656,7 @@ class Lab:
         """One card per open chart and number: the numbers first, then the charts in the order
         the records declare them."""
         runs = self.shown_runs()
-        self._panes, self.drawn = {}, {}
+        self.drawn = {}
         if not runs:
             self.cards_box.objects = [_html("Tick a run to see its charts", style=_DIM)]
             return
@@ -758,13 +679,12 @@ class Lab:
         return self._chart_view(card, pairs, refused)
 
     def _frame(self, card: shaping.Card, title: str, doc: str, tools: list[Any], body: Any,
-               foot: str, warn: bool, save: Optional[Any]) -> pn.Column:
-        """A card: its title (its description on the title's hover), save and close at the
-        line's end; then its controls, one row of groups by what they act on, a whole group
-        wrapping onto the next line when the card is too narrow for it; then what it draws; then
-        a foot -- why it could not draw, else what its last save wrote. The description is not
-        repeated under the title (RCWS ``_frame``, the developer's: it said what the hover
-        said)."""
+               foot: str, warn: bool) -> pn.Column:
+        """A card: its title (its description on the title's hover) and close at the line's
+        end; then its controls, one row of groups, a whole group wrapping onto the next line when
+        the card is too narrow for it; then what it draws; then a foot -- why it could not draw.
+        The description is not repeated under the title (RCWS ``_frame``, the developer's: it
+        said what the hover said)."""
         close = _widget(pn.widgets.Button, label="✕", width=34, description="Close this card")
         close.on_click(lambda _e: self._close(card))
         # the panel's name rides on the title as data-panel: the tests found a card by its
@@ -772,7 +692,7 @@ class Lab:
         top = pn.FlexBox(_html(f"<b data-panel='{html.escape(card.chart or card.number)}' "
                                f"style='{_MONO};font-size:15px'>{html.escape(title)}</b>",
                                title=doc, stylesheets=[skin.BAR_FILL]),
-                         *([save] if save is not None else []), close,
+                         close,
                          flex_wrap="nowrap", align_items="center", margin=0,
                          stylesheets=[skin.BAR], sizing_mode="stretch_width")
         items: list[Any] = [top]
@@ -781,10 +701,9 @@ class Lab:
                                     gap="4px 8px", stylesheets=[skin.BAR],
                                     sizing_mode="stretch_width"))
         items.append(body)
-        words = foot or card.saved
-        if words:
-            items.append(_html(html.escape(words), title=words,
-                               style=f"font-size:12.5px;{_RED if foot and warn else _DIM}"))
+        if foot:
+            items.append(_html(html.escape(foot), title=foot,
+                               style=f"font-size:12.5px;{_RED if warn else _DIM}"))
         return pn.Column(*items, styles=skin.CARD, sizing_mode="stretch_width")
 
     def _toolbar(self, card: shaping.Card, ctx: shaping.Context) -> list[Any]:
@@ -797,20 +716,14 @@ class Lab:
         for s, why in shaping.offered(card, ctx):
             value, options = s.shown(card, ctx), s.options(card, ctx)
             cell: list[Any] = []
-            if s.words and s.kind != "switch":
+            if s.words:
                 cell.append(_html(html.escape(s.words), style=_LABEL, margin=(0, 2, 0, 4)))
             if why:
-                said = ([s.words] if s.kind == "switch"
-                        else [next((w for w, v, _ in options if v == value), "")] if s.kind == "list"
+                said = ([next((w for w, v, _ in options if v == value), "")] if s.kind == "list"
                         else [" | ".join(w for w, _, _ in options)])
                 cell += [_html(html.escape(w), title=capital(why), style=skin.GREYED,
                                margin=_TOOL_MARGIN)
                          for w in said if w]
-            elif s.kind == "switch":
-                toggle = _tool(pn.widgets.Toggle, label=s.words, value=bool(value),
-                               width=_width(s.words))
-                toggle.param.watch(functools.partial(self._on_shaping, card, s.field), "value")
-                cell.append(toggle)
             elif s.kind == "list":
                 shows = next((w for w, v, _ in options if v == value), "")
                 select = _tool(pn.widgets.Select, options={w: v for w, v, _ in options},
@@ -831,12 +744,8 @@ class Lab:
                                        "value")
                     cell.append(toggle)
             else:
-                for words, option, _ in options:
-                    toggle = _tool(pn.widgets.Toggle, label=words, value=option in value,
-                                   width=_width(words))
-                    toggle.param.watch(functools.partial(self._on_several, card, s.field,
-                                                         option, tuple(value)), "value")
-                    cell.append(toggle)
+                raise ValueError(f"a card control of kind {s.kind!r}: lab.shaping declares "
+                                 f"'list' and 'one'")
             groups.setdefault(s.group, []).extend(cell)
         # Each group as wide as its controls and kept whole: a FlexBox stretches across what
         # holds it by default, which put each group on a line of its own (seen 2026-10-27 at
@@ -857,29 +766,13 @@ class Lab:
             setattr(card, name, option)
         self._draw_cards()
 
-    def _on_several(self, card: shaping.Card, name: str, option: Any, held: tuple,
-                    event: Any) -> None:
-        chosen = tuple(v for v in held if v != option) + ((option,) if event.new else ())
-        setattr(card, name, chosen)
-        self._draw_cards()
-
     def _chart_context(self, card: shaping.Card, pairs: list[tuple[str, Any]]) -> shaping.Context:
         """What the chart card's controls are read off: the figure layer's own answers."""
         held = [(n, r) for n, r in pairs if card.chart in [s.name for s in r.series()]]
         if not held:
             return shaping.Context("chart", runs=0)
-        first = next(s for s in held[0][1].series() if s.name == card.chart)
         pool = {how: pool_refusal(held, card.chart, how) for how in ("mean", "rms")}
-        ctx = shaping.Context("chart", runs=len(held),
-                              axes={first.x_label: "own", INDEX_LABEL: "index"},
-                              pool=pool, declared_log_y=first.log_y)
-        base = {**shaping.draw_keywords(card, ctx), "log_x": False, "log_y": False}
-        try:
-            plain = chart_of(pairs, card.chart, **base)
-        except ValueError:
-            return ctx
-        return shaping.Context(**{**ctx.__dict__, "log_x_refusal": log_refusal(plain, "x"),
-                                  "log_y_refusal": log_refusal(plain, "y")})
+        return shaping.Context("chart", runs=len(held), pool=pool)
 
     def _chart_view(self, card: shaping.Card, pairs: list[tuple[str, Any]],
                     refused: list[str]) -> pn.Column:
@@ -890,26 +783,18 @@ class Lab:
         ctx = self._chart_context(card, pairs)
         declared = next((s for _, r in pairs for s in r.series() if s.name == card.chart), None)
         body: Any = pn.pane.HTML("")
-        save = None
         foot, warn = " · ".join(refused), bool(refused)
         if ctx.runs:
-            keywords = shaping.draw_keywords(card, ctx)
             try:
-                panel = chart_of(pairs, card.chart, **keywords)
+                panel = chart_of(pairs, card.chart, **shaping.draw_keywords(card, ctx))
             except ValueError as exc:
                 foot, warn = capital(str(exc)), True
             else:
-                rng = self._ranges.get(panel.x_label)
-                keywords = {**keywords, "x_range": tuple(rng) if rng else None}
-                if rng:
-                    panel = chart_of(pairs, card.chart, **keywords)
                 body = self._body(card, panel)
                 self.drawn[card.id] = [n for n, _ in pairs]
-                save = self._save_button(card, [n for n, _ in pairs], keywords,
-                                         panels=[card.chart], axis=panel.x_label)
         return self._frame(card, declared.title if declared else card.chart,
                            declared.doc if declared else "", self._toolbar(card, ctx), body,
-                           foot, warn, save)
+                           foot, warn)
 
     def _numbers_context(self, card: shaping.Card,
                          pairs: list[tuple[str, Any]]) -> shaping.Context:
@@ -918,21 +803,15 @@ class Lab:
         if card.x not in vary:
             card.x = vary[0] if vary else ""
         axes = {view.term(fields[v]): v for v in vary}
+        ctx = shaping.Context("numbers", runs=len(pairs), axes=axes)
         if not card.x:
-            return shaping.Context("numbers", runs=len(pairs), axes=axes, declared_points=True)
-        tell = {fields[v]["label"]: v for v in telling(pairs, card.x)}
-        ctx = shaping.Context("numbers", runs=len(pairs), axes=axes, telling=tell,
-                              declared_points=True)
-        each = {**shaping.draw_keywords(card, ctx), "runs": "each", "log_x": False,
-                "log_y": False}
+            return ctx
         try:
-            plain = sweep_of(pairs, card.number, **each)
+            plain = sweep_of(pairs, card.number, vs=card.x)
         except ValueError:
             return ctx
         pools = any(len(set(line.x)) < len(line.x) for line in plain.axes[0].lines)
-        return shaping.Context(**{**ctx.__dict__, "pools": pools,
-                                  "log_x_refusal": log_refusal(plain, "x"),
-                                  "log_y_refusal": log_refusal(plain, "y")})
+        return shaping.Context(**{**ctx.__dict__, "pools": pools})
 
     def _numbers_view(self, card: shaping.Card, pairs: list[tuple[str, Any]],
                       refused: list[str]) -> pn.Column:
@@ -945,53 +824,27 @@ class Lab:
         if card.x:
             title = f"{title} vs {fields[card.x]['label']}"
         body: Any = pn.pane.HTML("")
-        save = None
         foot, warn = " · ".join(refused), bool(refused)
         if not card.x:
             foot, warn = ("One run shown, or nothing differs between the shown runs: tick runs "
                           "that differ in a setting"), True
         else:
-            keywords = shaping.draw_keywords(card, ctx)
             try:
-                panel = sweep_of(pairs, card.number, **keywords)
+                panel = sweep_of(pairs, card.number, **shaping.draw_keywords(card, ctx))
             except ValueError as exc:
                 foot, warn = capital(str(exc)), True
             else:
                 body = self._body(card, panel)
                 self.drawn[card.id] = [n for n, _ in pairs]
-                save = self._save_button(card, [n for n, _ in pairs], keywords,
-                                         number=card.number)
         return self._frame(card, title, spec.doc if spec else "", self._toolbar(card, ctx), body,
-                           foot, warn, save)
+                           foot, warn)
 
     def _body(self, card: shaping.Card, panel: Any) -> Any:
-        """What a card shows: the figure layer's chart, or -- its table picked -- the numbers on
-        it, read off the same panel (``figure.render.table_of``), at six significant digits;
-        every digit is in the csv a save writes."""
-        if card.table:
-            table = table_of(panel)
-            head = "".join(f"<th>{html.escape(str(h))}</th>" for h in table.header)
-            rows = "".join("<tr>" + "".join(f"<td>{html.escape(_six(v))}</td>" for v in row)
-                           + "</tr>" for row in table.rows)
-            beside = "".join(f"<div>{html.escape(w)}: {', '.join(_six(v) for v in vals)}</div>"
-                             for w, vals in table.beside)
-            note = ("<div class='dim'>Six significant digits here; Save writes every digit to a "
-                    "CSV beside the still</div>")
-            return pn.pane.HTML(
-                f"<div class='numbers' style='max-height:{_TABLE_PX}px'><table><thead><tr>{head}"
-                f"</tr></thead><tbody>{rows}</tbody></table></div>"
-                f"<div class='beside'>{beside}{note}</div>",
-                stylesheets=[skin.NUMBERS], sizing_mode="stretch_width")
-        # a number card draws no legend: the hover names each point's run, and its own
-        # controls say what the colours stand for (RCWS)
+        """What a card shows: the figure layer's chart, as its live twin."""
+        # a number card draws no legend: the hover names each point's run (RCWS)
         fig = figure_of(panel, legend=card.kind != "numbers")
-        pane = pn.pane.Plotly(fig, config=_PLOT_CONFIG, sizing_mode="stretch_width",
+        return pn.pane.Plotly(fig, config=_PLOT_CONFIG, sizing_mode="stretch_width",
                               height=fig["layout"]["height"])
-        if card.kind == "chart":
-            label = panel.x_label
-            pane.param.watch(lambda e, c=card.id: self._on_relayout(c, e.new), "relayout_data")
-            self._panes[card.id] = (pane, label)
-        return pane
 
     def _close(self, card: shaping.Card) -> None:
         if card in self.cards:
@@ -1000,115 +853,6 @@ class Lab:
         self._draw_cards()
         self._draw_compare()
         self._draw_url()
-
-    def _on_relayout(self, key: int, data: Any) -> None:
-        """A zoom on one chart reaches every open chart over the same bottom axis, and a reset
-        too. Only a chart not already on that range is pushed, so a push cannot echo back."""
-        if self._syncing or not isinstance(data, dict) or key not in self._panes:
-            return
-        if "xaxis.range[0]" in data and "xaxis.range[1]" in data:
-            rng: Optional[list[Any]] = [data["xaxis.range[0]"], data["xaxis.range[1]"]]
-        elif data.get("xaxis.autorange"):
-            rng = None
-        else:
-            return
-        _, label = self._panes[key]
-        if self._ranges.get(label) == rng:
-            return                                 # the echo of a push, or nothing new
-        self._ranges[label] = rng
-        self._syncing = True
-        try:
-            for other, (pane, other_label) in self._panes.items():
-                if other == key or other_label != label:
-                    continue
-                fig = pane.object
-                xaxis = dict(fig["layout"].get("xaxis", {}))
-                if rng is None:
-                    xaxis.pop("range", None)
-                    xaxis["autorange"] = True
-                else:
-                    xaxis["range"], xaxis["autorange"] = rng, False
-                pane.object = {**fig, "layout": {**fig["layout"], "xaxis": xaxis}}
-        finally:
-            self._syncing = False
-
-    # ------------------------------------------------------------------ save: the card, as shown
-    def _save_button(self, card: shaping.Card, names: list[str], keywords: dict[str, Any], *,
-                     panels: tuple = (), number: str = "", axis: str = "") -> Any:
-        """``axis``, the card's bottom-axis words: the span the page is on for it is read when
-        save is pressed, because a zoom reaches the chart without building the card again."""
-        save = _widget(pn.widgets.Button, label="Save", width=56, disabled=self._saving,
-                       description="Write the still exactly as shown, beside the records")
-
-        def pressed(_e: Any) -> None:
-            shaped = dict(keywords)
-            if axis:
-                rng = self._ranges.get(axis)
-                shaped["x_range"] = tuple(rng) if rng else None
-            self._save(card, names, shaped, list(panels), number)
-
-        save.on_click(pressed)
-        return save
-
-    def still_argv(self, names: list[str], keywords: dict[str, Any], panels: list[str],
-                   number: str, table: bool) -> list[str]:
-        """``deepc draw`` of the runs a card draws, shaped as the card is shown."""
-        return jobs.draw_argv(self.piece["name"], names, self.out_dir, root=self.root,
-                              panels=panels, number=number, table=table, **keywords)
-
-    def _save(self, card: shaping.Card, names: list[str], keywords: dict[str, Any],
-              panels: list[str], number: str) -> None:
-        if self._saving:
-            return
-        try:
-            argv = self.still_argv(names, keywords, panels, number, card.table)
-        except ValueError as exc:
-            self._print([f"refused: {exc}"], kind="refused")
-            return
-        self._saving = True
-        card.saved = "Writing…"
-        self._terminal(True)
-        self._draw_cards()
-        self.schedule(lambda: self._do_save(card, argv))
-
-    def _do_save(self, card: shaping.Card, argv: list[str]) -> None:
-        """Off the event loop (see :func:`_in_a_thread`): the subprocess runs here, and every
-        line it leaves on the page is applied through :func:`_on_page`."""
-        line = jobs.line_of(argv)
-
-        def say(lines: list[str], kind: str) -> None:
-            _on_page(lambda: self._print(lines, kind=kind))
-
-        wrote: list[str] = []
-        try:
-            print(f"lab: {line}")
-            say([f"lab: {line}"], "cmd")
-            try:
-                code, output = self.capture(argv, cwd=self.root)
-            except ValueError as exc:                  # refused in words: say them
-                say([f"refused: {exc}"], "refused")
-                code, output = None, ""
-            except Exception as exc:                   # could not even start
-                say([f"{line} could not be started: {type(exc).__name__}: {exc}"], "refused")
-                code, output = None, ""
-            if code is not None:
-                say(output.splitlines(), "wrote" if code == 0 else "refused")
-                if code != 0:
-                    say([f"ended with exit {code}"], "refused")
-                else:
-                    wrote = [l.strip() for l in output.splitlines() if l.strip()]
-                tag = (f"<span style='{_MONO};font-size:12px;{_DIM}'>{html.escape(line)} · exit "
-                       f"{code}</span>")
-                _on_page(lambda t=tag: setattr(self.last_line, "object", t))
-        finally:
-            def done() -> None:
-                self._saving = False
-                card.saved = (f"Wrote {' '.join(w for w in wrote if w.endswith('.png'))}" if wrote
-                              else "The draw wrote nothing; the terminal says why")
-                self.folders = state.folders(self.root, self.out_dir, self.piece["name"])
-                self._draw_saved()
-                self._draw_cards()
-            _on_page(done)
 
     # ------------------------------------------------------------------ the url
     def _read_url(self) -> None:
@@ -1376,7 +1120,7 @@ class Lab:
         # every one of these is keyed by a bare run name, which belongs to the piece it came from
         self.shown, self.cards, self._loaded, self._from = [], [], {}, None
         self._groups_shown, self._groups_met, self._tabs_hold = set(), set(), None
-        self._ranges, self._unfolded = {}, set()
+        self._unfolded = set()
         self._draw_form()
         self.reload()
 
@@ -1531,9 +1275,6 @@ class Lab:
             pn.Row(_html("Settings", style=_LABEL), self.settings_choice,
                    stylesheets=[skin.BAR], sizing_mode="stretch_width"),
             self.compare_table,
-            pn.Row(_h2("Saved stills"), self.saved_count, stylesheets=[skin.BAR],
-                   sizing_mode="stretch_width", margin=(14, 0, 0, 0)),
-            self.saved_list,
             styles=skin.LEFT, scroll=True, sizing_mode="stretch_width")
         right = pn.Column(
             pn.Row(_h2("Figures"), self.open_count, self.show_all, self.hide_all,
@@ -1548,11 +1289,6 @@ class Lab:
         # with a warning on every load (RCWS); declared, it is what the page already was
         return pn.Column(header, self.split, self.drawer, self.terminal, self.asking,
                          sizing_mode="stretch_both", margin=0)
-
-
-def _iso(mtime: float) -> str:
-    from datetime import datetime, timezone
-    return datetime.fromtimestamp(mtime, timezone.utc).isoformat(timespec="minutes")
 
 
 def page(root: str, out_dir: str) -> pn.viewable.Viewable:

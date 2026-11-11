@@ -201,10 +201,13 @@ def test_driving_every_kind_of_card_raises_nothing_in_the_browser(served) -> Non
     try:
         page.locator("td", has_text="Position RMSE").first.click()   # a number card
         _settle(page, 1500)
-        # the closed loop's charts declare no statistic, so Mean and RMS are greyed, no button
-        for words in ("Quantity", "Split", "Table", "Chart", "Dots", "Lines"):
+        # the closed loop's charts declare no statistic, so Mean and RMS are greyed, no button;
+        # a chart card's one control is its runs (the developer's cut, 2026-11-11)
+        for words in ("Split", "Overlay"):
             page.locator("button", has_text=words).first.click()
             _settle(page)
+        for gone in ("Save", "Table", "Dots", "Log x", "Quantity"):
+            assert not page.locator("button", has_text=gone).count(), f"{gone} is not on a card"
         page.locator("button", has_text="Differing").click()
         _settle(page)
         assert any("vs λ_g" in t for t in _text(page)), "the number card is on the page"

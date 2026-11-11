@@ -101,23 +101,3 @@ def save_figure(fig, out_dir: Path, stem: str, facts: dict[str, Any], prov) -> P
                "date": prov.date, "command": " ".join(sys.argv), **facts}
     (out_dir / f"{stem}.png.json").write_text(json.dumps(sidecar, indent=1) + "\n")
     return path
-
-
-def save_table(table, out_dir: Path, stem: str, facts: dict[str, Any], prov) -> Path:
-    """The numbers a still draws (``render.Table``) as ``<stem>.csv``, every digit, beside the
-    still, with the still's sidecar facts; the reference quantities follow the rows."""
-    import csv
-
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{stem}.csv"
-    with open(path, "w", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(table.header)
-        w.writerows([repr(v) if isinstance(v, float) else v for v in row] for row in table.rows)
-        for words, values in table.beside:
-            w.writerow([words, *(repr(v) for v in values)])
-    sidecar = {"table": path.name, "git_sha": prov.git_sha, "git_dirty": prov.git_dirty,
-               "date": prov.date, "command": " ".join(sys.argv), **facts}
-    (out_dir / f"{stem}.csv.json").write_text(json.dumps(sidecar, indent=1) + "\n")
-    return path

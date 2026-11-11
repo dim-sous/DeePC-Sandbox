@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from figure.chart import chart_of
-from figure.render import table_of
 from figure.twin import figure_of
 from figure.chart import pool_refusal
 from figure.render import render
@@ -35,7 +34,8 @@ def loops(tmp_path_factory) -> dict:
 
 def test_the_bicycle_loop_declares_its_path_and_each_trace_keeps_its_own_x(loops, tmp_path) -> None:
     """The old report's "Trajectory (x-y)": y against x, the plant's positions (the start
-    included) and the waypoints, each on its own abscissa, on equal scales."""
+    included) and the waypoints, each on its own abscissa, on equal scales, alone, overlaid and
+    split; pooling it is refused."""
     _data, rec = loops["bicycle"]
     [path] = [s for s in rec.series() if s.name == "path"]
     assert path.equal_axes and [label for label, _ in path.traces] == ["Plant", "Reference"]
@@ -56,12 +56,8 @@ def test_the_bicycle_loop_declares_its_path_and_each_trace_keeps_its_own_x(loops
                for line in two.axes[0].lines)
     rows = chart_of([("a", rec), ("b", rec)], "path", runs="rows")
     assert [len(ax.lines) for ax in rows.axes] == [2, 2] and rows.equal_axes
-    indexed = chart_of([("r", rec)], "path", x="index")       # metres against an index: unequal
-    assert not indexed.equal_axes
-    assert np.array_equal(indexed.axes[0].lines[0].x, np.arange(len(rec.position)))
     [png, *_] = render(panel, tmp_path, stamp(0.0))
     assert png.exists()
-    assert {row[0] for row in table_of(panel).rows} == {"Plant", "Reference"}
     assert pool_refusal([("a", rec), ("b", rec)], "path", "mean") == "the chart declares no statistic"
 
 

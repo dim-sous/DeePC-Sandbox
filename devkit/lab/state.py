@@ -174,24 +174,3 @@ def wrote(lines: list[str], root: str, out_dir: str) -> list[str]:
         if line.strip() and os.path.isfile(candidate) and under(candidate, base):
             out.append(candidate)
     return out
-
-
-def folders(root: str, out_dir: str, piece: str) -> list[dict[str, Any]]:
-    """The folders of stills under ``<root>/<out_dir>/<piece>/``, newest first: each one's name,
-    its pictures (``.png``), how many tables (``.csv``) beside them, and when it last changed --
-    what a draw wrote, read off the folder."""
-    base = Path(root) / out_dir / piece
-    if not base.is_dir():
-        return []
-    out = []
-    for folder in base.iterdir():
-        if not folder.is_dir():
-            continue
-        pictures = sorted(f.name for f in folder.iterdir() if f.suffix == ".png")
-        if not pictures:
-            continue
-        tables = sum(1 for f in folder.iterdir() if f.suffix == ".csv")
-        out.append({"name": folder.name, "path": str(folder), "pictures": pictures,
-                    "tables": tables, "mtime": max(f.stat().st_mtime for f in folder.iterdir())})
-    out.sort(key=lambda f: f["mtime"], reverse=True)
-    return out

@@ -52,7 +52,7 @@ that sentence goes in the hand-off, not in the figure.
 
 ## Every figure regenerates
 
-One panel spec is drawn three ways (the Lab's card, a still, the numbers as CSV) from what a
+One panel spec is drawn two ways (the Lab's card, a still from `deepc draw`) from what a
 record declares, as in BESS (`devkit/figure/`); `tune.py`'s HTML report is the one older
 figure left, drawn from the study that wrote it. Either way: never edit an
 image by hand, and never write a one-off script whose output cannot be made again.

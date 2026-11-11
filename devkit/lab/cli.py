@@ -23,8 +23,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="The Lab: one local page over a piece -- its runs on the left, ticked and "
                     "compared column by column; their panels on the right as live charts, one "
                     "row per shown run; a form over its settings in a drawer; the terminal's "
-                    "own output along the bottom. It launches `deepc run` and `deepc draw` for "
-                    "you and computes nothing itself.")
+                    "own output along the bottom. It launches `deepc run` for you and computes "
+                    "nothing itself.")
     p.add_argument("--port", type=int, default=DEFAULT_PORT,
                    help=f"port on 127.0.0.1 (default: {DEFAULT_PORT})")
     p.add_argument("--no-open", action="store_true",

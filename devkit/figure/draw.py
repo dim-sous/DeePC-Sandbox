@@ -20,10 +20,9 @@ def draw_one(record: Record, out_dir: Path) -> list[Path]:
 
 
 def draw(pairs: Sequence[tuple[str, Any]], out_dir: Path, *, panels: Sequence[str] | None = None,
-         table: bool = False, **shaping: Any) -> list[Path]:
+         **shaping: Any) -> list[Path]:
     """``panels`` (every panel the first record declares, when ``None``) over ``pairs``, each
-    shaped by ``shaping`` (:func:`figure.chart.chart_of`'s keywords), with ``table`` the numbers
-    on each beside it as CSV."""
+    shaped by ``shaping`` (:func:`figure.chart.chart_of`'s keywords: ``runs``)."""
     names = list(panels) if panels is not None else [s.name for s in pairs[0][1].series()]
     unknown = [n for n in names if not any(series_of(rec, n) for _, rec in pairs)]
     if unknown:
@@ -33,17 +32,15 @@ def draw(pairs: Sequence[tuple[str, Any]], out_dir: Path, *, panels: Sequence[st
              "shaping": {k: v for k, v in shaping.items() if v is not None}}
     out: list[Path] = []
     for name in names:
-        out += render(chart_of(pairs, name, **shaping), Path(out_dir), prov, facts=facts,
-                      table=table)
+        out += render(chart_of(pairs, name, **shaping), Path(out_dir), prov, facts=facts)
     return out
 
 
-def draw_sweep(pairs: Sequence[tuple[str, Any]], out_dir: Path, number: str, *,
-               table: bool = False, **shaping: Any) -> list[Path]:
+def draw_sweep(pairs: Sequence[tuple[str, Any]], out_dir: Path, number: str,
+               **shaping: Any) -> list[Path]:
     """Number ``number`` against a setting over ``pairs`` (:func:`figure.chart.sweep_of`'s
     keywords), as ``<out_dir>/<number>-vs-<setting>.png``."""
     facts = {"runs": [run for run, _ in pairs], "number": number,
              "shaping": {k: (list(v) if isinstance(v, tuple) else v)
                          for k, v in shaping.items() if v is not None}}
-    return render(sweep_of(pairs, number, **shaping), Path(out_dir), stamp(0.0), facts=facts,
-                  table=table)
+    return render(sweep_of(pairs, number, **shaping), Path(out_dir), stamp(0.0), facts=facts)
