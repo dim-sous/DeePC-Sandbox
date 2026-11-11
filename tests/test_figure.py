@@ -72,12 +72,14 @@ def test_every_declared_panel_draws_with_no_title_and_a_legend_only_for_several_
         seen.clear()
 
 
-def test_an_overlay_names_each_run_and_colours_it_once(runs) -> None:
-    rec = runs["loop-bicycle"]
-    panel = chart_of([("a", rec), ("b", rec)], "position-x")
-    assert [ln.label for ln in panel.lines] == ["a — plant", "a — reference", "b — plant",
-                                                "b — reference"]
-    assert len({ln.color for ln in panel.lines}) == 2
+def test_an_overlay_names_each_run_and_draws_what_both_hold_identically_once(runs, tmp_path) -> None:
+    data = tmp_path / "data.json"
+    runs["data-bicycle"].save(data)
+    other = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=1.0, lambda_g=50.0))
+    panel = chart_of([("a", runs["loop-bicycle"]), ("b", other)], "position-x")
+    labels = [ln.label for ln in panel.axes[0].lines]
+    assert labels == ["a", "a, b — Reference (identical)", "b"]   # a run alone names its own trace
+    assert len({ln.color for ln in panel.axes[0].lines}) == 3
 
 
 def test_a_panel_no_run_declares_is_refused(runs, tmp_path) -> None:
@@ -92,7 +94,8 @@ def test_a_run_without_the_panel_or_of_another_piece_is_refused_not_left_out(run
     with pytest.raises(ValueError, match="different pieces"):
         chart_of([("data", runs["data-bicycle"]), ("loop", runs["loop-bicycle"])], "input-steering")
     with pytest.raises(ValueError, match="different pieces"):
-        sweep_of([("data", runs["data-bicycle"]), ("loop", runs["loop-bicycle"])], "rmse_x", "seed")
+        sweep_of([("data", runs["data-bicycle"]), ("loop", runs["loop-bicycle"])], "rmse_x",
+                 vs="seed")
 
 
 def test_a_sweep_puts_one_point_per_run_at_its_settings_value(runs, tmp_path) -> None:
@@ -100,15 +103,16 @@ def test_a_sweep_puts_one_point_per_run_at_its_settings_value(runs, tmp_path) ->
     runs["data-coupled_masses"].save(data)
     pairs = [(f"lg-{v}", LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=0.5, lambda_g=v)))
              for v in (2.0, 20.0)]
-    panel = sweep_of(pairs, "rmse_e_x1", "lambda_g")
-    (line,) = panel.lines                                 # one colour: only lambda_g differs
-    assert line.x == [2.0, 20.0] and line.points
+    panel = sweep_of(pairs, "rmse_e_x1", vs="lambda_g")
+    (line,) = panel.axes[0].lines                         # one colour: only lambda_g differs
+    assert list(line.drawn_x()) == [2.0, 20.0] and line.points
     assert line.y == [rec.numbers["rmse_e_x1"] for _, rec in pairs]
-    assert panel.x_label == "lambda_g [-]" and panel.y_label == "e_x1 RMSE [m]"
+    spec = next(n for n in pairs[0][1].number_specs() if n.name == "rmse_e_x1")
+    assert panel.axes[0].y_label == f"{spec.label} [m]"
     with pytest.raises(ValueError, match="not a setting"):
-        sweep_of(pairs, "rmse_e_x1", "lambda_gg")
+        sweep_of(pairs, "rmse_e_x1", vs="lambda_gg")
     with pytest.raises(ValueError, match="declare no number"):
-        sweep_of(pairs, "rmse_nothing", "lambda_g")
+        sweep_of(pairs, "rmse_nothing", vs="lambda_g")
 
 
 def test_deepc_draw_writes_what_it_prints(runs, tmp_path, capsys) -> None:
@@ -120,3 +124,17 @@ def test_deepc_draw_writes_what_it_prints(runs, tmp_path, capsys) -> None:
     sidecar = json.loads((tmp_path / "out" / "output-e-x1.png.json").read_text())
     assert sidecar["runs"] == ["loop"] and "git_sha" in sidecar
     assert np.isfinite(runs["loop-coupled_masses"].numbers["rmse_e_x1"])
+
+
+def test_a_number_against_a_list_setting_places_each_list_by_name(runs, tmp_path) -> None:
+    """Q and R are lists: a sweep over them puts each list on the bottom axis by name, as a
+    choice is put, rather than raising (a list cannot key a dict; code review, 2026-11-11)."""
+    data = tmp_path / "data.json"
+    runs["data-bicycle"].save(data)
+    other = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=1.0, Q_diag=[10.0, 10.0, 1.0]))
+    panel = sweep_of([("a", runs["loop-bicycle"]), ("b", other)], "rmse_position", vs="Q_diag",
+                    by=())
+    assert [words for _, words in panel.x_ticks] == ["None", "[10.0, 10.0, 1.0]"]
+    [line] = panel.axes[0].lines
+    assert list(line.x) == [0.0, 1.0]
+    assert list(line.y) == [runs["loop-bicycle"].numbers["rmse_position"], other.numbers["rmse_position"]]

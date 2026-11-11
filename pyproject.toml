@@ -13,6 +13,7 @@ dependencies = [
     "matplotlib>=3.7",
     "numpy>=2.4.2",
     "optuna>=4.8.0",
+    "panel>=1.9.4,<1.10",   # the Lab's page; BESS's Lab runs on 1.9.4
     "param>=2.4.2",
     "plotly>=6.6.0",
     "scipy>=1.17.1",
@@ -20,9 +21,11 @@ dependencies = [
 
 [project.scripts]
 deepc = "terminal:main"     # run a piece, save its record (devkit/README.md)
+lab = "lab:main"            # the Lab: one local page over the pieces (devkit/README.md)
 
 [dependency-groups]
 dev = [
+    "playwright>=1.63,<1.64",
     "pytest>=8.0",
 ]
 

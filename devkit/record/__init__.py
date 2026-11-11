@@ -30,7 +30,7 @@ import numpy as np
 
 from record.config import Settings, from_dict, to_dict
 
-__all__ = ["Provenance", "stamp", "Series", "Number", "Record", "read_header", "REPO_ROOT",
+__all__ = ["Provenance", "stamp", "Series", "Number", "Record", "read_header", "capital", "REPO_ROOT",
            "COMPONENT_KEY", "PANELS_KEY", "NUMBER_SPECS_KEY", "PANEL_GROUPS_KEY", "HEADER_KEYS"]
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -77,6 +77,12 @@ def stamp(duration_s: float) -> Provenance:
 #  Declarations a figure layer and a listing read
 # ---------------------------------------------------------------------------
 
+def capital(words: str) -> str:
+    """``words`` with a capital first letter and the rest as written: how a label, a legend and a
+    heading begin (the developer's rule, BESS 2026-10-27), acronyms and symbols keeping their own."""
+    return words[:1].upper() + words[1:]
+
+
 @dataclasses.dataclass(frozen=True)
 class Series:
     """One panel: an abscissa, one or more traces on one ordinate unit, optional references and
@@ -92,14 +98,21 @@ class Series:
     log_y: bool = False
     doc: str = ""
     group: str = ""                                  # the heading a listing puts it under
-    #: The words a listing and a card show for the panel; left out, its name.
+    #: The words a listing and a card show for the panel; left out, its name. The name stays the
+    #: file's stem and the address's key, kebab-case, whatever the words.
     title: str = ""
+    #: The statistics its traces may be pooled by across runs ("mean", "rms"); () for none.
+    pooled: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.title:
             object.__setattr__(self, "title", self.name)
         if not self.traces:
             raise ValueError(f"panel {self.name!r} declares no trace")
+        unknown = sorted(set(self.pooled) - {"mean", "rms"})
+        if unknown:
+            raise ValueError(f"panel {self.name!r} pools by {unknown}; a panel pools by "
+                             f"'mean' or 'rms'")
         n = len(self.x)
         for label, y in self.traces:
             if len(y) != n:

@@ -1,18 +1,19 @@
-"""``deepc``: run a piece and save its record; draw records. BESS's ``bess`` (``devkit/terminal``).
+"""``deepc``: run a piece, draw its records. BESS's ``bess`` (``devkit/terminal``).
 
     deepc run  <piece> [config.json] [--set SETTING=VALUE ...] [--sweep SETTING=V1,V2,... ...]
-               [--name NAME] [--out-dir DIR]
-    deepc draw <record.json> [<record.json> ...] [--panel NAME ...]
-               [--number NAME --vs SETTING [--by SETTING ...]] [--out-dir DIR]
+              [--name NAME] [--out-dir DIR]
+    deepc draw <record.json> [<record.json> ...] [--panel NAME ...] [shaping] [--table]
+              [--number NAME --vs SETTING [--by SETTING ...]] [--out-dir DIR]
 
-``run`` builds the piece's Config (the file's values, else the defaults), applies each ``--set``,
-runs once per ``--sweep`` combination, and saves one record per run at
-``<out-dir>/<piece>/<name>[-setting-value].json``, printing the path and the numbers. An unknown
-setting, a value outside its bounds or one set behind a closed gate is refused by the Config, in
-its words. ``draw`` writes the panels the records declare (every one, or each ``--panel``) as PNGs
-with JSON sidecars, every record on one plot per panel; with ``--number`` it draws that summary
-number against the setting ``--vs`` instead, every run a point. Default ``<out-dir>``: a folder
-beside the first record named after the records drawn (:func:`folder_of`).
+``run`` builds the piece's Config (the file's values, else the defaults), applies each
+``--set``, runs once per ``--sweep`` combination, and saves one record per run at
+``<out-dir>/<piece>/<name>[-setting-value].json``, printing the path and the numbers. An
+unknown setting, a value outside its bounds or one set behind a closed gate is refused by the
+Config, in its words. ``draw`` writes the panels the records declare (every one, or each
+``--panel``) as PNGs with JSON sidecars, over every record given and shaped by the flags in
+:data:`DRAW_SHAPING`, and with ``--table`` the numbers on each as CSV beside it; with
+``--number`` it draws that summary number against the setting ``--vs`` instead. Default
+``<out-dir>``: a folder beside the first record named after the records drawn (:func:`folder_of`).
 """
 
 from __future__ import annotations
@@ -32,6 +33,30 @@ from record import read_header
 from record.config import from_dict, parse_override, with_overrides
 
 DEFAULT_OUT_DIR = "results"
+
+#: Every way ``deepc draw`` shapes a drawing, ``(keyword, flag, kind, choices, help)``: the
+#: keyword the figure layer takes (``figure.chart``), the flag that carries it, and its kind --
+#: ``choice``, ``bool`` (``--x`` / ``--no-x``; absent is what the chart declares), ``flag``
+#: (present or absent), ``range`` (``LO,HI``) or ``names`` (zero or more). The Lab builds the
+#: draw it launches from this same list (``lab.jobs.draw_argv``), so a card's still is drawn
+#: exactly as the card was shown.
+DRAW_SHAPING: tuple[tuple[str, str, str, tuple | None, str], ...] = (
+    ("runs", "--runs", "choice", ("one", "rows", "mean", "rms", "each"),
+     "several runs on one plot (the Lab's Overlay), a row each (Split), or pooled by a "
+     "statistic (Mean, RMS); on a --number draw, each run a point (All) or the mean / rms of a "
+     "colour's runs at one value"),
+    ("colour_by", "--colour-by", "choice", ("run", "quantity"),
+     "what the colour tells apart on one plot of several runs; the dash tells the other"),
+    ("points", "--points", "bool", None, "dots instead of lines (--no-points: lines)"),
+    ("log_y", "--log-y", "bool", None, "a logarithmic ordinate (--no-log-y: linear)"),
+    ("log_x", "--log-x", "flag", None, "a logarithmic bottom axis"),
+    ("x", "--x", "choice", ("own", "index"), "the bottom axis: the chart's own, or the sample index"),
+    ("x_range", "--x-range", "range", None, "LO,HI: the span of the bottom axis shown"),
+    ("vs", "--vs", "choice", None, "with --number: the setting on the bottom axis"),
+    ("by", "--by", "names", None, "with --number: the settings each colour stands for; none "
+                                  "named, one colour; absent, every one that tells the runs "
+                                  "apart but a replicate"),
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,11 +85,22 @@ def build_parser() -> argparse.ArgumentParser:
                    help="a panel to draw (repeatable); default: every panel the first declares")
     d.add_argument("--number", default=None, metavar="NAME",
                    help="draw this summary number against the setting --vs instead")
-    d.add_argument("--vs", default=None, metavar="SETTING",
-                   help="with --number: the setting on the bottom axis")
-    d.add_argument("--by", default=None, nargs="*", metavar="SETTING",
-                   help="with --number: the settings each colour stands for; none named, one "
-                        "colour; absent, every one that tells the runs apart but a replicate")
+    for keyword, flag, kind, choices, words in DRAW_SHAPING:
+        if kind == "choice":
+            d.add_argument(flag, dest=keyword, default=None, choices=choices, help=words)
+        elif kind == "bool":
+            d.add_argument(flag, dest=keyword, default=None,
+                           action=argparse.BooleanOptionalAction, help=words)
+        elif kind == "flag":
+            d.add_argument(flag, dest=keyword, action="store_true", default=None, help=words)
+        elif kind == "range":
+            d.add_argument(flag, dest=keyword, default=None, type=_range, metavar="LO,HI",
+                           help=words)
+        else:
+            d.add_argument(flag, dest=keyword, default=None, nargs="*", metavar="SETTING",
+                           help=words)
+    d.add_argument("--table", action="store_true",
+                   help="also write the numbers on each panel as CSV beside it")
     d.add_argument("--out-dir", default=None,
                    help="default: beside the first record, in a folder named after the records")
     d.set_defaults(func=draw_command)
@@ -128,6 +164,16 @@ def folder_of(names: Sequence[str]) -> str:
     return f"{names[0][:_FOLDER_BYTES // 2]}+{len(names) - 1}-more-{digest}"
 
 
+def _range(text: str) -> tuple[float, float]:
+    lo, sep, hi = text.partition(",")
+    try:
+        if not sep:
+            raise ValueError
+        return float(lo), float(hi)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected LO,HI, got {text!r}") from None
+
+
 def draw_command(args: argparse.Namespace) -> int:
     from figure import draw, draw_sweep          # matplotlib only when drawing
 
@@ -137,19 +183,22 @@ def draw_command(args: argparse.Namespace) -> int:
                          f"compares runs of one piece")
     component = get_component(pieces.pop())
     pairs = [(Path(path).stem, component.Record.load(path)) for path in args.records]
+    shaping = {k: getattr(args, k) for k, *_ in DRAW_SHAPING if getattr(args, k) is not None}
     first = Path(args.records[0])
     out_dir = Path(args.out_dir) if args.out_dir else first.parent / folder_of(
         [name for name, _ in pairs])
     if args.number:
         if args.panels:
             raise ValueError("--number draws one summary number; --panel names a chart -- give one")
-        if not args.vs:
+        if "vs" not in shaping:
             raise ValueError("--number needs --vs SETTING: the setting on the bottom axis")
-        paths = draw_sweep(pairs, out_dir, args.number, args.vs, args.by)
+        if "by" in shaping:
+            shaping["by"] = tuple(shaping["by"])
+        paths = draw_sweep(pairs, out_dir, args.number, table=args.table, **shaping)
     else:
-        if args.vs or args.by is not None:
+        if {"vs", "by"} & set(shaping):
             raise ValueError("--vs and --by shape a --number draw")
-        paths = draw(pairs, out_dir, panels=args.panels)
+        paths = draw(pairs, out_dir, panels=args.panels, table=args.table, **shaping)
     for path in paths:
         print(path)
     return 0
