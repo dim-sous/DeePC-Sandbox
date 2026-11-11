@@ -29,15 +29,15 @@ def collect_data(
     rng = np.random.default_rng(seed)
     dc = plant.get_data_collection_config()
 
-    n_episodes = len(dc.initial_conditions)
-    T_per = config.T_data // n_episodes
-    remainder = config.T_data - T_per * n_episodes
+    lengths = episode_lengths(
+        config.T_data, len(dc.initial_conditions),
+    )
 
     u_parts: list[np.ndarray] = []
     y_parts: list[np.ndarray] = []
 
     for i, condition in enumerate(dc.initial_conditions):
-        T_ep = T_per + (1 if i < remainder else 0)
+        T_ep = lengths[i]
 
         # Plant-specific initial state for this episode
         initial_state = plant.make_episode_initial_state(condition, rng)
@@ -68,3 +68,10 @@ def collect_data(
         y_parts.append(y_ep)
 
     return np.vstack(u_parts), np.vstack(y_parts)
+
+
+def episode_lengths(T_data: int, n_episodes: int) -> list[int]:
+    """The samples each of ``n_episodes`` episodes collects: ``T_data`` split as evenly as it
+    goes, the first ``T_data mod n_episodes`` episodes one sample longer."""
+    T_per, remainder = divmod(T_data, n_episodes)
+    return [T_per + (1 if i < remainder else 0) for i in range(n_episodes)]

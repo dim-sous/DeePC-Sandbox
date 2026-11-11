@@ -12,9 +12,13 @@ dependencies = [
     "cvxpy>=1.8.1",
     "numpy>=2.4.2",
     "optuna>=4.8.0",
+    "param>=2.4.2",
     "plotly>=6.6.0",
     "scipy>=1.17.1",
 ]
+
+[project.scripts]
+deepc = "terminal:main"     # run a piece, save its record (devkit/README.md)
 
 [dependency-groups]
 dev = [
