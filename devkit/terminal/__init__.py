@@ -1,20 +1,25 @@
-"""``deepc``: run a piece and save its record. BESS's ``bess run`` (``devkit/terminal``); its
-``draw`` lands with the figure layer.
+"""``deepc``: run a piece and save its record; draw records. BESS's ``bess`` (``devkit/terminal``).
 
-    deepc run <piece> [config.json] [--set SETTING=VALUE ...] [--sweep SETTING=V1,V2,... ...]
-              [--name NAME] [--out-dir DIR]
+    deepc run  <piece> [config.json] [--set SETTING=VALUE ...] [--sweep SETTING=V1,V2,... ...]
+               [--name NAME] [--out-dir DIR]
+    deepc draw <record.json> [<record.json> ...] [--panel NAME ...]
+               [--number NAME --vs SETTING [--by SETTING ...]] [--out-dir DIR]
 
 ``run`` builds the piece's Config (the file's values, else the defaults), applies each ``--set``,
 runs once per ``--sweep`` combination, and saves one record per run at
 ``<out-dir>/<piece>/<name>[-setting-value].json``, printing the path and the numbers. An unknown
 setting, a value outside its bounds or one set behind a closed gate is refused by the Config, in
-its words.
+its words. ``draw`` writes the panels the records declare (every one, or each ``--panel``) as PNGs
+with JSON sidecars, every record on one plot per panel; with ``--number`` it draws that summary
+number against the setting ``--vs`` instead, every run a point. Default ``<out-dir>``: a folder
+beside the first record named after the records drawn (:func:`folder_of`).
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import itertools
 import json
 import os
@@ -23,6 +28,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from harness import NAMES, get_component
+from record import read_header
 from record.config import from_dict, parse_override, with_overrides
 
 DEFAULT_OUT_DIR = "results"
@@ -46,6 +52,22 @@ def build_parser() -> argparse.ArgumentParser:
                    help="the record's name; default: the config file's stem, else 'default'")
     r.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
     r.set_defaults(func=run_command)
+
+    d = sub.add_parser("draw", help="draw the panels records declare, or a number against a "
+                                     "setting")
+    d.add_argument("records", nargs="+", metavar="record.json")
+    d.add_argument("--panel", dest="panels", action="append", default=None, metavar="NAME",
+                   help="a panel to draw (repeatable); default: every panel the first declares")
+    d.add_argument("--number", default=None, metavar="NAME",
+                   help="draw this summary number against the setting --vs instead")
+    d.add_argument("--vs", default=None, metavar="SETTING",
+                   help="with --number: the setting on the bottom axis")
+    d.add_argument("--by", default=None, nargs="*", metavar="SETTING",
+                   help="with --number: the settings each colour stands for; none named, one "
+                        "colour; absent, every one that tells the runs apart but a replicate")
+    d.add_argument("--out-dir", default=None,
+                   help="default: beside the first record, in a folder named after the records")
+    d.set_defaults(func=draw_command)
     return p
 
 
@@ -87,6 +109,49 @@ def run_command(args: argparse.Namespace) -> int:
         print(path)
         for key, value in rec.numbers.items():
             print(f"  {key} = {value:.6g}")
+    return 0
+
+
+#: The longest default folder name a draw writes, in bytes: a filesystem refuses a name past
+#: 255, and a sweep's runs are named ``<name>-<setting>-<value>``.
+_FOLDER_BYTES = 120
+
+
+def folder_of(names: Sequence[str]) -> str:
+    """The folder a draw of the runs ``names`` writes into by default: their names joined by
+    ``+``; past :data:`_FOLDER_BYTES`, the first name, how many more and a digest of them all
+    (``<first>+<n>-more-<8 hex>``), so two different sets of runs never share a folder."""
+    joined = "+".join(names)
+    if len(joined.encode()) <= _FOLDER_BYTES:
+        return joined
+    digest = hashlib.sha1(joined.encode()).hexdigest()[:8]
+    return f"{names[0][:_FOLDER_BYTES // 2]}+{len(names) - 1}-more-{digest}"
+
+
+def draw_command(args: argparse.Namespace) -> int:
+    from figure import draw, draw_sweep          # matplotlib only when drawing
+
+    pieces = {read_header(path)["component"] for path in args.records}
+    if len(pieces) > 1:
+        raise ValueError(f"the records are of different pieces {sorted(pieces)}; one draw "
+                         f"compares runs of one piece")
+    component = get_component(pieces.pop())
+    pairs = [(Path(path).stem, component.Record.load(path)) for path in args.records]
+    first = Path(args.records[0])
+    out_dir = Path(args.out_dir) if args.out_dir else first.parent / folder_of(
+        [name for name, _ in pairs])
+    if args.number:
+        if args.panels:
+            raise ValueError("--number draws one summary number; --panel names a chart -- give one")
+        if not args.vs:
+            raise ValueError("--number needs --vs SETTING: the setting on the bottom axis")
+        paths = draw_sweep(pairs, out_dir, args.number, args.vs, args.by)
+    else:
+        if args.vs or args.by is not None:
+            raise ValueError("--vs and --by shape a --number draw")
+        paths = draw(pairs, out_dir, panels=args.panels)
+    for path in paths:
+        print(path)
     return 0
 
 

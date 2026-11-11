@@ -37,9 +37,9 @@ def _scenarios() -> list[str]:
     return names
 
 
-def _own(cls, label: str, doc: str, group: str, **kw) -> param.Parameter:
-    """A setting whose ``None`` default is the code's own value."""
-    meta = {"group": group}
+def _own(cls, label: str, doc: str, group: str, unit: str = "-", **kw) -> param.Parameter:
+    """A setting whose ``None`` default is the code's own value, in ``unit``."""
+    meta = {"group": group, "unit": unit}
     if "needs" in kw:
         meta["needs"] = kw.pop("needs")
     return cls(default=None, allow_None=True, label=label,
@@ -62,12 +62,12 @@ class Config(Settings):
         doc="The reference the plant is asked to follow; one the plant offers (open words)",
         metadata={"group": SCENARIO})
     sim_duration = _own(param.Number, "sim_duration", "Closed-loop duration in seconds",
-                        SCENARIO, bounds=(0.0, None))
+                        SCENARIO, unit="s", bounds=(0.0, None))
     Ts = _own(param.Number, "Ts",
               "The config's sampling time in seconds: it sets the step count and the reference's "
-              "spacing, not the plant's own step (D1)", SCENARIO)
-    Tini = _own(param.Integer, "Tini", "Past window length in samples", CONTROLLER)
-    N = _own(param.Integer, "N", "Prediction horizon in samples", CONTROLLER)
+              "spacing, not the plant's own step (D1)", SCENARIO, unit="s")
+    Tini = _own(param.Integer, "Tini", "Past window length in samples", CONTROLLER, unit="samples")
+    N = _own(param.Integer, "N", "Prediction horizon in samples", CONTROLLER, unit="samples")
     Q_diag = _own(param.List, "Q_diag", "Output weights, one per output", CONTROLLER,
                   item_type=float)
     R_diag = _own(param.List, "R_diag", "Input weights, one per input", CONTROLLER,

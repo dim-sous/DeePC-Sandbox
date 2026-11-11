@@ -28,13 +28,13 @@ class Config(Settings):
         None, allow_None=True, label="T_data",
         doc="Samples collected, split across the plant's episodes; none: the plant's own "
             "(open words)",
-        metadata={"group": DATA})
+        metadata={"group": DATA, "unit": "samples"})
     noise_std_output = param.Number(
         None, allow_None=True, bounds=(0.0, None), label="noise_std_output",
         doc="Standard deviation of the Gaussian noise added to each recorded output; none: the "
-            "plant's own (open words)",
-        metadata={"group": DATA})
+            "plant's own; in each output's own unit (open words)",
+        metadata={"group": DATA, "unit": "output unit"})
     seed = param.Integer(
         42, label="seed",
         doc="The seed of the episodes' initial states, the excitation and the noise (open words)",
-        metadata={"group": RUN, "replicate": True})
+        metadata={"group": RUN, "unit": "-", "replicate": True})

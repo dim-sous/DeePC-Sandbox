@@ -1,7 +1,8 @@
 """The shape of the devkit's layers and of every registered piece (BESS's
 ``tests/test_devkit_layers.py``, adapted).
 
-The generic layers -- ``record`` (settings + records) and ``terminal`` (the command) -- only ever
+The generic layers -- ``record`` (settings + records), ``figure`` (stills) and ``terminal`` (the
+command) -- only ever
 touch a Config or a Record and never know what is inside: if a line of code in them names a
 piece, it is in the wrong layer. A piece is a package under ``harness/`` exposing exactly
 ``Config``, ``run`` and ``Record``. Reading the registry imports no piece.
@@ -24,11 +25,12 @@ from record.config import Settings, fields_of
 
 ROOT = Path(__file__).resolve().parent.parent
 DEVKIT = ROOT / "devkit"
-GENERIC = ("record", "terminal")
+GENERIC = ("record", "figure", "terminal")
 #: Who may import whom among the devkit's packages. ``harness`` covers the registry and the
-#: pieces; ``sim`` is the bench's simulation code the pieces drive.
+#: pieces; ``sim`` is the bench's simulation code the pieces drive; ``figure`` draws what records
+#: declare and never reaches a piece.
 _MAY_IMPORT = {"record": set(), "sim": set(), "harness": {"record", "sim"},
-               "terminal": {"record", "harness"}}
+               "figure": {"record"}, "terminal": {"record", "harness", "figure"}}
 
 
 def _sources(package: str) -> list[Path]:

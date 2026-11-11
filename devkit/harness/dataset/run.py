@@ -35,7 +35,8 @@ def run(cfg: Config) -> Record:
         name="default", config=cfg, provenance=stamp(time.perf_counter() - started),
         constants={"plant_Ts_s": plant.Ts, "T_data": deepc_cfg.T_data,
                    "noise_std_output": deepc_cfg.noise_std_output, "episode_lengths": lengths},
-        inputs=list(plant.input_names), outputs=list(plant.output_names), u=u, y=y,
+        inputs=list(plant.input_names), outputs=list(plant.output_names),
+        input_units=list(plant.input_units), output_units=list(plant.output_units), u=u, y=y,
         episode_starts=[int(s) for s in np.cumsum([0] + lengths[:-1])], numbers=numbers)
 
 
