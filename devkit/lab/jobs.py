@@ -14,24 +14,20 @@ import shlex
 import subprocess
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Optional, Sequence
+from typing import Optional, Sequence
 
 from harness import NAMES, get_component
 from record.config import fields_of
-from terminal import DEFAULT_OUT_DIR, DRAW_SHAPING
+from terminal import DEFAULT_OUT_DIR
 
 #: A record's name: letters, digits, '.', '_' or '-', starting with a letter or digit, so it
 #: can never read as a flag, a path or a second word.
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
-#: A folder of stills: a record's name, or names joined by '+' (a draw's default folder,
-#: ``terminal.folder_of``) -- so '+' is allowed here and nowhere else (RCWS ``lab/jobs.py``).
-_FOLDER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*\Z")
 
-#: One command per process, whether launched or waited on. Each browser session builds its own
+#: One command per process. Each browser session builds its own
 #: page, so two tabs of one server would otherwise run two `uv run` at once -- which race the
 #: venv and, under the same record name, interleave two JSON streams into one file.
 _LAUNCHED: "Optional[Job]" = None
-_CAPTURING: "Optional[list[str]]" = None
 _LAUNCHING = threading.Lock()
 
 
@@ -40,8 +36,6 @@ def _in_flight() -> Optional[str]:
     Read under :data:`_LAUNCHING`."""
     if _LAUNCHED is not None and _LAUNCHED.running:
         return _LAUNCHED.line
-    if _CAPTURING is not None:
-        return line_of(_CAPTURING)
     return None
 
 
@@ -117,127 +111,24 @@ def run_argv(piece: str, overrides: Sequence[str] = (), name: str = "",
     return argv
 
 
-def draw_argv(piece: str, names: Sequence[str], out_dir: str = DEFAULT_OUT_DIR,
-              root: Optional[str] = None, *, panels: Sequence[str] = (), number: str = "",
-              table: bool = False, **keywords: Any) -> list[str]:
-    """``uv run deepc draw <record> [<record> ...] [--panel P]* | --number N, the shaping flags
-    [--table]``: the still of what a card draws, every flag read off the terminal's own
-    declaration (``terminal.DRAW_SHAPING``) so the page can ask for nothing the command does not
-    take. ``keywords`` are the figure layer's, as a card holds them (``lab.shaping``); a ``None``
-    is what the chart declares and passes no flag.
-
-    The record paths in the argv stay as given, because the command is run from ``root`` and has
-    to read back as the line a person would type there; ``root`` is where this function looks
-    for the records, which is not the directory the server happens to be running in. The draw
-    writes where the terminal puts it by default: a folder beside the records, named after them.
-    """
-    piece = _piece(piece)
-    if not names:
-        raise ValueError("a draw needs at least one record")
-    argv = ["uv", "run", "deepc", "draw"]
-    for name in names:
-        path = os.path.join(out_dir, piece, f"{_name(name)}.json")
-        if not os.path.isfile(os.path.join(root, path) if root else path):
-            raise ValueError(f"no record at {path}")
-        argv.append(path)
-    for panel in panels:
-        argv += ["--panel", _name(panel)]
-    if number:
-        argv += ["--number", _name(number)]
-    shaping = {k: (flag, kind) for k, flag, kind, *_ in DRAW_SHAPING}
-    unknown = sorted(set(keywords) - set(shaping))
-    if unknown:
-        raise ValueError(f"{unknown} are not ways `deepc draw` shapes a drawing; it takes "
-                         f"{sorted(shaping)}")
-    for key, value in keywords.items():
-        flag, kind = shaping[key]
-        if value is None:
-            continue
-        if kind == "bool":
-            argv.append(flag if value else "--no-" + flag[2:])
-        elif kind == "flag":
-            argv += [flag] if value else []
-        elif kind == "range":
-            # one word with '=': a range from below zero ('-5.0,10.0') read as its own word is
-            # taken by argparse for an option, and the draw was refused
-            argv.append(f"{flag}={float(value[0])!r},{float(value[1])!r}")
-        elif kind == "names":
-            argv += [flag, *(_name(v) for v in value)]
-        else:
-            argv += [flag, _name(str(value))]
-    if table:
-        argv.append("--table")
-    return argv
-
-
-def delete(piece: str, records: Sequence[str] = (), folders: Sequence[str] = (), *,
+def delete(piece: str, records: Sequence[str] = (), *,
            root: str, out_dir: str = DEFAULT_OUT_DIR) -> list[str]:
-    """Delete the named records (``<out_dir>/<piece>/<name>.json``) and folders of stills
-    (``<out_dir>/<piece>/<name>/``, which hold only what a draw writes: ``.png``, ``.csv`` and
-    their ``.json`` sidecars), and return what went, as paths under ``root``. Anything else is
-    refused in words and nothing is deleted: a name that is not a record's, a path outside the
-    out-dir, a folder holding a file no draw writes."""
+    """Delete the named records (``<out_dir>/<piece>/<name>.json``) and return what went, as
+    paths under ``root``. Anything else is refused in words and nothing is deleted: a name that
+    is not a record's, a path outside the out-dir."""
     piece = _piece(piece)
     base = os.path.realpath(os.path.join(root, out_dir, piece))
-    targets: list[tuple[str, str]] = []
+    targets: list[str] = []
     for name in records:
         path = os.path.join(base, f"{_name(name)}.json")
         if not os.path.isfile(path):
             raise ValueError(f"no record {name!r} under {out_dir}/{piece}/")
-        targets.append(("file", path))
-    for name in folders:
-        if not _FOLDER.match(name or ""):
-            raise ValueError(f"{name!r} is not a folder a draw writes: record names, or record "
-                             f"names joined by '+'")
-        path = os.path.join(base, name)
-        if not os.path.isdir(path):
-            raise ValueError(f"no folder {name!r} under {out_dir}/{piece}/")
-        odd = sorted(f for f in os.listdir(path) if not f.endswith(_DRAWN))
-        if odd:
-            raise ValueError(f"{out_dir}/{piece}/{name}/ holds {odd}, which no draw writes; "
-                             f"it is left as it is")
-        targets.append(("folder", path))
-    for _, path in targets:
         if not os.path.realpath(path).startswith(base + os.sep):
             raise ValueError(f"{path} is not under {out_dir}/{piece}/")
-    gone = []
-    for kind, path in targets:
-        if kind == "file":
-            os.remove(path)
-        else:
-            for f in os.listdir(path):
-                os.remove(os.path.join(path, f))
-            os.rmdir(path)
-        gone.append(os.path.relpath(path, root))
-    return gone
-
-
-#: What a draw writes into a folder: a still, a table, and each one's sidecar.
-_DRAWN = (".png", ".csv", ".png.json", ".csv.json")
-
-
-def capture(argv: Sequence[str], cwd: Optional[str] = None,
-            timeout: float = 180.0) -> tuple[int, str]:
-    """Run a command to completion and hand back ``(returncode, output)`` -- for a draw the page
-    waits on. It CLAIMS the same one-at-a-time slot a run claims (:func:`_in_flight`): two
-    ``uv run`` at once race the venv, so a second command, in either direction, is refused in
-    words rather than queued. ``timeout`` is in seconds."""
-    global _CAPTURING
-    with _LAUNCHING:
-        busy = _in_flight()
-        if busy is not None:
-            raise ValueError(f"a command is in progress: {busy}")
-        _CAPTURING = list(argv)            # claimed here, so the next caller sees it
-    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
-    try:
-        done = subprocess.run(list(argv), cwd=cwd, env=env, capture_output=True, text=True,
-                              errors="replace", timeout=timeout)
-    except subprocess.TimeoutExpired:
-        raise ValueError(f"{line_of(argv)} did not finish in {timeout:g} s") from None
-    finally:
-        with _LAUNCHING:
-            _CAPTURING = None
-    return done.returncode, (done.stdout or "") + (done.stderr or "")
+        targets.append(path)
+    for path in targets:
+        os.remove(path)
+    return [os.path.relpath(path, root) for path in targets]
 
 
 def launch(argv: Sequence[str], cwd: Optional[str] = None) -> Job:

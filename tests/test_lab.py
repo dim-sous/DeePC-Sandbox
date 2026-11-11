@@ -12,10 +12,10 @@ import ast
 import dataclasses
 import json
 import os
+import re
 import shlex
 import shutil
 import sys
-import threading
 import time
 import types
 from pathlib import Path
@@ -39,18 +39,14 @@ _ALLOWED = {"harness": {"NAMES", "get_component"},
             "record": {"read_header", "COMPONENT_KEY", "PANELS_KEY", "NUMBER_SPECS_KEY",
                        "PANEL_GROUPS_KEY", "HEADER_KEYS", "capital"},
             "record.config": {"fields_of"},
-            # the one constant saying where records live, and the one list of the ways
-            # `deepc draw` shapes a drawing, which a card's save is built from
-            "terminal": {"DEFAULT_OUT_DIR", "DRAW_SHAPING"},
+            # the one constant saying where records live
+            "terminal": {"DEFAULT_OUT_DIR"},
             # what a card draws is the figure layer's own: the panel built from what the records
-            # declare and the card's controls hold, the refusals a control is greyed with, the
-            # twin of it the page shows and the numbers on it; the colour a run wears is the
-            # figure layer's slot, so its dot in the list matches its lines; the page's paper,
-            # inks, rules and type are the figure layer's, so a chart sits on its card's paper;
-            # the words of its sample-index axis are the figure layer's, which the X control offers
-            "figure.chart": {"chart_of", "sweep_of", "pool_refusal", "distinct", "telling",
-                             "INDEX_LABEL"},
-            "figure.render": {"log_refusal", "table_of"},
+            # declare and the card's controls hold, the refusal a control is greyed with, and the
+            # twin of it the page shows; the colour a run wears is the figure layer's slot, so
+            # its dot in the list matches its lines; the page's paper, inks, rules and type are
+            # the figure layer's, so a chart sits on its card's paper
+            "figure.chart": {"chart_of", "sweep_of", "pool_refusal", "distinct"},
             "figure.twin": {"figure_of"},
             "figure.style": {"series_color", "FONT", "MONO", "SURFACE", "INK", "INK_SECONDARY",
                              "GRID"}}
@@ -211,9 +207,14 @@ def test_every_chart_on_the_page_is_the_figure_layers(monkeypatch, two_runs) -> 
     lab.run_list.shown = ["second", "first"]
     lab._on_chart("position-x", True)
     assert set(lab.open_charts) == {"output-e-lateral", "position-x"}
-    cards = {c.id: c for c in lab.cards}
-    for key, (pane, _label) in lab._panes.items():
-        assert pane.object["layout"]["meta"]["doc"] == f"stub {cards[key].chart}"
+    import panel as pn
+    drawn = {}
+    for card in lab.cards_box.objects:                 # each card's chart, by its title's panel
+        chart = re.search(r"data-panel='([^']+)'", card.objects[0].objects[0].object).group(1)
+        drawn[chart] = next(o for o in card.objects if isinstance(o, pn.pane.Plotly)).object
+    assert set(drawn) == {"output-e-lateral", "position-x"}
+    for chart, fig in drawn.items():
+        assert fig["layout"]["meta"]["doc"] == f"stub {chart}"
     assert built[-1] == ("position-x", ["second", "first"]), "the shown runs, in the order ticked"
 
 
@@ -352,128 +353,26 @@ def test_a_job_that_was_never_started_cannot_be_stopped() -> None:
     assert not job.running and job.stop() is False and job.line == "uv run deepc"
 
 
-def test_a_draw_names_the_record_files_and_every_flag_the_terminal_declares(two_runs) -> None:
-    root, out_dir = two_runs
-    first, second = (os.path.join(out_dir, "closed_loop", f"{n}.json") for n in ("first", "second"))
-    # the paths stay relative, as a person would type them from the root; `root` is where the
-    # records are looked for, which is not the directory the server runs in
-    assert jobs.draw_argv("closed_loop", ["first"], out_dir, root=root) == [
-        "uv", "run", "deepc", "draw", first]
-    argv = jobs.draw_argv("closed_loop", ["first", "second"], out_dir, root=root, panels=["position-x"],
-                          table=True, runs="one", colour_by="quantity", points=False,
-                          log_y=None, log_x=False, x="index", x_range=(60.0, 300.0))
-    assert argv == ["uv", "run", "deepc", "draw", first, second, "--panel", "position-x", "--runs", "one",
-                    "--colour-by", "quantity", "--no-points", "--x", "index",
-                    "--x-range=60.0,300.0", "--table"], "a None and a False flag pass nothing"
-    below = jobs.draw_argv("closed_loop", ["first"], out_dir, root=root, x_range=(-5.0, 10.0))
-    from terminal import build_parser
-    assert build_parser().parse_args(below[3:]).x_range == (-5.0, 10.0), \
-        "a span from below zero reaches the terminal as one (code review, 2026-10-27)"
-    assert jobs.draw_argv("closed_loop", ["first"], out_dir, root=root, number="rmse_position",
-                          vs="lambda_g", by=()) == [
-        "uv", "run", "deepc", "draw", first, "--number", "rmse_position", "--vs", "lambda_g",
-        "--by"]
-    with pytest.raises(ValueError, match="no record at"):
-        jobs.draw_argv("closed_loop", ["first"], out_dir)            # not from here
-    with pytest.raises(ValueError, match="no record at"):
-        jobs.draw_argv("closed_loop", ["absent"], out_dir, root=root)
-    with pytest.raises(ValueError, match="cannot name a record"):
-        jobs.draw_argv("closed_loop", ["../x"], out_dir, root=root)
-    with pytest.raises(ValueError, match="not ways `deepc draw` shapes"):
-        jobs.draw_argv("closed_loop", ["first"], out_dir, root=root, colour="red")
-
-
-def test_a_card_and_its_still_are_drawn_from_the_same_keywords(own_runs) -> None:
-    """What the page hands the figure layer for a card is what its save hands ``deepc draw``:
-    every keyword a card's controls produce is a flag the terminal declares."""
-    from lab import shaping
-    from terminal import DRAW_SHAPING
-    declared = {k for k, *_ in DRAW_SHAPING}
-    for kind in ("chart", "numbers"):
-        card = shaping.Card(1, kind, chart="position-x", number="rmse_position", x="lambda_g")
-        ctx = shaping.Context(kind, runs=2, axes={"λ_g": "lambda_g"}, telling={"N": "N"})
-        assert set(shaping.draw_keywords(card, ctx)) <= declared, kind
-
-
 def test_delete_takes_only_what_it_names_and_refuses_anything_else(own_runs) -> None:
     root, out_dir = own_runs
     folder = Path(root) / out_dir / "closed_loop"
-    (folder / "first").mkdir()
-    (folder / "first" / "position-x.png").write_bytes(b"png")
-    (folder / "first" / "position-x.png.json").write_text("{}")
-    (folder / "kept").mkdir()
-    (folder / "kept" / "notes.txt").write_text("mine")
-    with pytest.raises(ValueError, match="which no draw writes"):
-        jobs.delete("closed_loop", folders=["kept"], root=root, out_dir=out_dir)
     with pytest.raises(ValueError, match="no record 'absent'"):
         jobs.delete("closed_loop", records=["absent"], root=root, out_dir=out_dir)
     with pytest.raises(ValueError, match="cannot name a record"):
         jobs.delete("closed_loop", records=["../second"], root=root, out_dir=out_dir)
-    assert (folder / "kept" / "notes.txt").exists() and (folder / "second.json").exists()
-    with pytest.raises(ValueError, match="not a folder a draw writes"):
-        jobs.delete("closed_loop", folders=["../first"], root=root, out_dir=out_dir)
-    (folder / "first+second").mkdir()
-    (folder / "first+second" / "cost.png").write_bytes(b"png")
-    gone = jobs.delete("closed_loop", records=["first"], folders=["first", "first+second"],
-                       root=root, out_dir=out_dir)
-    assert gone == [os.path.join(out_dir, "closed_loop", "first.json"),
-                    os.path.join(out_dir, "closed_loop", "first"),
-                    os.path.join(out_dir, "closed_loop", "first+second")], \
-        "the folder a draw of two runs writes (code review, 2026-10-27)"
-    assert not (folder / "first.json").exists() and not (folder / "first").exists()
     assert (folder / "second.json").exists()
+    gone = jobs.delete("closed_loop", records=["first"], root=root, out_dir=out_dir)
+    assert gone == [os.path.join(out_dir, "closed_loop", "first.json")]
+    assert not (folder / "first.json").exists() and (folder / "second.json").exists()
 
 
-def test_a_draw_of_many_runs_writes_a_folder_a_filesystem_and_delete_both_take() -> None:
+def test_a_draw_of_many_runs_writes_a_folder_a_filesystem_takes() -> None:
     from terminal import folder_of
     assert folder_of(["a", "b"]) == "a+b"
     names = [f"default-lambda_g-{20 + i}-run-{i}" for i in range(20)]
     many = folder_of(names)
     assert len(many.encode()) <= 255 and many.startswith(names[0] + "+19-more-")
     assert many != folder_of(names[:-1] + ["other"]), "two sets of runs, two folders"
-    assert jobs._FOLDER.match(many)
-
-
-def test_the_folders_of_stills_are_listed_with_what_they_hold(own_runs) -> None:
-    root, out_dir = own_runs
-    folder = Path(root) / out_dir / "closed_loop" / "first+second"
-    folder.mkdir()
-    for name in ("position-x.png", "position-x.png.json", "position-x.csv", "position-x.csv.json",
-                 "cost.png"):
-        (folder / name).write_text("x")
-    (Path(root) / out_dir / "closed_loop" / "empty").mkdir()
-    [listed] = state.folders(root, out_dir, "closed_loop")
-    assert listed["name"] == "first+second" and listed["pictures"] == ["cost.png", "position-x.png"]
-    assert listed["tables"] == 1
-
-
-def test_one_command_at_a_time_in_either_direction(own_runs) -> None:
-    """Two ``uv run`` at once race the venv, so the second is refused in words, not queued --
-    a draw beside a run, a run beside a draw, or two draws."""
-    root, out_dir = own_runs
-    running = jobs.launch([sys.executable, "-c", "import time; time.sleep(30)"])
-    try:
-        with pytest.raises(ValueError, match="a command is in progress"):
-            jobs.capture(jobs.draw_argv("closed_loop", ["first"], out_dir, root=root), cwd=root)
-    finally:
-        running.stop()
-        _ended(running)
-    code, output = jobs.capture([sys.executable, "-c", "print('after')"])
-    assert code == 0 and "after" in output
-
-    # the other direction, and two draws: `capture` claims the slot as well as checking it
-    held = threading.Thread(target=lambda: jobs.capture(
-        [sys.executable, "-c", "import time; time.sleep(1.5)"]), daemon=True)
-    held.start()
-    time.sleep(0.4)
-    try:
-        with pytest.raises(ValueError, match="a command is in progress"):
-            jobs.capture([sys.executable, "-c", "pass"])
-        with pytest.raises(ValueError, match="a command is already in progress"):
-            jobs.launch([sys.executable, "-c", "pass"])
-    finally:
-        held.join(timeout=20)
-    assert jobs.capture([sys.executable, "-c", "pass"])[0] == 0
 
 
 def test_a_shown_record_is_loaded_through_its_own_class_in_its_own_words(own_runs) -> None:

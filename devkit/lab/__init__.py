@@ -1,7 +1,7 @@
 """The Lab: one local page per piece, one screen (BESS #7, #10). The piece's runs on the left -- a
 list to tick, filter and delete from, and the ticked runs compared column by column, numbers
 first -- their cards on the right: a panel the records declare, or a number against the setting
-that varies, each shaped by the same controls (:mod:`lab.shaping`). A draggable split between
+that varies, each shaped by its runs control (:mod:`lab.shaping`). A draggable split between
 the two, the form over the Config's groups in a drawer, and the terminal's own output in a
 drawer along the bottom.
 
@@ -9,16 +9,14 @@ drawer along the bottom.
 thing it is supposed to show, and then the two disagree. So it does mechanical things only:
 
 * **serves a page** on Panel (:mod:`lab.app`), on 127.0.0.1;
-* **launches the two commands** as subprocesses -- ``deepc run`` and ``deepc draw``, the same
-  line a person would type, printed as ``lab: <line>`` so it can be typed -- streaming and
-  stopping the run, waiting for the draw that writes a record's stills beside it;
+* **launches one command** as a subprocess -- ``deepc run``, the same line a person would type,
+  printed as ``lab: <line>`` so it can be typed -- streaming and stopping the run;
 * **reads** the registered Configs (their field declarations, through
   :func:`record.config.fields_of`), the record files on disk under the terminal's out-dir, and
   a shown record through its own class (:func:`lab.state.load`), which is reading too;
 * **shows** what a card draws as the figure layer builds it (:mod:`figure.chart`, drawn by
-  :func:`figure.twin.figure_of`): the same panel spec the still is drawn from, with the same
-  keywords a card's save hands ``deepc draw``, so a chart on the page and the PNG are one drawing
-  with no copy of its rules to drift;
+  :func:`figure.twin.figure_of`): the same panel spec ``deepc draw`` draws its still from, so a
+  chart on the page and the PNG are one drawing with no copy of its rules to drift;
 * **says** what it did and what it read, in the terminal's words where they are the terminal's.
 
 It never names a piece, never builds a Config, never runs one, never builds a trace of its own

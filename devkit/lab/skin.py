@@ -116,20 +116,6 @@ table.cmp tr:last-child td {{ border-bottom: 0; }}
 .empty {{ font-size: 13px; color: {INK3}; padding: 10px 12px; }}
 """
 
-#: A chart's numbers in its place (a card's "table"), RCWS's: a sheet that scrolls under a header
-#: that stays put, the numbers in the mono face and right-aligned so their digits line up.
-NUMBERS = f"""
-.numbers {{ overflow: auto; border-top: 1px solid {LINE}; }}
-.numbers table {{ border-collapse: collapse; font: 12px/1.4 {MONO}; color: {INK}; }}
-.numbers th {{ position: sticky; top: 0; background: {PAPER}; color: {INK2}; text-align: right;
-               font: 500 11.5px/1.3 {SANS}; padding: 4px 8px; vertical-align: bottom;
-               border-bottom: 1px solid {LINE2}; }}
-.numbers td {{ text-align: right; padding: 2px 8px; white-space: nowrap;
-               border-bottom: 1px solid {LINE}; }}
-.beside {{ font: 12px/1.5 {MONO}; color: {INK2}; margin-top: 6px; }}
-.beside .dim {{ color: {INK3}; font-family: {SANS}; }}
-"""
-
 #: A group of a card's controls after the first: a rule before it -- the groups by what they
 #: act on (RCWS, the developer's: lined up in two rows' columns, they were not grouped by sense).
 GROUP = {"border-left": f"1px solid {LINE2}", "padding-left": "8px"}
@@ -175,13 +161,12 @@ INDEX = f"""
 #: The index: a rule under it, between the names and the lines they show.
 INDEX_BOX = {"border-bottom": f"1px solid {LINE}", "padding-bottom": "4px"}
 
-#: The lists on the left -- the runs, and the folders of stills (``lab.runlist``), RCWS's: a run's
-#: row is its name, a stale run's reason under it.
+#: The list on the left -- the runs (``lab.runlist``), RCWS's: a run's row is its name, a stale
+#: run's reason under it.
 LIST = f"""
 .list {{ background: {PAPER}; border-radius: 6px; overflow: hidden; font-family: {SANS}; }}
 .run {{ display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center;
         gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid {LINE}; cursor: pointer; }}
-.run.flat {{ grid-template-columns: minmax(0, 1fr) auto; cursor: default; }}
 .run:last-child {{ border-bottom: 0; }}
 .run:hover {{ background: color-mix(in srgb, {ACCENT_SOFT} 45%, {PAPER}); }}
 .dot {{ width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid {LINE2};

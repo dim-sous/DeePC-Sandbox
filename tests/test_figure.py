@@ -5,6 +5,7 @@ figures"; skill ``figure-conventions``; D7 for a bound's unit)."""
 from __future__ import annotations
 
 import json
+import re
 
 import numpy as np
 import pytest
@@ -125,6 +126,23 @@ def test_deepc_draw_writes_what_it_prints(runs, tmp_path, capsys) -> None:
     sidecar = json.loads((tmp_path / "out" / "output-e-x1.png.json").read_text())
     assert sidecar["runs"] == ["loop"] and "git_sha" in sidecar
     assert np.isfinite(runs["loop-coupled_masses"].numbers["rmse_e_x1"])
+
+
+@pytest.mark.parametrize("flags,words", [
+    (["--vs", "lambda_g"], "--vs shapes a --number draw"),
+    (["--vs", ""], "--vs shapes a --number draw"),
+    (["--number", "rmse_e_x1"], "--number needs --vs"),
+    (["--number", "rmse_e_x1", "--vs", "N", "--panel", "cost"], "--number draws one summary number"),
+    (["--runs", "each"], "runs is one of"),
+    (["--number", "rmse_e_x1", "--vs", "N", "--runs", "rows"], "runs is one of"),
+])
+def test_deepc_draw_refuses_a_flag_its_draw_would_not_use(runs, tmp_path, flags, words) -> None:
+    """``--vs`` and ``--runs`` shape one kind of draw each: given to the other, or left out
+    where it is needed, the draw is refused in words, not drawn without it."""
+    path = tmp_path / "loop.json"
+    runs["loop-coupled_masses"].save(path)
+    with pytest.raises(SystemExit, match=re.escape(words)):
+        terminal.main(["draw", str(path), *flags, "--out-dir", str(tmp_path / "out")])
 
 
 def test_a_number_against_a_list_setting_places_each_list_by_name(runs, tmp_path) -> None:

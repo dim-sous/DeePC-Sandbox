@@ -1,5 +1,5 @@
-"""The lists on the left: a piece's runs -- one row each, a dot that ticks it shown, ``use`` and a
-delete -- and the folders of stills a save wrote beside them. RCWS's lists (``lab/runlist.py``,
+"""The list on the left: a piece's runs -- one row each, a dot that ticks it shown, ``use`` and a
+delete. RCWS's lists (``lab/runlist.py``,
 822b0cf): a run's row is its name alone, the dot in the colour its lines wear while it is shown;
 what sets a run apart is the compare table's to say."""
 
@@ -12,7 +12,7 @@ from panel.custom import JSComponent
 
 from .skin import LIST
 
-#: The row's actions, shared by both lists.
+#: The row's actions.
 _ROW = """
     const el = (tag, cls, text) => { const e = document.createElement(tag); e.className = cls;
       if (text !== undefined) e.textContent = text; return e; };
@@ -77,40 +77,4 @@ class RunList(JSComponent):
         if isinstance(msg.get("use"), str) and self.on_use is not None:
             self.on_use(msg["use"])
         elif isinstance(msg.get("delete"), str) and self.on_delete is not None:
-            self.on_delete(msg["delete"])
-
-
-class StillList(JSComponent):
-    """``rows`` in (``name``, ``when`` -- the date and what it holds -- and ``hover``): the folders
-    of stills, each a flat row with a delete that reaches :attr:`on_delete` with the folder's
-    name as a message."""
-
-    rows = param.List(default=[], item_type=dict)
-    empty = param.String(default="")
-
-    on_delete: Optional[Callable[[str], None]] = None
-
-    _stylesheets = [LIST]
-    _esm = """
-    export function render({ model }) {
-      const root = document.createElement('div'); root.className = 'list';""" + _ROW + """
-      const draw = () => {
-        root.replaceChildren();
-        if (!model.rows.length) { root.append(el('div', 'empty', model.empty)); return; }
-        for (const r of model.rows) {
-          const row = el('div', 'run flat'); row.title = r.hover || '';
-          const top = el('div', 'top');
-          top.append(el('span', 'name', r.name), el('span', 'when', r.when));
-          row.append(top, action('del', '✕', 'Delete this folder of stills, after asking', { delete: r.name }));
-          root.append(row);
-        }
-      };
-      for (const p of ['rows', 'empty']) model.on(p, draw);
-      draw();
-      return root;
-    }
-    """
-
-    def _handle_msg(self, msg: Any) -> None:
-        if isinstance(msg, dict) and isinstance(msg.get("delete"), str) and self.on_delete:
             self.on_delete(msg["delete"])

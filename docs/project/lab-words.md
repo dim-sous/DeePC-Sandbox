@@ -11,7 +11,7 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 
 **To change a word,** edit it here and tell me; I apply it. A chart's or a number's code name
 (`output-e-lateral`, `rmse_position`) is not a word the page shows as a title: it stays the
-file a save writes and a link's address key. Hovers are sentences: they begin with a capital and
+file `deepc draw` writes and a link's address key. Hovers are sentences: they begin with a capital and
 keep their articles where a sentence needs them.
 
 **Open, for your word:** a channel's name is the plant's own code name, used as it is in a chart's
@@ -24,11 +24,11 @@ acceleration; the coupled masses' e_x1, e_v1, e_x2, e_v2, F1, F2. Giving them ot
 - header: DeePC Lab · the pieces' names: Closed loop · Dataset
 - job state: Idle · Running… · Done · Ended with exit N
 - header buttons: Stop · Refresh · New run; the folder beside them: results/closed_loop · N records
-- headings: Runs · Compare · Saved stills · Figures; beside Compare's settings choice: Settings
+- headings: Runs · Compare · Figures; beside Compare's settings choice: Settings
 - run list: Filter runs (empty box) · All · None; the count: N on disk · N shown · N listed
 - a run's row: Use (hover: Load this run's settings into the form) · ✕ (hover: Delete this run's record, after asking)
 - empty lists: No records yet: <the command that writes one> · No run holds every word typed ·
-  No run shown: tick one above · Nothing saved yet: Save on a card writes its still here ·
+  No run shown: tick one above ·
   Tick a run to see what it can draw · Tick a run to see its charts ·
   Open a chart above, or click a number in the compare table
 - compare: None · Differing · All; the corner: Column by column; the count: N numbers; tick
@@ -37,10 +37,8 @@ acceleration; the coupled masses' e_x1, e_v1, e_x2, e_v2, F1, F2. Giving them ot
   e.g. deepc_config · lambda_g)
 - chart list: Show all · Hide all · N of M open; under a toggle: N of M runs · No shown run draws it;
   a group's index entry: ▸ Outputs · ▾ Outputs
-- saved stills: N folders; a folder's line: <date> · N stills and N tables
 - delete dialog: Delete <path>? · Delete · Cancel; after: Deleted … · Not deleted: …
-- a card: Save · ✕ (hover: Close this card); its foot after Save: Writing… · Wrote … ·
-  The draw wrote nothing; the terminal says why
+- a card: ✕ (hover: Close this card)
 - a number card's title: <number> vs <setting>, e.g. Position RMSE vs λ_g; its foot under one
   run: One run shown, or nothing differs between the shown runs: tick runs that differ in a setting
 - terminal drawer: ▸ Terminal · ▾ Terminal; before any run: Nothing has been run in this session.
@@ -49,17 +47,14 @@ acceleration; the coupled masses' e_x1, e_v1, e_x2, e_v2, F1, F2. Giving them ot
 
 ## 2. Card controls
 
-- bottom axis: X, offering the chart's own axis (e.g. Time [s]) or Sample index [-]
-- logarithmic axes: Log x · Log y
-- colour by: Colour by: Run · Quantity; on a number card, one toggle per setting that tells the runs apart, by its label
-- runs on a chart: Overlay · Split · Mean · RMS; on a number card: All · Mean · RMS
-- drawing: Dots · Lines; view: Chart · Table
-- a table in a card's place: Six significant digits here; Save writes every digit to a CSV beside the still
-- greyed, with the reason on the hover: One run shown · The pooled runs are one line per quantity ·
-  Split: the colour tells the quantities apart · Nothing differs between the shown runs ·
-  Nothing else tells the runs apart · No colour holds two runs at one value · and the figure
-  layer's own reasons, begun with a capital: The chart declares no statistic · Its bottom axis
-  holds N value(s) at or below zero · The runs draw different traces · …
+A chart card has one control, a number card two (the developer's cut, 2026-11-11):
+
+- runs on a chart: Runs: Overlay · Split · Mean · RMS
+- on a number card: X, offering the settings that differ between the shown runs, by their label;
+  Runs: All · Mean · RMS
+- greyed, with the reason on the hover: One run shown · Nothing differs between the shown runs ·
+  No colour holds two runs at one value · and the figure layer's own reasons, begun with a
+  capital: The chart declares no statistic · The runs draw different traces · …
 - a card that cannot draw says why in its foot, in the words of what refused it, e.g. First
   declare no panel 'cost'; drawn without them, the comparison would leave them out unsaid
 - legends: a run alone is its name; a trace every run holds identically: a, b — Reference
