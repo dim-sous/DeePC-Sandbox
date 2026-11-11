@@ -151,7 +151,8 @@ class Number:
 
 def _jsonable(value: Any) -> Any:
     if isinstance(value, Settings):
-        return to_dict(value)
+        # a setting may hold ±inf (an actuator bound with no limit): the same tokens as an array
+        return _jsonable(to_dict(value))
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return {f.name: _jsonable(getattr(value, f.name)) for f in dataclasses.fields(value)}
     if isinstance(value, np.ndarray):

@@ -262,7 +262,7 @@ def test_the_system_form_shows_a_labelled_row_per_equation_and_adds_one(served) 
         page.locator("button", has_text="+ State").first.click()
         _settle(page, 1500)
         assert "x5' =" in _text(page)
-        x4 = "theta2*x1 + theta4*x2 - (theta1 + theta2)*x3 - (theta3 + theta4)*x4 + u2"
+        x4 = "theta2*x1 + theta4*x2 - (theta1 + theta2)*x3 - (theta3 + theta4)*x4 + u2 + d2"
         box = next(b for b in page.locator("input[type=text]").all() if b.input_value() == x4)
         box.click()
         page.keyboard.press("End")

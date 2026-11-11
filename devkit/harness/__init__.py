@@ -13,7 +13,7 @@ from typing import Iterator
 __all__ = ["NAMES", "COMPONENTS", "get_component"]
 
 #: The registered pieces, in the order every surface shows them.
-NAMES: tuple[str, ...] = ("closed_loop", "dataset", "system")
+NAMES: tuple[str, ...] = ("closed_loop", "dataset", "system", "open_loop")
 
 
 class _Registry(Mapping):

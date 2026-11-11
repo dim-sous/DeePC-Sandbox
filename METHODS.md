@@ -293,12 +293,14 @@ A trial that raises, or returns a non-finite metric, scores $10^6$ (D3).
 `tools/system/`, the first piece of the rewrite in `docs/project/design.md`; §1–§9 describe the
 pipeline it replaces, which still runs on the plant class.
 
-**What is typed** (`tools/system/parse.py`). One row per state equation, $\dot x_i = f_i(x, u,
+**What is typed** (`tools/system/parse.py`). One row per state equation, $\dot x_i = f_i(x, u, d,
 \theta)$, one per output equation, $y_j = h_j(x, \theta)$, and the values of the parameter vector
 $\theta$. A row is an expression in the states `x1…xn`, the inputs `u1…um`, the parameters
-`theta1…thetaq` and the functions `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `tanh`, `abs` and the
+`theta1…thetaq`, in a state row the disturbance inputs `d1…dr` (where the unmodelled disturbance
+enters; none is allowed in an output row), and the functions `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `tanh`, `abs` and the
 constant `pi`; `^` is a power. The sizes: $n$ the number of state rows, $p$ the number of output
-rows, $q$ the number of $\theta$ values, $m$ the highest input index. Refused, in words: any other
+rows, $q$ the number of $\theta$ values, $m$ the highest input index, $r$ the highest disturbance
+index (0 for none); every input and disturbance must act in a state row as SymPy reads it. Refused, in words: any other
 name or character, a `.` outside a number, an empty row, a state index above $n$, a parameter index
 above $q$, a $\theta$ value that is not finite or acts in no row as SymPy reads it, an input in an
 output row, an input that acts in no state row as SymPy reads it, a row that reads as no
@@ -320,6 +322,44 @@ system, $x_{k+1} = A_d x_k + B_d u_k$ with $\begin{bmatrix} A_d & B_d \\ 0 & I \
 \exp\!\left(\begin{bmatrix} A & B \\ 0 & 0 \end{bmatrix} T_s\right)$ [8], on the two masses of §1
 typed with $\theta = [k, k_{12}, c, c_{12}]$; and the closed forms of $\dot x_1 = -\theta_1 x_1$ and
 $\dot x_1 = u_1$.
+
+## 11. The open-loop simulation (`open_loop`, the rewrite's second piece)
+
+`devkit/harness/open_loop/`, on a saved system run (§10), which it reads again and checks
+(`devkit/harness/system/run.py`, `system_of`). From $x_0$, for $k = 0, \dots, T - 1$
+(`devkit/harness/open_loop/run.py`):
+
+```math
+y_k = h(x_k) + n_k, \qquad n_k \sim \mathcal N(0, \sigma^2 I), \qquad
+w_k \sim \mathcal U(u_{exc,min}, u_{exc,max}), \qquad
+u_k = \mathrm{clip}(w_k, u_{min}, u_{max}), \qquad
+d_k \sim \mathcal N(0, \mathrm{diag}(\sigma_d^2)), \qquad x_{k+1} = \Phi_{T_s}(x_k, u_k, d_k),
+```
+
+with $\Phi_{T_s}$ the integration of $\dot x = f(x, u_k, d_k, \theta)$ over one sampling time with
+$u_k$ and $d_k$ held (§10, `tools/system/step.py`); $d_k$ is the unmodelled disturbance, entering
+where the system's rows name it (the developer, 2026-11-11). **Departure, declared:** $d_k$ has a
+fixed standard deviation per sample and is held over $T_s$; it is not the sampling of a
+continuous-time white noise of fixed intensity, whose per-sample variance scales with $1/T_s$, so
+the same $\sigma_d$ pushes the plant differently at another $T_s$. The output at sample $k$ is taken from the state at sample
+$k$, as [1, eq. (1)]: $y(t) = Cx(t) + Du(t)$. The excitation $w_k$ is drawn i.i.d. uniform per
+input on its own range, as [1, §VI-B] draws "the input sequence from a uniformly distributed
+random variable" (its range is not stated there; both read 2026-11-11 in the arXiv HTML rendering
+of v2, not the PDF). The actuator bounds $u_{min}, u_{max}$ ($\pm\infty$ for none) clip it; the
+record holds the input the plant applied, $u_k$, and counts the samples the clip changed. No
+baseline controller acts (the developer, 2026-11-11). The excitation and the noise come from one
+generator seeded by `seed`: the excitation, then the measurement noise, then the disturbance. The true states $x_k$ are recorded for the
+charts; the controller never reads them, and the record also keeps the system as read (rows,
+θ, sizes), not only its file's path. The time per sampling step's integration is recorded: mean,
+standard deviation and maximum.
+
+**Its numbers.** The PE order of $u$: the largest $L$ at which $H_L(u)$ (§3) has full row rank $Lm$,
+the input persistently exciting of order $L$ [1, Def. 4.4], by the controller's own check
+(`src/deepc/regularization.py`, `check_persistent_excitation`, numerical rank at tolerance
+$10^{-6}$), bisected over $L \le \lfloor (T+1)/(m+1) \rfloor$, where $H_L(u)$ has at least as many
+columns as rows (full row rank at $L$ implies it at $L - 1$). The SNR of each output: the variance
+of the noise-free $h(x_k)$ over the samples, divided by $\sigma^2$; left out when $\sigma = 0$. The
+clipped input samples; the step time.
 
 ## References
 
