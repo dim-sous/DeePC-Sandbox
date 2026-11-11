@@ -21,7 +21,7 @@ from harness.dataset import dataset_of, plant_of
 from record import stamp
 from sim.config import build_deepc_config
 from sim.scenarios import get_reference
-from sim.simulation import FeatureFlags, run_simulation
+from sim.simulation import FeatureFlags, run_simulation, solve_counts
 
 from .config import DEEPC_SETTINGS, FEATURE_SETTINGS, Config
 from .record import Record
@@ -76,7 +76,7 @@ def run(cfg: Config) -> Record:
                for j, c in enumerate(plant.output_names)}
     numbers.update({k: float(v) for k, v in plant_metrics.items()})
     statuses = [str(s) for s in res["statuses"]]
-    numbers.update({f"solves_{s}": float(statuses.count(s)) for s in dict.fromkeys(statuses)})
+    numbers.update({k: float(v) for k, v in solve_counts(res).items()})
     numbers["solve_time_mean_s"] = float(np.mean(solve))
     numbers["solve_time_max_s"] = float(np.max(solve))
     if np.all(np.isfinite(sigma)):          # a solve with no slack leaves these numbers out
@@ -86,6 +86,8 @@ def run(cfg: Config) -> Record:
     return Record(
         name="default", config=cfg, provenance=stamp(_time.perf_counter() - started),
         constants={"plant": data.config.plant, "plant_Ts_s": plant.Ts, "sim_steps": deepc_cfg.sim_steps,
+                   "excitation_rank": res["excitation_rank"],
+                   "excitation_rank_required": res["excitation_rank_required"],
                    "deepc_config": dataclasses.asdict(deepc_cfg),
                    "dataset_run": {"path": cfg.dataset_run, "name": data.name,
                                    "date": data.provenance.date if data.provenance else "",
@@ -96,6 +98,7 @@ def run(cfg: Config) -> Record:
         plant_metric_units=[plant.metric_units[k] for k in plant_metrics],
         time=np.asarray(res["times"], dtype=float), u=np.asarray(res["u_history"], dtype=float), y=y,
         reference=np.asarray(res["ref_path"], dtype=float), statuses=statuses,
+        solvers=[str(s) for s in res["solvers"]], zero_input=[bool(z) for z in res["zero_input"]],
         cost=_floats(res["costs"]), sigma_y_norm=sigma, lambda_g=_floats(res["lambda_g_history"]),
         solve_time_s=solve,
         position=np.asarray(res["pos_history"], dtype=float) if "pos_history" in res else None,

@@ -148,14 +148,14 @@ $U_p, Y_p$, the last $N$ the *future* blocks $U_f, Y_f$ (`src/deepc/online_hanke
 controller uses; `src/deepc/hankel.py:40-81` does the same and nothing calls it, D8). At the plants' defaults
 ($T_{ini}, N$ = 3, 15 for the bicycle and 4, 20 for the masses), $H_L(u)$ is 36 × 383 and 48 × 577.
 
-**Persistency of excitation** (`src/deepc/regularization.py:8-40`). The check is
+**Persistency of excitation** (`src/deepc/regularization.py:8-30`). The check is
 
 ```math
 \mathrm{rank}\, H_L(u) \ge L\, m \qquad (\text{numerical rank, tolerance } 10^{-6}),
 ```
 
-on the inputs only, of order $L$. When it fails, a warning is printed and the controller is built anyway
-(D3).
+on the inputs only, of order $L$. The rank and $L\,m$ are kept on the controller and recorded by the
+closed-loop piece (`constants`, `excitation_rank`); the controller is built either way (D3).
 
 **Against the sources.** [1, Definition 4.4] defines persistency of excitation of order $L$ as full row rank
 of $H_L(u)$: the code's check. The fundamental lemma, as [1, Lemma 4.2] states it after Willems et al. [4]
@@ -173,7 +173,7 @@ order $n + L$.
 
 ## 4. The DeePC quadratic program
 
-`src/deepc/controller.py:90-202`, solved once per step. Decision variables: $g \in \mathbb R^{n_c}$ (one weight
+`src/deepc/controller.py:88-200`, solved once per step. Decision variables: $g \in \mathbb R^{n_c}$ (one weight
 per Hankel column), the predicted inputs $u \in \mathbb R^{Nm}$ and outputs $y \in \mathbb R^{Np}$, the slack
 $\sigma_y \in \mathbb R^{T_{ini} p}$ on the past outputs, and, only when $\lambda_{out} > 0$, a slack
 $\sigma_{out} \in \mathbb R^{Np}_{\ge 0}$ on the output bounds.
@@ -190,19 +190,21 @@ $\sigma_{out} \in \mathbb R^{Np}_{\ge 0}$ on the output bounds.
 \end{aligned}
 ```
 
-- $Q$ and $R$ are diagonal, `Q_diag` and `R_diag` repeated over the horizon (`:133-137`): the bicycle
+- $Q$ and $R$ are diagonal, `Q_diag` and `R_diag` repeated over the horizon (`:131-135`): the bicycle
   weights $[10, 10, 0]$ (no weight on $e_v$) and $[0.1, 0.1]$; the masses $[20, 1, 20, 1]$ and $[0.1, 0.1]$.
   $R$ weighs the inputs themselves, not their changes.
 - $\rho$ is the 1-norm (`L1`) or the **squared** 2-norm (`L2`), chosen by `reg_norm_g` and `reg_norm_sigma_y`
-  (`:139-147`). Both plants default to squared 2-norm on $g$ and 1-norm on $\sigma_y$, with $\lambda_g$ = 5
+  (`:137-145`). Both plants default to squared 2-norm on $g$ and 1-norm on $\sigma_y$, with $\lambda_g$ = 5
   (bicycle) or 10 (masses) and $\lambda_y = 10^4$; $\lambda_{out}$ = 0, so no output bound acts by default.
 - $u_{ini}, y_{ini}$ are the last $T_{ini}$ applied inputs and outputs; $u_{prev}$ is the last applied input
-  (`devkit/sim/simulation.py:123-128`); $\tau$ is the noise-adaptive tightening (§6), zero otherwise.
+  (`devkit/sim/simulation.py:138-143`); $\tau$ is the noise-adaptive tightening (§6), zero otherwise.
 - The Hankel blocks, $u_{ini}$, $y_{ini}$, $y_{ref}$, $u_{prev}$, $\lambda_g$, $\lambda_y$ and $\tau$ are
   CVXPY parameters, so the problem is built once and re-solved with new values.
-- Solver (`src/deepc/controller.py:245-266`): OSQP with `eps_abs` = `eps_rel` = $10^{-5}$, `max_iter` = 10000, polishing, warm start.
-  Any exception, of any kind, re-solves with SCS, unrecorded (D3). With no solution, the controller returns
-  $u = 0$ and the loop applies it (D3). Otherwise the first predicted input $u_0$ is applied (`src/deepc/controller.py:293`).
+- Solver (`src/deepc/controller.py:243-266`): OSQP with `eps_abs` = `eps_rel` = $10^{-5}$, `max_iter` = 10000, polishing, warm start.
+  A `cvxpy.SolverError` re-solves with SCS, and the solve names the solver that answered; any other exception
+  reaches the caller (D3). With no solution, the controller returns $u = 0$, flagged on the solve, and the
+  loop applies it. Both are counted per run with the statuses (`devkit/sim/simulation.py`, `solve_counts`; D2,
+  D3). Otherwise the first predicted input $u_0$ is applied (`src/deepc/controller.py:296`).
 
 This is the formulation the old README states. The old README names Coulson et al. [1] as its source; the
 code names none for the QP. The old README also lists Berberich et al. [5]; no code here implements it.
@@ -230,14 +232,14 @@ approximation" of it.
 
 ## 5. The closed loop, tracking on errors
 
-`devkit/sim/simulation.py:25-200`. The plant starts at the first waypoint, $x_0 = r_0$ (`:61`;
+`devkit/sim/simulation.py:37-218`. The plant starts at the first waypoint, $x_0 = r_0$ (`:74`;
 `get_initial_state_for_scenario` returns the waypoint itself). The loop then runs:
 
-1. **Warm-up**, $T_{ini}$ steps with $u = 0$ (`:78-85`), each recording $y_i = e(x_{i+1}, r_i)$.
+1. **Warm-up**, $T_{ini}$ steps with $u = 0$ (`:91-98`), each recording $y_i = e(x_{i+1}, r_i)$.
 2. **Then, for** $k = 0, \dots, K - 1$, with $K$ = `int(sim_duration / Ts)` (`src/deepc/config.py:62-63`), $T_s$ the plant's step (D1):
-   - solve §4 with $y_{ref} = 0$ over the whole horizon (`devkit/sim/simulation.py:126`);
+   - solve §4 with $y_{ref} = 0$ over the whole horizon (`devkit/sim/simulation.py:141`);
    - apply $u_0$;
-   - record $y = e(x_{i+1}, r_i)$ with $i = k + T_{ini}$ (`devkit/sim/simulation.py:139-141`).
+   - record $y = e(x_{i+1}, r_i)$ with $i = k + T_{ini}$ (`devkit/sim/simulation.py:154-156`).
 
 The loop adds no measurement noise (D4). The state after step $i$, at time $(i+1)T_s$, is compared with
 waypoint $r_i$, at time $iT_s$. In the bicycle's data collection, the state after step $k$ is compared with
@@ -246,7 +248,7 @@ compared at equal times (§8).
 
 ## 6. Noise-adaptive regularisation (`--noise-adaptive`)
 
-`src/deepc/noise_estimator.py`, `devkit/sim/simulation.py:107-121`. From the second solve on, the residual between the
+`src/deepc/noise_estimator.py`, `devkit/sim/simulation.py:122-136`. From the second solve on, the residual between the
 output recorded after a step and the output the previous solve predicted for it,
 $\varrho_k = y_k - \hat y_{k|k-1}$, enters a window of the last $W$ = 10 residuals. Once it holds 3 or
 more, the per-channel sample standard deviation $\hat\sigma$ (`ddof` = 1) gives
@@ -259,7 +261,7 @@ s = \mathrm{clip}\!\left(\frac{\operatorname{mean}(\hat\sigma)}{\sigma_0},\ 1,\ 
 
 with $\sigma_0$ = `baseline_noise_std` = 0.01, $k_{max}$ = 10 and $c$ = 2 (`src/deepc/config.py:48-51`).
 $\tau$ enters only the soft output bounds, which exist only when $\lambda_{out} > 0$ and only on the outputs
-with a finite bound (`src/deepc/controller.py:182-199`). At every plant's default it enters no constraint, and
+with a finite bound (`src/deepc/controller.py:180-197`). At every plant's default it enters no constraint, and
 for the coupled masses, which have no output bounds, at no $\lambda_{out}$ (D11). The code cites
 arXiv:1903.06804 [2] for scaling the regularisation with the estimated noise.
 
@@ -278,7 +280,7 @@ averaged over 15 random simulations for each $\epsilon$."
 
 ## 7. Online Hankel window (`--online-hankel`)
 
-`src/deepc/online_hankel.py`, `devkit/sim/simulation.py:144-148`.
+`src/deepc/online_hankel.py`, `devkit/sim/simulation.py:159-163`.
 
 - **Size.** The window holds `max_cols` columns: `hankel_window_size`, or the number of offline columns when
   that is 0, the default (`:54-55`). A larger window is padded with copies of the last offline column
@@ -287,7 +289,7 @@ averaged over 15 random simulations for each $\epsilon$."
 - **Each step from `hankel_warmup_steps` on** (default 100), the step's input and output are appended. A
   column is formed from the last $L$ buffered samples (`:92-119`). It replaces the next padding column while
   any is left; otherwise every column shifts left by one and the new one takes the last place.
-- **Into the QP.** The four blocks are re-split and passed to the QP's parameters (`src/deepc/controller.py:204-212`).
+- **Into the QP.** The four blocks are re-split and passed to the QP's parameters (`src/deepc/controller.py:202-210`).
 - **What the first columns hold.** The first $L - 1$ online columns join the last training samples to the
   loop's first ones, which do not follow each other in time (D9).
 - **The gate.** An update is made only while the mean noise estimate of §6 is below 1.0 (D5).
@@ -310,21 +312,22 @@ real-time".
 
 ## 8. Metrics
 
-`run.py:58-99` and each plant's `compute_custom_metrics`:
+`run.py:58-101` and each plant's `compute_custom_metrics`:
 
 - **RMSE per output channel**, over all $T_{ini} + K$ samples, warm-up included.
 - **Bicycle** (`tools/plants/bicycle_model.py:269-281`): the RMSE of $p_x - r_x$, of $p_y - r_y$ and of their
   Euclidean norm (`rmse_position`). Each position is compared with the waypoint of the same time.
 - **Coupled masses** (`tools/plants/coupled_masses.py:198-205`): the RMSE of $(e_{x_1}, e_{x_2})$ jointly.
 - **Solve times**: mean, maximum and total wall-clock time of the `solve` call.
-- **The "optimal" share**: the share of solves whose status contains the word "optimal", so OSQP's
-  `optimal_inaccurate` counts (D2).
+- **Solves by outcome** (`devkit/sim/simulation.py`, `solve_counts`): per status, matched exactly; per solver
+  that answered; and the solves that left no solution, after which zeros were applied. The "optimal" share
+  is the share whose status is exactly `optimal` (D2, D3).
 - **The slack**: the mean and maximum of $\lVert \sigma_y \rVert_2$, whichever norm its penalty uses.
 
 ## 9. Tuning (`tune.py`)
 
-Optuna's TPE sampler, seed 42 (`tune.py:343-346`), minimises one metric per trial: `rmse_position` for the
-bicycle, `rmse_e_x1` for the masses. If that metric is missing, the mean of the RMSEs is used. Each trial
+Optuna's TPE sampler, seed 42 (`tune.py:333-336`), minimises one metric per trial: `rmse_position` for the
+bicycle, `rmse_e_x1` for the masses. A trial that raises, or scores NaN or infinity, stops the study (D3). Each trial
 collects its data at seed 42 and runs the closed loop for `--sim-duration` (default 10 s) on the `--scenario`
 (default `default`). Search space (`tune.py:60-70`):
 

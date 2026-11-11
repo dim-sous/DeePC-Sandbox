@@ -6,6 +6,11 @@
   "rmse_e_v2": 0.31358591859693613,
   "rmse_position_combined": 1.1351137641455868,
   "optimal_solve_pct": 100.0,
+  "solves_optimal": 60.0,
+  "solves_by_OSQP": 60.0,
+  "zero_inputs_applied": 0.0,
+  "excitation_rank": 48.0,
+  "excitation_rank_required": 48.0,
   "mean_sigma_y_norm": 1.3756780183414678e-14,
   "max_sigma_y_norm": 2.1355193657788972e-14
 }

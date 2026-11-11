@@ -6,7 +6,13 @@
   "rmse_x": 0.819224093509513,
   "rmse_y": 0.5184659045545114,
   "rmse_position": 0.9695024546498121,
-  "optimal_solve_pct": 100.0,
+  "optimal_solve_pct": 90.0,
+  "solves_optimal_inaccurate": 3.0,
+  "solves_optimal": 27.0,
+  "solves_by_OSQP": 30.0,
+  "zero_inputs_applied": 0.0,
+  "excitation_rank": 36.0,
+  "excitation_rank_required": 36.0,
   "mean_sigma_y_norm": 1.7145524959925854e-11,
   "max_sigma_y_norm": 1.9511533839444478e-10
 }

@@ -1,10 +1,17 @@
 {
   "made": {
-    "git_sha": "45dc91b",
+    "git_sha": "4d417f9",
     "git_dirty": true,
-    "code_changed": [],
-    "code_sha256": "1ab4c3012ef4f019538c7346f6b86e1fdd28a95d81ceca31c2bf7928b276bbb9",
-    "date": "2026-11-10T12:28:59+00:00",
+    "code_changed": [
+      " M devkit/harness/closed_loop/record.py",
+      " M devkit/harness/closed_loop/run.py",
+      " M devkit/sim/simulation.py",
+      " M run.py",
+      " M src/deepc/controller.py",
+      " M src/deepc/regularization.py"
+    ],
+    "code_sha256": "81196b57ccfcc7013e044135bf0c27c7bb5822c8af658847e13a185f4a04735c",
+    "date": "2026-11-11T14:12:14+00:00",
     "versions": {
       "numpy": "2.4.2",
       "scipy": "1.17.1",

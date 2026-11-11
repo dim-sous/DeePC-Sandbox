@@ -158,6 +158,8 @@ Numbers of Closed loop (bicycle run), by group -- `code name`: label [unit] -- h
 - **Solver**
   - `solves_optimal_inaccurate`: Solves: optimal inaccurate -- Solves whose status is exactly 'optimal_inaccurate'
   - `solves_optimal`: Solves: optimal -- Solves whose status is exactly 'optimal'
+  - `solves_by_OSQP`: Solves by OSQP -- Solves OSQP answered (`solves_by_SCS`: Solves by SCS -- Solves SCS answered, after OSQP raised a SolverError)
+  - `zero_inputs_applied`: Zero inputs applied -- Solves that left no solution, after which the controller's zero input was applied
   - `solve_time_mean_s`: Mean solve time [s] -- Mean wall-clock time of a solve
   - `solve_time_max_s`: Max solve time [s] -- Longest wall-clock time of a solve
   - `sigma_y_norm_mean`: Mean ‖σ_y‖₂ -- Mean 2-norm of the past-output slack σ_y

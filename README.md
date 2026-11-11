@@ -85,8 +85,7 @@ uv run python run.py --plant coupled_masses --no-constraints
 uv run python run.py --online-hankel    # slide the Hankel window using closed-loop data
 uv run python run.py --noise-adaptive   # scale regularization from estimated noise
 
-# Bayesian parameter tuning
-# (set aside: it scores a failed trial 1e6, D3 in docs/project/failures.md)
+# Bayesian parameter tuning (a failed trial stops the study)
 uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
 
 # See all options
@@ -154,11 +153,12 @@ numbers.
 ## Limitations
 
 Simulation only. The known problems are recorded in
-[docs/project/failures.md](docs/project/failures.md); D1 is fixed, the others not yet:
+[docs/project/failures.md](docs/project/failures.md); D1–D3 are fixed, the others not yet:
 
 - **D1** (fixed, PR #8) `--Ts`, and the tuner's search over it, never reached the plant.
-- **D2** an inaccurate solve is counted as optimal.
-- **D3** solver failures are silent: a hidden SCS retry, a zero input applied, warnings that change nothing.
+- **D2** (fixed, PR #9) an inaccurate solve was counted as optimal.
+- **D3** (fixed, PR #9) solver failures were silent: a hidden SCS retry, a zero input applied, warnings that
+  changed nothing, a tuner that scored a failed trial 1e6.
 - **D4** the training outputs are noisy and the closed-loop outputs are not.
 - **D5** the online Hankel gate reads an estimator that only runs under `--noise-adaptive`.
 - **D6** comments that describe other code.

@@ -20,8 +20,8 @@ or a test. When in doubt, the rules win.
   one JSON record per run under `results/<piece>/`; flags and examples: `devkit/README.md`);
   `uv run deepc draw <record.json>… [--panel …] [--number N --vs SETTING]` (stills beside the
   records); `uv run lab [--no-open]` (the Lab: one local page over the records; it computes
-  nothing); `uv run python run.py [--plant …] [flags]` (the old HTML report).
-  `tune.py` is set aside: it scores a failed trial 1e6 `[D3]`.
+  nothing); `uv run python run.py [--plant …] [flags]` (the old HTML report);
+  `uv run python tune.py …` (Optuna over the closed loop's settings).
 - The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate; its browser test
   needs `uv run playwright install chromium` once per computer. Its safety net,
   `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch

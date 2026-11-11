@@ -13,6 +13,18 @@ from deepc.noise_estimator import NoiseEstimator
 from plants.base import PlantBase
 
 
+def solve_counts(results: dict) -> dict[str, int]:
+    """Every solve of a run counted by its outcome, the one formula the loop's printed line, the
+    closed-loop piece and ``run.py``'s metrics read: ``solves_<status>`` per status, matched
+    exactly (D2); ``solves_by_<solver>`` per solver that answered; ``zero_inputs_applied``, the
+    solves that left no solution, after which the controller's zero input was applied (D3)."""
+    statuses, solvers = list(results["statuses"]), list(results["solvers"])
+    out = {f"solves_{s}": statuses.count(s) for s in dict.fromkeys(statuses)}
+    out.update({f"solves_by_{s}": solvers.count(s) for s in dict.fromkeys(solvers)})
+    out["zero_inputs_applied"] = int(sum(results["zero_input"]))
+    return out
+
+
 @dataclass
 class FeatureFlags:
     """Optional DeePC features enabled via CLI flags."""
@@ -55,7 +67,8 @@ def run_simulation(
     controller = DeePCController(
         config, u_data, y_data, u_lb, u_ub, du_min, du_max, y_lb, y_ub,
     )
-    print("  Controller ready.")
+    print(f"  Controller ready. Rank of H_L(u): {controller.excitation_rank} of "
+          f"{controller.excitation_rank_required} (L * m).")
 
     # Initialize plant at start of reference path
     initial_state = plant.get_initial_state_for_scenario(path[0])
@@ -90,6 +103,8 @@ def run_simulation(
     sigma_norms: list[float] = []
     sigma_out_norms: list[float] = []
     statuses: list[str] = []
+    solvers: list[str] = []
+    zero_input: list[bool] = []
     solve_times: list[float] = []
     lambda_g_history: list[float] = []
 
@@ -158,6 +173,8 @@ def run_simulation(
         sigma_norms.append(info["sigma_y_norm"])
         sigma_out_norms.append(info["sigma_out_norm"])
         statuses.append(info["status"])
+        solvers.append(info["solver"])
+        zero_input.append(bool(info["no_solution"]))
         solve_times.append(t_solve)
         lambda_g_history.append(info["lambda_g"])
 
@@ -168,7 +185,7 @@ def run_simulation(
             print(
                 f"  Step {k + 1:>4d}/{config.sim_steps}  "
                 f"status={info['status']}  "
-                f"cost={info['cost']:.2f}  "
+                f"cost={'none' if info['cost'] is None else format(info['cost'], '.2f')}  "
                 f"solve={t_solve * 1000:.1f}ms  "
                 f"{err_strs}"
             )
@@ -184,6 +201,10 @@ def run_simulation(
         "sigma_norms": sigma_norms,
         "sigma_out_norms": sigma_out_norms,
         "statuses": statuses,
+        "solvers": solvers,
+        "zero_input": zero_input,
+        "excitation_rank": controller.excitation_rank,
+        "excitation_rank_required": controller.excitation_rank_required,
         "solve_times": solve_times,
         "lambda_g_history": lambda_g_history,
     }
@@ -192,9 +213,6 @@ def run_simulation(
         results["pos_history"] = np.array(pos_history)
         results["ref_pos_history"] = path[:total, :2]
 
-    optimal_count = sum(1 for s in statuses if "optimal" in s)
-    print(
-        f"\nDone. Optimal solves: {optimal_count}/{len(statuses)}  "
-        f"({100 * optimal_count / len(statuses):.0f}%)"
-    )
+    print(f"\nDone. {len(statuses)} solves: "
+          + ", ".join(f"{k} {v}" for k, v in solve_counts(results).items()))
     return results

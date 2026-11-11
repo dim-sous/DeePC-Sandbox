@@ -30,7 +30,7 @@ from plants.base import PlantBase
 from sim.config import build_deepc_config
 from sim.data_generation import collect_data
 from sim.scenarios import get_reference
-from sim.simulation import FeatureFlags, run_simulation
+from sim.simulation import FeatureFlags, run_simulation, solve_counts
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent
 RESULTS_DIR = REPO_ROOT / "results"
@@ -82,8 +82,11 @@ def compute_metrics(
 
     statuses = results.get("statuses", [])
     if statuses:
-        optimal_count = sum(1 for s in statuses if "optimal" in s)
-        metrics["optimal_solve_pct"] = float(100.0 * optimal_count / len(statuses))
+        counts = solve_counts(results)          # each status by its own name (D2), solvers, D3
+        metrics["optimal_solve_pct"] = float(100.0 * counts.get("solves_optimal", 0) / len(statuses))
+        metrics.update({k: float(v) for k, v in counts.items()})
+        metrics["excitation_rank"] = float(results["excitation_rank"])            # D3
+        metrics["excitation_rank_required"] = float(results["excitation_rank_required"])
     else:
         metrics["optimal_solve_pct"] = float("nan")
 

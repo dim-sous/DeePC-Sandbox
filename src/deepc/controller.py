@@ -72,12 +72,10 @@ class DeePCController:
         self._y_ub = np.asarray(y_ub, dtype=float)
 
         u_data = np.atleast_2d(u_data)
-        is_pe = check_persistent_excitation(u_data, config.L, config.m)
-        if not is_pe:
-            print(
-                "WARNING: data does not satisfy PE condition — "
-                "DeePC performance may degrade."
-            )
+        #: Rank of H_L(u) over the training inputs, and the L * m full row rank needs: kept
+        #: for the caller to record, the controller built either way (D3).
+        self.excitation_rank, self.excitation_rank_required = check_persistent_excitation(
+            u_data, config.L, config.m)
 
         self._hankel = SlidingHankelWindow(
             u_data, np.atleast_2d(y_data),
@@ -255,9 +253,12 @@ class DeePCController:
                 "polish": True,
             })
 
+        solver = cfg.solver
         try:
             self.problem.solve(**solver_kwargs)
-        except (cp.SolverError, Exception):
+        except cp.SolverError:
+            # A SolverError is retried with SCS; info["solver"] names which solver answered (D3).
+            solver = "SCS"
             self.problem.solve(
                 solver="SCS",
                 verbose=cfg.solver_verbose,
@@ -266,6 +267,8 @@ class DeePCController:
 
         info: dict = {
             "status": self.problem.status,
+            "solver": solver,
+            "no_solution": self.g.value is None,
             "cost": self.problem.value,
             "g_norm": None,
             "sigma_y_norm": None,
@@ -277,7 +280,7 @@ class DeePCController:
             "hankel_updates": self._hankel.n_online_updates,
         }
 
-        if self.g.value is None:
+        if self.g.value is None:      # no solution: zeros, flagged in info["no_solution"] (D3)
             return np.zeros(cfg.m), info
 
         info["g_norm"] = float(np.linalg.norm(self.g.value))
