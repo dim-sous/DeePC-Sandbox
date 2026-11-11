@@ -1,5 +1,6 @@
 """The closed-loop piece's settings: the saved dataset run it runs on, the scenario and its length,
-the controller's settings, and the three features ``run.py`` switches by flag.
+the controller's settings, and the three features ``run.py`` switches by flag. The step T_s is the
+dataset run's (its plant's), not a setting here (D1).
 
 A setting left at ``None`` takes the code's own default -- the plant's
 (``get_default_config_overrides``), else ``DeePCConfig``'s -- exactly as ``run.py`` leaves a flag
@@ -22,7 +23,7 @@ GROUPS: tuple[str, ...] = (DATA, SCENARIO, CONTROLLER, FEATURES, NOISE_ADAPTIVE,
 
 #: The settings handed to ``build_deepc_config`` by name (``None``: the code's own default).
 DEEPC_SETTINGS: tuple[str, ...] = (
-    "sim_duration", "Ts", "Tini", "N", "Q_diag", "R_diag", "lambda_g", "lambda_y", "lambda_out",
+    "sim_duration", "Tini", "N", "Q_diag", "R_diag", "lambda_g", "lambda_y", "lambda_out",
     "reg_norm_g", "reg_norm_sigma_y", "noise_estimation_window", "baseline_noise_std",
     "max_lambda_scaling", "constraint_tightening_factor", "hankel_window_size",
     "hankel_warmup_steps")
@@ -64,9 +65,6 @@ class Config(Settings):
         metadata={"group": SCENARIO})
     sim_duration = _own(param.Number, "Duration", "Closed-loop duration in seconds",
                         SCENARIO, unit="s", bounds=(0.0, None))
-    Ts = _own(param.Number, "T_s",
-              "The config's sampling time in seconds: it sets the step count and the reference's "
-              "spacing, not the plant's own step (D1)", SCENARIO, unit="s")
     Tini = _own(param.Integer, "T_ini", "Past window length in samples", CONTROLLER, unit="samples")
     N = _own(param.Integer, "N", "Prediction horizon in samples", CONTROLLER, unit="samples")
     Q_diag = _own(param.List, "Q", "Output weights, one per output", CONTROLLER,

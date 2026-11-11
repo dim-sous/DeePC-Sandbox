@@ -75,7 +75,7 @@ uv run python run.py
 uv run python run.py --plant bicycle --scenario lissajous
 uv run python run.py --plant coupled_masses --scenario sinusoidal
 
-# Customize algorithm parameters (--Ts does not reach the plant: docs/project/failures.md, D1)
+# Customize algorithm parameters (--Ts is the plant's step: the data and the loop both run at it)
 uv run python run.py --Ts 0.039 --N 8 --Tini 4 --T-data 600 --lambda-g 32
 
 # Run without constraints
@@ -86,7 +86,7 @@ uv run python run.py --online-hankel    # slide the Hankel window using closed-l
 uv run python run.py --noise-adaptive   # scale regularization from estimated noise
 
 # Bayesian parameter tuning
-# (set aside: its Ts search runs through D1, docs/project/failures.md)
+# (set aside: it scores a failed trial 1e6, D3 in docs/project/failures.md)
 uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
 
 # See all options
@@ -153,10 +153,10 @@ numbers.
 
 ## Limitations
 
-Simulation only. The known problems are recorded, none fixed yet, in
-[docs/project/failures.md](docs/project/failures.md):
+Simulation only. The known problems are recorded in
+[docs/project/failures.md](docs/project/failures.md); D1 is fixed, the others not yet:
 
-- **D1** `--Ts`, and the tuner's search over it, never reaches the plant.
+- **D1** (fixed, PR #8) `--Ts`, and the tuner's search over it, never reached the plant.
 - **D2** an inaccurate solve is counted as optimal.
 - **D3** solver failures are silent: a hidden SCS retry, a zero input applied, warnings that change nothing.
 - **D4** the training outputs are noisy and the closed-loop outputs are not.
@@ -185,7 +185,7 @@ run was recorded. No record backs them, and each stays unverified until one re-m
   baseline during collection keeps the errors centred.
 - Tuning on short simulations and evaluating on long ones exposes drift.
 - Sampling time (Ts) dominates tracking accuracy more than any regularisation parameter. The
-  runs behind it went through `--Ts`, which never reaches the plant (D1).
+  runs behind it went through `--Ts` before it reached the plant (D1, fixed in PR #8).
 - One-at-a-time parameter sweeps miss interactions; a Bayesian joint search finds better
   configurations.
 - Training data quality matters more than algorithm complexity: a well-conditioned Hankel

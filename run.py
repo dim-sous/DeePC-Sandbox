@@ -515,7 +515,6 @@ def build_config(args: argparse.Namespace, plant: PlantBase) -> DeePCConfig:
         "Tini": "Tini",
         "N": "N",
         "sim_duration": "sim_duration",
-        "Ts": "Ts",
         "lambda_g": "lambda_g",
         "lambda_y": "lambda_y",
         "lambda_out": "lambda_out",
@@ -555,7 +554,7 @@ def main() -> None:
 
     # Instantiate the plant
     plant_cls = PLANT_REGISTRY[args.plant]
-    plant = plant_cls()
+    plant = plant_cls(**({} if args.Ts is None else {"Ts": args.Ts}))   # --Ts: the plant's step
 
     # Validate scenario
     scenarios = plant.get_scenarios()

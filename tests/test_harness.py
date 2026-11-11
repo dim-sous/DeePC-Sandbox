@@ -13,6 +13,8 @@ import pytest
 
 import terminal
 from harness import get_component
+from plants import PLANT_REGISTRY
+from sim.config import build_deepc_config
 from tests.reference import cases
 
 DATASET, LOOP = get_component("dataset"), get_component("closed_loop")
@@ -58,7 +60,7 @@ def test_every_closed_loop_number_is_a_reduction_of_an_array_on_the_record(datas
     assert counted == {s: float(n) for s, n in rec.status_counts().items()}
     assert sum(counted.values()) == len(rec.statuses) == len(rec.solve_time_s)
     assert rec.numbers["solve_time_max_s"] == float(rec.solve_time_s.max())
-    assert rec.constants["plant_Ts_s"] == 0.1 and rec.constants["config_Ts_s"] == 0.1
+    assert rec.constants["plant_Ts_s"] == 0.1 and rec.constants["deepc_config"]["Ts"] == 0.1
 
 
 def test_every_dataset_number_is_a_reduction_of_an_array_on_the_record(datasets) -> None:
@@ -92,3 +94,27 @@ def test_deepc_run_writes_one_record_per_swept_value(datasets, tmp_path, capsys)
     assert written == ["s-Tini-2.json", "s-Tini-3.json"]
     assert LOOP.Record.load(tmp_path / "closed_loop" / "s-Tini-3.json").config.Tini == 3
     assert "solves_optimal" in capsys.readouterr().out
+
+
+def test_a_dataset_runs_step_is_the_step_of_its_plant_its_data_and_every_loop_on_it(
+        datasets, tmp_path) -> None:
+    """[D1] ``--Ts`` reached the config's step count, the reference's spacing and the time axis,
+    never the plant, which stepped at its constructor's default: T_s is now the dataset run's,
+    and one value reaches the plant, the data and every closed loop on the run."""
+    rec = DATASET.run(DATASET.Config(plant="bicycle", Ts=0.05))
+    default = DATASET.Record.load(datasets["bicycle"])
+    assert rec.constants["plant_Ts_s"] == DATASET.plant_of(rec.config).Ts == 0.05
+    assert rec.u.shape == default.u.shape and not np.array_equal(rec.y, default.y)
+    loop = LOOP.run(LOOP.Config(dataset_run=str(rec.save(tmp_path / "ts.json")), sim_duration=1.0))
+    assert loop.constants["plant_Ts_s"] == loop.constants["deepc_config"]["Ts"] == 0.05
+    assert loop.constants["sim_steps"] == 20 and np.allclose(np.diff(loop.time), 0.05)
+
+
+def test_a_step_given_to_the_config_and_not_to_the_plant_is_refused(datasets, tmp_path) -> None:
+    """[D1] ``build_deepc_config`` took ``Ts`` as an override the plant never saw. It is refused,
+    naming the plant's step, and the closed loop has no T_s of its own to set."""
+    with pytest.raises(ValueError, match=r"plant\.Ts = 0\.1\)"):
+        build_deepc_config(PLANT_REGISTRY["bicycle"](), Ts=0.039)
+    with pytest.raises(SystemExit, match="unknown setting 'Ts'"):
+        terminal.main(["run", "closed_loop", "--set", f"dataset_run={datasets['bicycle']}",
+                       "--set", "Ts=0.039", "--out-dir", str(tmp_path)])

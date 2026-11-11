@@ -14,7 +14,8 @@ while writing `METHODS.md` from the code at `3067d03` (the same code), D12 by it
 D13–D17 were found on 2026-11-11, reading the papers `METHODS.md` cites (its References, arXiv
 versions; numbers in brackets refer to that list). On 2026-11-11 the layout move put the code
 under `src/`, `tools/` and `devkit/`: every path and line number here was re-pointed from
-`c257f5f` to the new files by matching each line's text, so each still names the same code. **None is fixed**: the safety net
+`c257f5f` to the new files by matching each line's text, so each still names the same code. **D1 is
+fixed** (PR #8, at the end of its entry); **none of the others is yet**: the safety net
 (`tests/reference/`) freezes each as it behaves, and each waits for the Lab to show it before a
 branch fixes it and moves the frozen numbers on purpose.
 
@@ -52,6 +53,18 @@ Rules: a setting the run did not use is refused or recorded as unused, never acc
 name the conditions every number came from; the plant is never tuned to make the controller
 look right.
 
+**Fixed 2026-11-11, PR #8.** The pointers above name the code before the fix (`768612f`).
+
+- T_s is a setting of the dataset piece, the plant's step: `plant_of`
+  (`devkit/harness/dataset/run.py`) builds the plant at it, for the dataset run and for every
+  closed loop on that run. The closed loop has no T_s of its own.
+- `build_deepc_config` refuses a `Ts` override (`devkit/sim/config.py`); `run.py --Ts` builds the
+  plant at it; each `tune.py` trial builds its plant at the trial's T_s.
+- Held by the two `[D1]` tests in `tests/test_harness.py`. No frozen number moved: the safety
+  net's cases run at the plants' own steps.
+- Open: both plants integrate by forward Euler at T_s itself (`METHODS.md` §1), so a run at
+  another T_s also integrates the plant at another step.
+
 ## D2 — an inaccurate solve counted as optimal
 
 - `run.py:85` and `devkit/sim/simulation.py:195` count a status as optimal when it contains the word
@@ -73,7 +86,7 @@ into another.
   an input of zeros and the loop applies it to the plant.
 - The persistent-excitation check prints a warning and the controller is built anyway
   (`src/deepc/regularization.py:36`, `src/deepc/controller.py:75-77`).
-- `tune.py:95-97` turns any exception in a trial into the score 1e6; `tune.py:86` does the
+- `tune.py:96-98` turns any exception in a trial into the score 1e6; `tune.py:87` does the
   same for a NaN or infinite score.
 
 Rules: fail loud — no swallowed exception, no stand-in answer for one the code failed to

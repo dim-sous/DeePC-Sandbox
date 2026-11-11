@@ -72,8 +72,9 @@ def objective(
     objective_key = plant.get_tuning_objective_key()
 
     try:
-        config = build_deepc_config(plant, **params)
-        metrics = run_trial(plant, config, scenario)
+        trial_plant = type(plant)(Ts=params.pop("Ts"))  # the trial's T_s is the plant's step (D1)
+        config = build_deepc_config(trial_plant, **params)
+        metrics = run_trial(trial_plant, config, scenario)
 
         val = metrics.get(objective_key)
         if val is None:

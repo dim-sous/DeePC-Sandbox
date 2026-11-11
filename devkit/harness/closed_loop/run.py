@@ -2,7 +2,8 @@
 No printing (``run_simulation``'s progress lines are taken), no saving, no drawing.
 
 The dataset run is read through the dataset piece (``harness.dataset.dataset_of``: run again and
-checked); its plant is built fresh, the ``DeePCConfig`` is built from it as ``run.py`` builds one
+checked); its plant is built fresh at the dataset run's step (``harness.dataset.plant_of``), the
+``DeePCConfig`` is built from it as ``run.py`` builds one
 (``sim.config.build_deepc_config``, a setting left at ``None`` taking the code's own default),
 and ``run_simulation`` runs with the dataset's inputs and outputs.
 """
@@ -16,8 +17,7 @@ import time as _time
 
 import numpy as np
 
-from harness.dataset import dataset_of
-from plants import PLANT_REGISTRY
+from harness.dataset import dataset_of, plant_of
 from record import stamp
 from sim.config import build_deepc_config
 from sim.scenarios import get_reference
@@ -44,7 +44,7 @@ def _tightened(plant, deepc_cfg, cfg: Config) -> bool:
 def run(cfg: Config) -> Record:
     started = _time.perf_counter()
     data = dataset_of(cfg.dataset_run)
-    plant = PLANT_REGISTRY[data.config.plant]()
+    plant = plant_of(data.config)
     if cfg.scenario not in plant.get_scenarios():
         raise ValueError(f"the plant {data.config.plant!r} of {cfg.dataset_run} offers the "
                          f"scenarios {sorted(plant.get_scenarios())}, not {cfg.scenario!r}")
@@ -85,8 +85,8 @@ def run(cfg: Config) -> Record:
 
     return Record(
         name="default", config=cfg, provenance=stamp(_time.perf_counter() - started),
-        constants={"plant": data.config.plant, "plant_Ts_s": plant.Ts, "config_Ts_s": deepc_cfg.Ts,
-                   "sim_steps": deepc_cfg.sim_steps, "deepc_config": dataclasses.asdict(deepc_cfg),
+        constants={"plant": data.config.plant, "plant_Ts_s": plant.Ts, "sim_steps": deepc_cfg.sim_steps,
+                   "deepc_config": dataclasses.asdict(deepc_cfg),
                    "dataset_run": {"path": cfg.dataset_run, "name": data.name,
                                    "date": data.provenance.date if data.provenance else "",
                                    "git_sha": data.provenance.git_sha if data.provenance else ""}},
