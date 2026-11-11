@@ -1,7 +1,8 @@
 # DeePC Sandbox
 
-A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** on two simulated plants, a
-kinematic bicycle and a coupled two-mass spring-damper. An active personal project, not a library or product.
+A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** on a simulated plant, a
+coupled two-mass spring-damper. An active personal project, not a library or product. A kinematic
+bicycle was deleted on 2026-11-11: no source for its model was known.
 
 ## About
 
@@ -16,10 +17,9 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
 
   | Plant | Type | Inputs | Outputs | Scenarios |
   |-------|------|--------|---------|-----------|
-  | `bicycle` | Nonlinear | steering, acceleration | lateral, heading and speed errors | `default` (sinusoid along a line), `lissajous` |
   | `coupled_masses` | LTI MIMO | forces $F_1$, $F_2$ | position and velocity errors of both masses | `default` (steps), `sinusoidal` |
 
-- **Data.** Several episodes per plant, each driven by a proportional baseline controller plus excitation,
+- **Data.** Several episodes, each driven by a proportional baseline controller plus excitation,
   with Gaussian noise on the recorded outputs.
 - **Controller.** The DeePC quadratic program in sparse form (inputs and outputs as decision variables), with
   regularisation of the Hankel weights and a slack on the past outputs, hard input and rate bounds, and
@@ -53,11 +53,11 @@ Each run of a piece saves one record, a JSON file with the settings it used, eve
 its numbers and the commit; [devkit/README.md](devkit/README.md) has an example of every command:
 
 ```bash
-uv run deepc run dataset                       # training data from the bicycle -> results/dataset/default.json
+uv run deepc run dataset                       # training data from the coupled masses -> results/dataset/default.json
 uv run deepc run closed_loop                   # DeePC on that data -> results/closed_loop/default.json
 uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
 uv run deepc draw results/closed_loop/default.json                       # its charts as PNGs beside it
-uv run deepc draw results/closed_loop/lg-*.json --number rmse_position --vs lambda_g
+uv run deepc draw results/closed_loop/lg-*.json --number rmse_e_x1 --vs lambda_g
 uv run lab --no-open                           # the Lab on http://127.0.0.1:8765: runs ticked and compared on the left, live charts on the right
 ```
 
@@ -69,7 +69,7 @@ Bayesian tuning over the controller's settings (Optuna) writes its own report un
 a failed trial stops the study:
 
 ```bash
-uv run python tune.py --plant bicycle --n-trials 100 --sim-duration 10
+uv run python tune.py --plant coupled_masses --n-trials 100 --sim-duration 10
 ```
 
 **Adding a plant.** Implement `PlantBase` from `tools/plants/base.py`:
@@ -82,7 +82,7 @@ class MyPlant(PlantBase):
     # Implement: step(), reset(), get_output(), get_constraints()
     # Implement: get_default_config_overrides(), get_scenarios()
     # Implement: get_data_collection_config(), make_episode_initial_state()
-    # Optional:  get_position_from_state(), compute_custom_metrics()
+    # Optional:  compute_custom_metrics()
     ...
 ```
 
@@ -97,7 +97,7 @@ uv run pytest
 The suite runs locally and is the gate for every change. It holds:
 
 - **The safety net** (`tests/reference/`). Today's numbers are frozen: training data, reference paths,
-  five closed loops and the metrics `tune.py` scores by. The test compares the code against them byte for byte, along
+  four closed loops and the metrics `tune.py` scores by. The test compares the code against them byte for byte, along
   with every setting each case ran under.
 - **The layout's direction** (`tests/test_roots.py`). The controller (`src/`) imports neither the plants
   (`tools/`) nor the bench (`devkit/`), the plants never import the bench, and `src/` holds exactly the
@@ -117,7 +117,7 @@ numbers.
 | Path | Role |
 |---|---|
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
-| `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
+| `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
 | `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the charts (`devkit/figure/`), the `deepc` command (`devkit/terminal/`) |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
 | `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the records and pieces (`test_record.py`, `test_harness.py`), the charts (`test_figure.py`) and the document checks (`test_conventions.py`) |
@@ -129,7 +129,7 @@ numbers.
 ## Limitations
 
 Simulation only. The known problems are recorded in
-[docs/project/failures.md](docs/project/failures.md); D1–D3 are fixed, the others not yet:
+[docs/project/failures.md](docs/project/failures.md); D1–D3 are fixed, D7 closed, the others not yet:
 
 - **D1** (fixed, PR #8) `--Ts`, and the tuner's search over it, never reached the plant.
 - **D2** (fixed, PR #9) an inaccurate solve was counted as optimal.
@@ -138,12 +138,12 @@ Simulation only. The known problems are recorded in
 - **D4** the training outputs are noisy and the closed-loop outputs are not.
 - **D5** the online Hankel gate reads an estimator that only runs under `noise_adaptive`.
 - **D6** comments that describe other code.
-- **D7** the bicycle's output bounds sit on the speed error.
+- **D7** (closed, the bicycle deleted) the bicycle's output bounds sat on the speed error.
 - **D8** code nothing calls.
 - **D9** Hankel columns that join two episodes, or the training data and the loop.
 - **D10** the loop and the data align the reference with the state differently.
 - **D11** the noise-adaptive tightening enters no constraint at the defaults.
-- **D12** the bicycle's training data records inputs before the plant clips them.
+- **D12** the training data records inputs before the plant clips them.
 - **D13** the excitation check uses a lower order than the fundamental lemma asks for.
 - **D14** the default regulariser on the Hankel weights is the squared 2-norm, where Coulson et al. use the
   1-norm and a low-rank step the code lacks.

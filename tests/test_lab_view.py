@@ -219,7 +219,7 @@ def test_run_launches_the_form_as_the_command_and_shows_what_it_wrote(two_runs, 
     # the terminal writes the record and prints its path; the page lists it, ticked
     written = Path(root) / out_dir / "closed_loop" / "probe.json"
     shutil.copy(Path(root) / out_dir / "closed_loop" / "first.json", written)
-    launcher.finish(0, f"{out_dir}/closed_loop/probe.json", "  rmse_position = 0.01")
+    launcher.finish(0, f"{out_dir}/closed_loop/probe.json", "  rmse_position_combined = 0.01")
     lab._poll()
     assert ticker.stopped == 1 and lab._ticker is None
     assert _names(lab)[0] == "probe" and "probe.json" in _console(lab)
@@ -315,13 +315,14 @@ def test_use_loads_a_runs_settings_into_the_form_and_the_widgets_and_clear_empti
     lab.open_drawer("second")                        # what the list's `use` reaches
     assert lab.drawer.visible and "From second" in lab.from_words.object
     data = str(Path(two_runs[0]) / two_runs[1] / "dataset" / "default.json")
-    assert lab.form.set == {"dataset_run": data, "sim_duration": "1", "lambda_g": "50"}
-    assert lab._controls["lambda_g"].value == "50" and lab._controls["dataset_run"].value == data
+    assert lab.form.set == {"dataset_run": data, "scenario": "sinusoidal", "sim_duration": "1",
+                            "lambda_g": "2"}
+    assert lab._controls["lambda_g"].value == "2" and lab._controls["dataset_run"].value == data
     assert lab._controls["N"].value == ""
     assert skin.CHANGED in lab._controls["lambda_g"].stylesheets, "a value away from its default"
     assert skin.CHANGED not in lab._controls["N"].stylesheets
     assert "1 of 9 changed" in lab._group_notes["Controller"].object
-    assert toasts[-1] == "3 settings loaded from second"
+    assert toasts[-1] == "4 settings loaded from second"
     lab._clear()
     assert lab.form.set == {} and lab._controls["lambda_g"].value == ""
     assert skin.CHANGED not in lab._controls["lambda_g"].stylesheets
@@ -334,12 +335,12 @@ def test_a_value_the_page_itself_wrote_does_not_hide_the_next_keystroke(two_runs
     """A box carries two values and a programmatic write sets one: retyping what ``use`` loaded
     over must reach the form, or the run uses a number the box does not show."""
     lab, _launcher, _ticker, _toasts = _lab(two_runs)
-    _type(lab, "lambda_g", "50")
-    lab._use("second")                               # writes lambda_g = 50 over the typed 50
+    _type(lab, "lambda_g", "2")
+    lab._use("second")                               # writes lambda_g = 2 over the typed 2
     _type(lab, "lambda_g", "5")
     assert lab.form.set["lambda_g"] == "5"
     overrides = lab.form.launch_words()[0]
-    assert "lambda_g=5" in overrides and "lambda_g=50" not in overrides
+    assert "lambda_g=5" in overrides and "lambda_g=2" not in overrides
 
 
 def test_a_sweep_the_page_cleared_is_not_resurrected_by_picking_an_axis(two_runs) -> None:
@@ -502,7 +503,7 @@ def test_a_real_run_from_the_page_writes_a_record_the_list_shows(tmp_path: Path,
     record = Path(out_dir) / "closed_loop" / "live.json"
     assert record.exists() and json.loads(record.read_text())["config"]["sim_duration"] == 1
     assert _names(lab) == ["live"] and str(record) in _console(lab)
-    assert lab.shown == ["live"] and _rows_of(lab, "output-e-lateral") == ["live"], \
+    assert lab.shown == ["live"] and _rows_of(lab, "output-e-x1") == ["live"], \
         "shown, and charted"
     assert toasts[-1] == "Closed loop: wrote 1 record"
     assert capsys.readouterr().out.startswith(
@@ -563,19 +564,19 @@ def test_one_browser_message_carrying_both_values_of_a_box_is_one_edit(own_runs)
 def test_the_newest_run_is_shown_and_charted_and_ticking_another_adds_it_and_a_column(own_runs) -> None:
     lab, *_ = _lab(own_runs)
     assert lab.shown == ["second"], "the newest, so the screen is never empty"
-    assert lab.open_charts == ["output-e-lateral"] and _rows_of(lab, "output-e-lateral") == ["second"], \
+    assert lab.open_charts == ["output-e-x1"] and _rows_of(lab, "output-e-x1") == ["second"], \
         "and its first panel open"
     assert _columns(lab) == ["second"]
     assert "tick another run" in lab.compare_count.object
     _tick(lab, "first")
     assert lab.shown == ["second", "first"]
     assert _columns(lab) == ["second", "first"], "the columns follow the order ticked"
-    assert _rows_of(lab, "output-e-lateral") == ["second", "first"], "every shown run, in that order"
+    assert _rows_of(lab, "output-e-x1") == ["second", "first"], "every shown run, in that order"
     assert "1 setting" in lab.compare_count.object and "differ" in lab.compare_count.object
     colours = [r["colour"] for r in lab.run_list.rows]
     assert colours[0] and colours[1] and colours[0] != colours[1], "a shown run's dot is its colour"
     _tick(lab, "second", False)
-    assert lab.shown == ["first"] and _columns(lab) == ["first"] and _rows_of(lab, "output-e-lateral") == ["first"]
+    assert lab.shown == ["first"] and _columns(lab) == ["first"] and _rows_of(lab, "output-e-x1") == ["first"]
 
 
 def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(own_runs) -> None:
@@ -583,7 +584,7 @@ def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(
     _tabs(lab)["solve-time"].value = True
     assert launcher.argvs == [], "a chart is drawn by the figure layer in the page, not a subprocess"
     assert [lab.cards_box.objects.index(_card(lab, p))
-            for p in ("output-e-lateral", "solve-time")] == [0, 1], "cards in the record's declared order"
+            for p in ("output-e-x1", "solve-time")] == [0, 1], "cards in the record's declared order"
     fig = _figure(lab, "solve-time")
     assert fig["layout"]["yaxis"]["title"]["text"] == "Solve time [s]", "the record's own words"
     assert fig["layout"]["xaxis"]["title"]["text"] == "Solve [-]"
@@ -591,20 +592,20 @@ def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(
     assert "Wall-clock time of the solve" in html.unescape(title), "its description on the title's hover"
     assert not any("Wall-clock time" in w for w in _card_words(lab, "solve-time")), \
         "and not repeated under it (RCWS)"
-    assert "2 of 12 open" in lab.open_count.object
-    assert list(lab._lines) == ["Outputs", "Inputs", "Solver", "Position"], \
+    assert "2 of 10 open" in lab.open_count.object
+    assert list(lab._lines) == ["Outputs", "Inputs", "Solver"], \
         "listed in the record's groups"
     assert all(f">{group}<" in line.objects[0].object for group, line in lab._lines.items())
-    _tabs(lab)["output-e-lateral"].value = False
+    _tabs(lab)["output-e-x1"].value = False
     assert lab.open_charts == ["solve-time"]
 
 
 def test_a_control_a_card_cannot_use_is_greyed_with_the_reason_on_its_hover(own_runs) -> None:
     lab, *_ = _lab(own_runs)
-    greyed = _greyed(lab, "output-e-lateral")
+    greyed = _greyed(lab, "output-e-x1")
     assert greyed == {"Overlay | Split | Mean | RMS": "One run shown"}, "its one control"
     _tick(lab, "first")
-    greyed = _greyed(lab, "output-e-lateral")
+    greyed = _greyed(lab, "output-e-x1")
     assert greyed["Mean"] == "The chart declares no statistic", \
         "the figure layer's own words, begun with a capital"
     assert greyed["RMS"] == "The chart declares no statistic"
@@ -620,27 +621,27 @@ def test_runs_that_differ_in_their_seed_alone_pool_on_a_card_into_one_line(own_r
     lab, *_ = _lab(own_runs)
     lab._on_piece("dataset")
     _tick(lab, "seed-1")
-    _tabs(lab)["output-e-lateral"].value = True
-    assert "Mean" not in _greyed(lab, "output-e-lateral")
-    _control(lab, "output-e-lateral", "Mean").value = True
-    fig = _figure(lab, "output-e-lateral")
+    _tabs(lab)["output-e-x1"].value = True
+    assert "Mean" not in _greyed(lab, "output-e-x1")
+    _control(lab, "output-e-x1", "Mean").value = True
+    fig = _figure(lab, "output-e-x1")
     names = [t["name"] for t in fig["data"] if t.get("showlegend") is not False]
-    assert names == ["Mean of 2 runs · e_lateral"]
+    assert names == ["Mean of 2 runs · e_x1"]
 
 
 def test_a_number_clicked_in_the_compare_table_is_a_card_every_run_a_point(own_runs) -> None:
     lab, *_ = _lab(own_runs)
     _tick(lab, "first")
-    lab.compare_table._handle_msg({"number": "rmse_position"})
-    card = _card_of(lab, number="rmse_position")
+    lab.compare_table._handle_msg({"number": "rmse_position_combined"})
+    card = _card_of(lab, number="rmse_position_combined")
     assert card.x == "lambda_g", "the setting that varies is the bottom axis"
     assert lab.drawn[card.id] == ["second", "first"]
-    title = _card(lab, "rmse_position")
+    title = _card(lab, "rmse_position_combined")
     assert title is not None
-    assert next(r for r in lab.compare_table.rows if r["key"] == "rmse_position")["open"]
-    greyed = _greyed(lab, "rmse_position")
+    assert next(r for r in lab.compare_table.rows if r["key"] == "rmse_position_combined")["open"]
+    greyed = _greyed(lab, "rmse_position_combined")
     assert greyed["All | Mean | RMS"] == "No colour holds two runs at one value"
-    lab.compare_table._handle_msg({"number": "rmse_position"})
+    lab.compare_table._handle_msg({"number": "rmse_position_combined"})
     assert not [c for c in lab.cards if c.kind == "numbers"], "asked again, it closes"
 
 
@@ -656,11 +657,11 @@ def test_the_chart_list_opens_on_an_index_of_its_groups(own_runs, monkeypatch) -
     by its toggle, the address or as the first chart a page opens on; hiding a group closes
     nothing and stays; show all and hide all; a list with no groups has no index."""
     lab, *_ = _lab(own_runs)
-    named = ["Outputs", "Inputs", "Solver", "Position"]
+    named = ["Outputs", "Inputs", "Solver"]
     index = lab.tabs.objects[0]
     columns = [[toggle.label for toggle in column.objects] for column in index.objects]
     assert len(columns) == 3 and [label[2:] for column in columns for label in column] == named
-    assert list(lab.group_toggles()) == named and "output-e-lateral" in lab.toggles()
+    assert list(lab.group_toggles()) == named and "output-e-x1" in lab.toggles()
     assert _on_show(lab) == ["Outputs"]                   # the first chart a page opens on
     assert lab.group_toggles()["Outputs"].label == "▾ Outputs"
     assert lab.group_toggles()["Solver"].label == "▸ Solver"
@@ -688,7 +689,7 @@ def test_the_chart_list_opens_on_an_index_of_its_groups(own_runs, monkeypatch) -
     monkeypatch.setattr(lab, "_drawable", lambda run: {**run, "panel_groups": {}})
     lab._draw_tabs()
     assert not lab.group_toggles() and not lab._lines and not lab.show_all.visible
-    assert "output-e-lateral" in lab.toggles()
+    assert "output-e-x1" in lab.toggles()
 
 
 def test_the_chart_list_is_what_the_records_class_declares_not_what_its_file_lists(own_runs) -> None:
@@ -699,7 +700,7 @@ def test_the_chart_list_is_what_the_records_class_declares_not_what_its_file_lis
     root, out_dir = own_runs
     path = Path(root) / out_dir / "closed_loop" / "second.json"
     raw = json.loads(path.read_text())
-    raw["panels"] = ["output-e-lateral", "a-chart-no-longer-declared"]
+    raw["panels"] = ["output-e-x1", "a-chart-no-longer-declared"]
     path.write_text(json.dumps(raw))
     lab, *_ = _lab(own_runs)
     assert lab.shown == ["second"]
@@ -755,7 +756,7 @@ def test_a_click_on_the_chart_list_builds_none_of_it_again(own_runs) -> None:
     assert all(lab.group_toggles()[group] is toggle for group, toggle in index.items())
     assert not lab.toggles()["cost"].value
     assert lab.group_toggles()["Solver"].label == "▸ Solver"
-    assert "1 of 12 open" in lab.open_count.object
+    assert "1 of 10 open" in lab.open_count.object
 
 
 def test_a_run_without_the_panel_is_the_figure_layers_refusal_on_the_card(own_runs) -> None:
@@ -768,7 +769,7 @@ def test_a_run_without_the_panel_is_the_figure_layers_refusal_on_the_card(own_ru
                                   else real(run))
     for row in lab.records:
         if row["name"] == "first":
-            row["panels"] = ["output-e-lateral"]
+            row["panels"] = ["output-e-x1"]
     _tick(lab, "first")
     _tabs(lab)["cost"].value = True
     assert _rows_of(lab, "cost") == [] and _figure(lab, "cost") is None
@@ -780,7 +781,7 @@ def test_a_run_without_the_panel_is_the_figure_layers_refusal_on_the_card(own_ru
 def types_ns(record):
     """``record`` declaring its lateral-error panel alone, a record of the same piece (the figure
     layer refuses to compare runs of two pieces)."""
-    keep = [s for s in record.series() if s.name == "output-e-lateral"]
+    keep = [s for s in record.series() if s.name == "output-e-x1"]
     older = type("Older", (), {"component": type(record).component})()
     for name, value in (("series", lambda: tuple(keep)), ("config", record.config),
                         ("numbers", record.numbers), ("number_specs", record.number_specs),
@@ -806,8 +807,8 @@ def test_a_record_that_does_not_load_is_a_line_on_the_card_in_the_loaders_words(
     assert "zz-odd-body" in _names(lab)
     _tick(lab, "zz-odd-body")
     assert _columns(lab) == ["second", "zz-odd-body"], "its header reads; it compares"
-    assert _rows_of(lab, "output-e-lateral") == ["second"]
-    words = " ".join(_card_words(lab, "output-e-lateral"))
+    assert _rows_of(lab, "output-e-x1") == ["second"]
+    words = " ".join(_card_words(lab, "output-e-x1"))
     assert "zz-odd-body" in words and "does not load as the current Record" in words
 
 
@@ -822,7 +823,7 @@ def test_the_settings_are_shown_when_asked_and_a_number_never_hidden(own_runs) -
     lab.settings_choice.value = "all"
     every = [r["term"] for r in lab.compare_table.rows if r["kind"] == "setting"]
     assert len(differ) == 1 and len(every) > len(differ)
-    assert "Position RMSE [m]" in [r["term"] for r in lab.compare_table.rows]
+    assert "Position combined RMSE [m]" in [r["term"] for r in lab.compare_table.rows]
 
 
 def test_the_constants_a_run_used_are_compared_too(own_runs) -> None:
@@ -833,7 +834,7 @@ def test_the_constants_a_run_used_are_compared_too(own_runs) -> None:
     lab.settings_choice.value = "all"
     terms = [r["term"] for r in lab.compare_table.rows]
     assert "Constants" in terms and "deepc_config · lambda_g" in terms, "the value the code resolved"
-    assert terms.index("Position RMSE [m]") < terms.index("Constants"), \
+    assert terms.index("Position combined RMSE [m]") < terms.index("Constants"), \
         "numbers first, constants last"
 
 
@@ -934,8 +935,8 @@ def test_a_record_that_cannot_be_read_is_not_shown_by_itself(own_runs) -> None:
 def test_a_number_a_record_does_not_declare_well_is_listed_and_not_fatal(own_runs) -> None:
     root, out_dir = own_runs
     (Path(root) / out_dir / "closed_loop" / "zz-odd.json").write_text(json.dumps(
-        {"component": "closed_loop", "panels": ["output-e-lateral"],
-         "number_specs": {"rmse_position": 1}}))
+        {"component": "closed_loop", "panels": ["output-e-x1"],
+         "number_specs": {"rmse_position_combined": 1}}))
     lab, *_ = _lab(own_runs)
     assert lab.page().get_root() is not None
     row = next(r for r in lab.runs() if r["name"] == "zz-odd")
@@ -950,5 +951,5 @@ def test_switching_the_piece_forgets_what_was_ticked_and_open(own_runs) -> None:
     lab._on_piece("dataset")                         # none of the closed loop's runs is the dataset's
     assert lab.shown == [] and lab.open_charts == []
     lab._on_piece("closed_loop")
-    assert lab.shown == ["second"] and lab.open_charts == ["output-e-lateral"]
+    assert lab.shown == ["second"] and lab.open_charts == ["output-e-x1"]
     assert not lab._loaded or all(p.endswith(".json") for p in lab._loaded)

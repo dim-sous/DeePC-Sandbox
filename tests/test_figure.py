@@ -4,6 +4,7 @@ figures"; skill ``figure-conventions``; D7 for a bound's unit)."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 
@@ -23,13 +24,15 @@ DATASET, LOOP = get_component("dataset"), get_component("closed_loop")
 
 @pytest.fixture(scope="module")
 def runs(tmp_path_factory) -> dict[str, object]:
-    """A saved dataset run per plant and a 1 s closed loop on each, saved and loaded back."""
+    """A saved dataset run per plant and a 0.5 s closed loop on each, saved and loaded back. Every
+    loop in this module runs the ``sinusoidal`` scenario: the coupled masses' ``default`` steps hold
+    zero for their first 5 s, so a shorter loop on them charts round-off around zero."""
     out = tmp_path_factory.mktemp("runs")
     got = {}
-    for plant in ("bicycle", "coupled_masses"):
+    for plant in PLANT_REGISTRY:
         data = DATASET.run(DATASET.Config(plant=plant)).save(out / f"data-{plant}.json")
         got[f"data-{plant}"] = DATASET.Record.load(data)
-        loop = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=1.0))
+        loop = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=0.5, scenario="sinusoidal"))
         got[f"loop-{plant}"] = LOOP.Record.load(loop.save(out / f"loop-{plant}.json"))
     return got
 
@@ -76,38 +79,53 @@ def test_every_declared_panel_draws_with_no_title_and_a_legend_only_for_several_
 
 def test_an_overlay_names_each_run_and_draws_what_both_hold_identically_once(runs, tmp_path) -> None:
     data = tmp_path / "data.json"
-    runs["data-bicycle"].save(data)
-    other = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=1.0, lambda_g=50.0))
-    panel = chart_of([("a", runs["loop-bicycle"]), ("b", other)], "position-x")
-    labels = [ln.label for ln in panel.axes[0].lines]
-    assert labels == ["a", "a, b — Reference (identical)", "b"]   # a run alone names its own trace
-    assert len({ln.color for ln in panel.axes[0].lines}) == 3
+    runs["data-coupled_masses"].save(data)
+    other = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=0.5, scenario="sinusoidal",
+                                 lambda_g=2.0))
+    panel = chart_of([("a", runs["loop-coupled_masses"]), ("b", other)], "input-F1")
+    assert [ln.label for ln in panel.axes[0].lines] == ["a", "b"]   # a run alone names its trace
+    assert len({ln.color for ln in panel.axes[0].lines}) == 2
+    assert [r.label for r in panel.axes[0].refs] == ["Lower bound of F1 [N]",
+                                                     "Upper bound of F1 [N]"]   # each bound once
+    same = chart_of([("a", runs["loop-coupled_masses"]), ("b", runs["loop-coupled_masses"])],
+                    "output-e-x1")
+    assert [ln.label for ln in same.axes[0].lines] == ["a, b — e_x1 (identical)"]
 
 
 def test_a_panel_no_run_declares_is_refused(runs, tmp_path) -> None:
     with pytest.raises(ValueError, match="no run declares"):
-        draw([("a", runs["loop-bicycle"])], tmp_path, panels=["no-such-panel"])
+        draw([("a", runs["loop-coupled_masses"])], tmp_path, panels=["no-such-panel"])
 
 
 def test_a_run_without_the_panel_or_of_another_piece_is_refused_not_left_out(runs) -> None:
+    loop = runs["loop-coupled_masses"]
+
+    class WithoutCost(type(loop)):
+        """A run of the same piece that declares no ``cost`` panel: with one plant registered,
+        no real run lacks a panel another declares."""
+
+        def series(self):
+            return tuple(s for s in super().series() if s.name != "cost")
+
+    fewer = WithoutCost(**{f.name: getattr(loop, f.name) for f in dataclasses.fields(loop)})
     with pytest.raises(ValueError, match="declare no panel"):
-        chart_of([("bike", runs["loop-bicycle"]), ("masses", runs["loop-coupled_masses"])],
-                 "position-x")
+        chart_of([("all", loop), ("fewer", fewer)], "cost")
     with pytest.raises(ValueError, match="different pieces"):
-        chart_of([("data", runs["data-bicycle"]), ("loop", runs["loop-bicycle"])], "input-steering")
+        chart_of([("data", runs["data-coupled_masses"]), ("loop", loop)], "input-F1")
     with pytest.raises(ValueError, match="different pieces"):
-        sweep_of([("data", runs["data-bicycle"]), ("loop", runs["loop-bicycle"])], "rmse_x",
+        sweep_of([("data", runs["data-coupled_masses"]), ("loop", loop)], "rmse_e_x1",
                  vs="seed")
 
 
 def test_a_sweep_puts_one_point_per_run_at_its_settings_value(runs, tmp_path) -> None:
     data = tmp_path / "data.json"
     runs["data-coupled_masses"].save(data)
-    pairs = [(f"lg-{v}", LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=0.5, lambda_g=v)))
-             for v in (2.0, 20.0)]
+    pairs = [(f"lg-{v}", LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=0.5,
+                                              scenario="sinusoidal", lambda_g=v)))
+             for v in (2.0, 5.0)]
     panel = sweep_of(pairs, "rmse_e_x1", vs="lambda_g")
     (line,) = panel.axes[0].lines                         # one colour: only lambda_g differs
-    assert list(line.drawn_x()) == [2.0, 20.0] and line.points
+    assert list(line.drawn_x()) == [2.0, 5.0] and line.points
     assert line.y == [rec.numbers["rmse_e_x1"] for _, rec in pairs]
     spec = next(n for n in pairs[0][1].number_specs() if n.name == "rmse_e_x1")
     assert panel.axes[0].y_label == f"{spec.label} [m]"
@@ -149,11 +167,12 @@ def test_a_number_against_a_list_setting_places_each_list_by_name(runs, tmp_path
     """Q and R are lists: a sweep over them puts each list on the bottom axis by name, as a
     choice is put, rather than raising (a list cannot key a dict; code review, 2026-11-11)."""
     data = tmp_path / "data.json"
-    runs["data-bicycle"].save(data)
-    other = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=1.0, Q_diag=[10.0, 10.0, 1.0]))
-    panel = sweep_of([("a", runs["loop-bicycle"]), ("b", other)], "rmse_position", vs="Q_diag",
-                    by=())
-    assert [words for _, words in panel.x_ticks] == ["None", "[10.0, 10.0, 1.0]"]
+    runs["data-coupled_masses"].save(data)
+    other = LOOP.run(LOOP.Config(dataset_run=str(data), sim_duration=0.5, scenario="sinusoidal",
+                                 Q_diag=[10.0, 1.0, 10.0, 1.0]))
+    loop = runs["loop-coupled_masses"]
+    panel = sweep_of([("a", loop), ("b", other)], "rmse_e_x1", vs="Q_diag", by=())
+    assert [words for _, words in panel.x_ticks] == ["None", "[10.0, 1.0, 10.0, 1.0]"]
     [line] = panel.axes[0].lines
     assert list(line.x) == [0.0, 1.0]
-    assert list(line.y) == [runs["loop-bicycle"].numbers["rmse_position"], other.numbers["rmse_position"]]
+    assert list(line.y) == [loop.numbers["rmse_e_x1"], other.numbers["rmse_e_x1"]]

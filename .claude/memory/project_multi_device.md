@@ -20,4 +20,7 @@ point Claude Code's own notes here: `.claude/settings.local.json` (git-ignored) 
 **On their computer after a pull**: `uv sync` when packages moved; `uv run playwright install
 chromium` once; `uv run deepc run dataset`, `uv run deepc run closed_loop --set sim_duration=10`,
 `uv run lab`. Records saved before a branch that changed a record's fields show as stale in the
-Lab: re-run them.
+Lab: re-run them. A computer that held the code before the layout move (PR #4) may keep git-ignored
+`control/`, `plants/`, `sim/` folders at the root holding only `__pycache__`: they shadow the real
+packages (`import plants` finds an empty namespace) and every test fails to import. On the
+developer's computer they were deleted, on their word, 2026-11-11.

@@ -24,11 +24,12 @@ from record import Record as _Record
 
 from .config import Config
 
-_OUTPUTS, _INPUTS, _SOLVER, _POSITION = "Outputs", "Inputs", "Solver", "Position"
+_OUTPUTS, _INPUTS, _SOLVER = "Outputs", "Inputs", "Solver"
 
 
 def _metric_words(name: str) -> str:
-    """A plant metric's words from its code name: ``rmse_position`` reads "Position RMSE"."""
+    """A plant metric's words from its code name: ``rmse_position_combined`` reads "Position
+    combined RMSE"."""
     if not name.startswith("rmse_"):
         return name[:1].upper() + name[1:].replace("_", " ")
     words = name[len("rmse_"):].replace("_", " ")
@@ -59,8 +60,6 @@ class Record(_Record):
     sigma_y_norm: np.ndarray        # (K,) 2-norm of the past-output slack per solve
     lambda_g: np.ndarray            # (K,) lambda_g used per solve
     solve_time_s: np.ndarray        # (K,) wall-clock time per solve
-    position: np.ndarray | None     # (T+1, 2) plant position, one more than time: the start
-    reference_position: np.ndarray | None   # (T, 2) the waypoints' positions
     numbers: dict
 
     component = "closed_loop"
@@ -97,23 +96,6 @@ class Record(_Record):
                     ("sigma-y-norm", "‖σ_y‖₂", "-", "2-norm of the past-output slack σ_y",
                      self.sigma_y_norm),
                     ("lambda-g", "λ_g", "-", "λ_g the solve used", self.lambda_g))]
-        if self.position is not None and self.reference_position is not None:
-            n = len(self.reference_position)
-            out += [Series(name=f"position-{axis}", x=np.arange(n), x_label="Step [-]",
-                           y_label=f"{axis} [m]", title=f"Position {axis}",
-                           traces=(("Plant", self.position[:n, j]),
-                                   ("Reference", self.reference_position[:, j])),
-                           group=_POSITION,
-                           doc=f"The plant's {axis} after each step beside the waypoint of the "
-                               f"same index, as the position RMSE compares them")
-                    for j, axis in enumerate(("x", "y"))]
-            out.append(Series(name="path", x=(), x_label="x [m]", y_label="y [m]", title="Path",
-                              traces=(("Plant", self.position[:, 1]),
-                                      ("Reference", self.reference_position[:, 1])),
-                              trace_x=(self.position[:, 0], self.reference_position[:, 0]),
-                              equal_axes=True, group=_POSITION,
-                              doc="The plant's position in the plane at the start and after each "
-                                  "step, and the waypoints, on equal scales"))
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:

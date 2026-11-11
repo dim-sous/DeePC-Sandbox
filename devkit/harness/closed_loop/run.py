@@ -103,7 +103,4 @@ def run(cfg: Config) -> Record:
         solvers=[str(s) for s in res["solvers"]], zero_input=[bool(z) for z in res["zero_input"]],
         cost=_floats(res["costs"]), sigma_y_norm=sigma, lambda_g=_floats(res["lambda_g_history"]),
         solve_time_s=solve,
-        position=np.asarray(res["pos_history"], dtype=float) if "pos_history" in res else None,
-        reference_position=(np.asarray(res["ref_pos_history"], dtype=float)
-                            if "ref_pos_history" in res else None),
         numbers=numbers)

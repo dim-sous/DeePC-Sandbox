@@ -172,8 +172,8 @@ def test_driving_the_lab_never_runs_the_piece_nor_builds_its_config(monkeypatch,
     lab._poll()
     lab.reload()
     lab.run_list.shown = ["second", "first"]
-    lab._on_chart("position-x", True)
-    lab.open_number("rmse_position")
+    lab._on_chart("input-F1", True)
+    lab.open_number("rmse_position_combined")
     for card in lab.cards:
         card.runs, card.table = ("mean" if card.kind == "chart" else "each"), True
     lab._draw_cards()
@@ -205,17 +205,17 @@ def test_every_chart_on_the_page_is_the_figure_layers(monkeypatch, two_runs) -> 
     lab = Lab(root, out_dir, every=lambda cb, ms: None, toast=lambda _w: None)
     lab.page()
     lab.run_list.shown = ["second", "first"]
-    lab._on_chart("position-x", True)
-    assert set(lab.open_charts) == {"output-e-lateral", "position-x"}
+    lab._on_chart("input-F1", True)
+    assert set(lab.open_charts) == {"output-e-x1", "input-F1"}
     import panel as pn
     drawn = {}
     for card in lab.cards_box.objects:                 # each card's chart, by its title's panel
         chart = re.search(r"data-panel='([^']+)'", card.objects[0].objects[0].object).group(1)
         drawn[chart] = next(o for o in card.objects if isinstance(o, pn.pane.Plotly)).object
-    assert set(drawn) == {"output-e-lateral", "position-x"}
+    assert set(drawn) == {"output-e-x1", "input-F1"}
     for chart, fig in drawn.items():
         assert fig["layout"]["meta"]["doc"] == f"stub {chart}"
-    assert built[-1] == ("position-x", ["second", "first"]), "the shown runs, in the order ticked"
+    assert built[-1] == ("input-F1", ["second", "first"]), "the shown runs, in the order ticked"
 
 
 def test_the_pieces_are_the_registry_with_their_own_declarations() -> None:
@@ -243,7 +243,7 @@ def test_records_are_read_off_their_files_newest_first(two_runs) -> None:
         assert r["config"]["dataset_run"].endswith("dataset/default.json")
         assert r["provenance"]["git_sha"]
         json.dumps(r)                                    # plain data, nothing exotic
-    assert rows[0]["config"]["lambda_g"] == 50 and rows[1]["config"]["lambda_g"] is None
+    assert rows[0]["config"]["lambda_g"] == 2 and rows[1]["config"]["lambda_g"] is None
 
 
 def test_a_record_is_re_read_only_when_its_file_changes(two_runs) -> None:
@@ -399,5 +399,5 @@ def test_a_path_outside_the_out_dir_is_not_under_it(tmp_path: Path) -> None:
 def test_wrote_keeps_only_the_printed_lines_that_are_files_under_the_out_dir(own_runs) -> None:
     root, out_dir = own_runs
     rel = os.path.join(out_dir, "closed_loop", "first.json")
-    lines = [rel + "\n", "  rmse_position = 0.09\n", "../etc/hostname\n", "\n"]
+    lines = [rel + "\n", "  rmse_position_combined = 0.09\n", "../etc/hostname\n", "\n"]
     assert state.wrote(lines, root, out_dir) == [os.path.join(root, rel)]

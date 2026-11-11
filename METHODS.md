@@ -1,6 +1,6 @@
 # Methods
 
-What the code computes: the two plants, how the training data is collected, the Hankel matrices, the DeePC
+What the code computes: the plant, how the training data is collected, the Hankel matrices, the DeePC
 quadratic program, the loop that runs it, its two optional variants, the metrics and the tuner.
 
 **Read this first.** This document was written from the code on 2026-11-10 and checked against the papers
@@ -12,58 +12,15 @@ pointers (`file.py:line`) were read at commit `3067d03` and re-pointed to the th
 matching each line's text. Where the code departs from a paper, from what it claims,
 or from itself, the incident in [`docs/project/failures.md`](docs/project/failures.md) is named (D1, D2, …).
 
-## 1. The plants
+## 1. The plant
 
-Both plants implement `PlantBase` (`tools/plants/base.py`) and are listed in `PLANT_REGISTRY` (`tools/plants/__init__.py:13`). Their
-outputs are **tracking errors** against a reference waypoint $r$, not measurements of the state: the
-controller is asked to drive the errors to zero.
+The plant implements `PlantBase` (`tools/plants/base.py`) and is listed in `PLANT_REGISTRY`
+(`tools/plants/__init__.py:12`). The kinematic bicycle this section also described was deleted on
+2026-11-11 (`docs/project/failures.md`, its header). The plant's outputs are **tracking errors**
+against a reference waypoint $r$, not measurements of the state: the controller is asked to drive the
+errors to zero.
 
-### 1.1 Kinematic bicycle
-
-`tools/plants/bicycle_model.py`. State $x = [p_x,\ p_y,\ \psi,\ v]$ (position in m, heading in rad, speed in m/s;
-the code's `x, y, theta, v`), input $u = [\delta,\ a]$ (steering angle in rad, acceleration in m/s²). One
-step of length $T_s$ (`:160-170`):
-
-```math
-\begin{aligned}
-\bar\delta &= \mathrm{clip}(\delta, -\delta_{max}, \delta_{max}), \qquad \bar a = \mathrm{clip}(a, a_{min}, a_{max}), \\
-p_x^+ &= p_x + T_s\, v \cos\psi, \qquad p_y^+ = p_y + T_s\, v \sin\psi, \\
-\psi^+ &= \psi + T_s\, \frac{v}{L_{wb}} \tan\bar\delta, \qquad v^+ = \max(v + T_s\, \bar a,\ 0).
-\end{aligned}
-```
-
-This is forward Euler; the reference point moves along the heading (no slip-angle term). No source for the
-model is cited anywhere in the repository. Defaults (`:77-89`): $T_s$ = 0.1 s, $L_{wb}$ = 2.5 m,
-$\delta_{max}$ = 0.5 rad, $a \in [-1, 1]$ m/s², reference speed $v_{ref}$ = 5 m/s, path amplitude
-$A$ = 5 m, path frequency $f$ = 0.05 Hz.
-
-**Outputs** (`:44-49`), against a waypoint $r = [r_x,\ r_y,\ r_\psi,\ r_v]$:
-
-```math
-e_{lat} = -(p_x - r_x)\sin r_\psi + (p_y - r_y)\cos r_\psi, \qquad
-e_\psi = \mathrm{wrap}_{[-\pi,\pi)}(\psi - r_\psi), \qquad
-e_v = v - r_v .
-```
-
-There is no along-track error among the outputs: an offset along the path's tangent changes none of the
-three. The bicycle's position RMSE (§8), which is also the tuner's objective (§9), does include it.
-
-**Scenarios** (`:267-309`), at $t_k = k T_s$:
-
-- `default`: $r_x = v_{ref}\, t + A \sin(2\pi f t)$, $r_y = A \sin(4\pi f t)$;
-- `lissajous`: $r_x = A \sin(2\pi f t)$, $r_y = A \sin(4\pi f t)$.
-
-The heading and speed of each waypoint are forward differences of the positions,
-$r_{\psi,k} = \mathrm{atan2}(\Delta r_y, \Delta r_x)$ and $r_{v,k} = \lVert \Delta r \rVert / T_s$, the last
-waypoint repeating the one before. In both scenarios the reference speed $r_v$ therefore varies along the
-path; it is not $v_{ref}$.
-
-**Constraints** (`:190-200`): the input bounds equal the plant's own clipping bounds; the rate bounds are
-per sample, $|\Delta\delta| \le 0.3$ rad and $|\Delta a| \le 0.5$ m/s² between consecutive samples, so their
-value per second depends on $T_s$; output bounds sit on the speed error, $e_v \in [0, 10]$ (D7), and act only
-when $\lambda_{out} > 0$ (§4).
-
-### 1.2 Coupled two-mass spring-damper
+### 1.1 Coupled two-mass spring-damper
 
 `tools/plants/coupled_masses.py`. State $x = [x_1,\ v_1,\ x_2,\ v_2]$, input $u = [F_1,\ F_2]$. The plant declares
 SI units (`input_units`, `output_units`: N, m, m/s), assumed: nothing else in the code states
@@ -83,9 +40,9 @@ $F_{max}$ = 5, and a rate bound of 2 per sample.
 
 **Outputs** (`:127`): $e = x - r$, with $r = [r_{x_1},\ r_{v_1},\ r_{x_2},\ r_{v_2}]$.
 
-**Scenarios**: `default` (`:218-242`), position steps held 5 s each, mass 1 through
+**Scenarios**: `default` (`:215-239`), position steps held 5 s each, mass 1 through
 $0, 1, -0.5, 1.5, -1, 0.5, -1.5, 1, 0$ and mass 2 through $0, -0.5, 1, -1, 0.5, 1.5, -0.5, 0$ starting
-2.5 s later; `sinusoidal` (`:254-255`), $r_{x_1} = \sin(0.2\pi t)$, $r_{x_2} = 0.8\sin(0.3\pi t + \pi/3)$. In
+2.5 s later; `sinusoidal` (`:251-252`), $r_{x_1} = \sin(0.2\pi t)$, $r_{x_2} = 0.8\sin(0.3\pi t + \pi/3)$. In
 both, the velocity references stay zero, so $e_{v_i} = v_i$ even while the position reference moves. The
 `default` references are zero for the first 5 s.
 
@@ -96,8 +53,8 @@ both, the velocity references stay zero, so $e_{v_i} = v_i$ even while the posit
 The plant is built at the dataset run's step $T_s$, by default its own (§1), and every closed loop on that
 data steps at the same $T_s$ (`devkit/harness/dataset/run.py`, `plant_of`; D1).
 
-`devkit/sim/data_generation.py:18-70`. The plant's `get_data_collection_config()` names $E$ episodes (5 for both
-plants), an excitation signal, a baseline controller $\kappa$ and a nominal reference $\bar r_k$. `T_data`
+`devkit/sim/data_generation.py:18-70`. The plant's `get_data_collection_config()` names $E$ episodes (5 for the
+masses), an excitation signal, a baseline controller $\kappa$ and a nominal reference $\bar r_k$. `T_data`
 samples are split into $E$ episodes of $\lfloor T_{data}/E \rfloor$ samples, the first
 $T_{data} \bmod E$ episodes one longer (`:33-40`). Each episode resets the plant to its own initial state
 (`:44`) and runs, for $k = 0, \dots, T_e - 1$ (`:52-65`):
@@ -107,20 +64,13 @@ u_k = \kappa\big(e(x_k, \bar r_k)\big) + w_k, \qquad x_{k+1} = f(x_k, u_k), \qqu
 y_k = e(x_{k+1}, \bar r_k) + n_k, \qquad n_k \sim \mathcal N(0, \sigma_n^2 I),
 ```
 
-with $w_k$ the excitation and $\sigma_n$ = `noise_std_output` (bicycle 0.01, masses 0.005). The recorded
+with $w_k$ the excitation and $\sigma_n$ = `noise_std_output` (0.005). The recorded
 output $y_k$ is the one after the step. The recorded input $u_k$ is the one before the plant's own clipping
 (§1; `devkit/sim/data_generation.py:57-64`): where the plant clips, the data holds an input it did not apply
 (D12). The baseline controller reads the error before the noise is added
 (D4). The episodes are then stacked end to end into one record of `T_data` samples (`:70`; D9).
 
-**Bicycle** (`tools/plants/bicycle_model.py:225-364`): each episode starts at $p = 0$, $\psi \sim U(-0.3, 0.3)$ rad,
-$v = \max(v_{ref}(1 + \Delta), 0.5)$ for $\Delta \in \{0, -0.4, 0.4, -0.7, 0.7\}$. Nominal reference: the
-straight line $\bar r_k = [(k+1)\, v_{ref} T_s,\ 0,\ 0,\ v_{ref}]$. Baseline:
-$\kappa(e) = [-0.3\, e_{lat} - 1.0\, e_\psi,\ -0.5\, e_v]$. Excitation: steering
-$\tfrac12$ PRBS(0.5 rad, minimum hold 3) $+ \tfrac12\, U(-0.5, 0.5)$; acceleration
-$\tfrac12$ multisine(2.5 m/s², 10 frequencies) $+ \tfrac12\, U(-2.5, 2.5)$.
-
-**Coupled masses** (`tools/plants/coupled_masses.py:162-282`): each episode starts at position offsets
+**Coupled masses** (`tools/plants/coupled_masses.py:162-279`): each episode starts at position offsets
 $(x_1, x_2) \in \{(0,0), (0.5,-0.5), (-0.5,0.5), (0.3,0.3), (-0.3,-0.3)\}$ with $v_i \sim U(-0.2, 0.2)$. Nominal
 reference: zero. Baseline: $F_i = -1.5\, e_{x_i} - 0.8\, e_{v_i}$. Excitation per channel:
 $\tfrac12$ PRBS (amplitude $0.6 F_{max}$, minimum hold 3) $+\ \tfrac12$ multisine (amplitude $0.6 F_{max}$,
@@ -145,8 +95,8 @@ H_L(w) = \begin{bmatrix} w_0 & w_1 & \cdots & w_{T-L} \\ w_1 & w_2 & \cdots & w_
 
 DeePC uses $L = T_{ini} + N$ (`src/deepc/config.py:66`): the first $T_{ini}$ block rows are the *past* blocks
 $U_p, Y_p$, the last $N$ the *future* blocks $U_f, Y_f$ (`src/deepc/online_hankel.py:86-90`, which the
-controller uses; `src/deepc/hankel.py:40-81` does the same and nothing calls it, D8). At the plants' defaults
-($T_{ini}, N$ = 3, 15 for the bicycle and 4, 20 for the masses), $H_L(u)$ is 36 × 383 and 48 × 577.
+controller uses; `src/deepc/hankel.py:40-81` does the same and nothing calls it, D8). At the plant's defaults
+($T_{ini}, N$ = 4, 20), $H_L(u)$ is 48 × 577.
 
 **Persistency of excitation** (`src/deepc/regularization.py:8-30`). The check is
 
@@ -169,7 +119,7 @@ order $n + L$.
   $[H_k(u^1)\ \cdots\ H_k(u^q)]$, one Hankel block per dataset, and [6, Theorem 2] extends the lemma to it
   under "collectively persistently exciting" inputs of order $n + L$. **Differs:** the code stacks the
   episodes into one signal before building one Hankel matrix (D9).
-- Both statements are for linear time-invariant systems; the bicycle is not one.
+- Both statements are for linear time-invariant systems.
 
 ## 4. The DeePC quadratic program
 
@@ -190,14 +140,14 @@ $\sigma_{out} \in \mathbb R^{Np}_{\ge 0}$ on the output bounds.
 \end{aligned}
 ```
 
-- $Q$ and $R$ are diagonal, `Q_diag` and `R_diag` repeated over the horizon (`:131-135`): the bicycle
-  weights $[10, 10, 0]$ (no weight on $e_v$) and $[0.1, 0.1]$; the masses $[20, 1, 20, 1]$ and $[0.1, 0.1]$.
+- $Q$ and $R$ are diagonal, `Q_diag` and `R_diag` repeated over the horizon (`:131-135`): the masses'
+  weights are $[20, 1, 20, 1]$ and $[0.1, 0.1]$.
   $R$ weighs the inputs themselves, not their changes.
 - $\rho$ is the 1-norm (`L1`) or the **squared** 2-norm (`L2`), chosen by `reg_norm_g` and `reg_norm_sigma_y`
-  (`:137-145`). Both plants default to squared 2-norm on $g$ and 1-norm on $\sigma_y$, with $\lambda_g$ = 5
-  (bicycle) or 10 (masses) and $\lambda_y = 10^4$; $\lambda_{out}$ = 0, so no output bound acts by default.
+  (`:137-145`). The plant defaults to squared 2-norm on $g$ and 1-norm on $\sigma_y$, with $\lambda_g$ = 10
+  and $\lambda_y = 10^4$; $\lambda_{out}$ = 0, so no output bound acts by default.
 - $u_{ini}, y_{ini}$ are the last $T_{ini}$ applied inputs and outputs; $u_{prev}$ is the last applied input
-  (`devkit/sim/simulation.py:138-143`); $\tau$ is the noise-adaptive tightening (§6), zero otherwise.
+  (`devkit/sim/simulation.py:129-134`); $\tau$ is the noise-adaptive tightening (§6), zero otherwise.
 - The Hankel blocks, $u_{ini}$, $y_{ini}$, $y_{ref}$, $u_{prev}$, $\lambda_g$, $\lambda_y$ and $\tau$ are
   CVXPY parameters, so the problem is built once and re-solved with new values.
 - Solver (`src/deepc/controller.py:243-266`): OSQP with `eps_abs` = `eps_rel` = $10^{-5}$, `max_iter` = 10000, polishing, warm start.
@@ -225,30 +175,28 @@ approximation" of it.
 - **Output timing:** [1, eq. (1)] has $y(t) = Cx(t) + Du(t)$. The output the code records after input $u_k$
   is, for the coupled masses, $y_k = A x_k + B\,\mathrm{clip}(u_k) - r$: while the clip does not act (it
   never does in the frozen training data, D12), the form of [1, eq. (1)] with $C = A$, $D = B$ and the
-  reference subtracted. For the bicycle it has the form $y = h(x, u)$ of [1, eq. (7)].
+  reference subtracted.
 - **Differs, the reference:** [1, eq. (6)] tracks a reference $r$ with the system's outputs. The code's
   outputs are errors against the scenario's reference, its cost reference is zero, and its training errors
   are taken against the nominal reference (§2, §5) (D15).
 
 ## 5. The closed loop, tracking on errors
 
-`devkit/sim/simulation.py:37-218`. The plant starts at the first waypoint, $x_0 = r_0$ (`:74`;
+`devkit/sim/simulation.py:37-203`. The plant starts at the first waypoint, $x_0 = r_0$ (`:74`;
 `get_initial_state_for_scenario` returns the waypoint itself). The loop then runs:
 
-1. **Warm-up**, $T_{ini}$ steps with $u = 0$ (`:91-98`), each recording $y_i = e(x_{i+1}, r_i)$.
+1. **Warm-up**, $T_{ini}$ steps with $u = 0$ (`:84-89`), each recording $y_i = e(x_{i+1}, r_i)$.
 2. **Then, for** $k = 0, \dots, K - 1$, with $K$ = `int(sim_duration / Ts)` (`src/deepc/config.py:62-63`), $T_s$ the plant's step (D1):
-   - solve §4 with $y_{ref} = 0$ over the whole horizon (`devkit/sim/simulation.py:141`);
+   - solve §4 with $y_{ref} = 0$ over the whole horizon (`devkit/sim/simulation.py:132`);
    - apply $u_0$;
-   - record $y = e(x_{i+1}, r_i)$ with $i = k + T_{ini}$ (`devkit/sim/simulation.py:154-156`).
+   - record $y = e(x_{i+1}, r_i)$ with $i = k + T_{ini}$ (`devkit/sim/simulation.py:145-147`).
 
 The loop adds no measurement noise (D4). The state after step $i$, at time $(i+1)T_s$, is compared with
-waypoint $r_i$, at time $iT_s$. In the bicycle's data collection, the state after step $k$ is compared with
-$\bar r_k$ at $(k+1) v_{ref} T_s$, the same instant (D10). The positions behind the bicycle's position RMSE are
-compared at equal times (§8).
+waypoint $r_i$, at time $iT_s$ (D10).
 
 ## 6. Noise-adaptive regularisation (`noise_adaptive`)
 
-`src/deepc/noise_estimator.py`, `devkit/sim/simulation.py:122-136`. From the second solve on, the residual between the
+`src/deepc/noise_estimator.py`, `devkit/sim/simulation.py:113-127`. From the second solve on, the residual between the
 output recorded after a step and the output the previous solve predicted for it,
 $\varrho_k = y_k - \hat y_{k|k-1}$, enters a window of the last $W$ = 10 residuals. Once it holds 3 or
 more, the per-channel sample standard deviation $\hat\sigma$ (`ddof` = 1) gives
@@ -280,14 +228,14 @@ averaged over 15 random simulations for each $\epsilon$."
 
 ## 7. Online Hankel window (`online_hankel`)
 
-`src/deepc/online_hankel.py`, `devkit/sim/simulation.py:159-163`.
+`src/deepc/online_hankel.py`, `devkit/sim/simulation.py:150-154`.
 
 - **Size.** The window holds `max_cols` columns: `hankel_window_size`, or the number of offline columns when
   that is 0, the default (`:54-55`). A larger window is padded with copies of the last offline column
   (`:59-70`).
 - **First columns.** A buffer is seeded with the last $L - 1$ training samples (`:79-82`).
 - **Each step from `hankel_warmup_steps` on** (default 100), the step's input and output are appended. A
-  column is formed from the last $L$ buffered samples (`:92-119`). It replaces the next padding column while
+  column is formed from the last $L$ buffered samples (`:85-110`). It replaces the next padding column while
   any is left; otherwise every column shifts left by one and the new one takes the last place.
 - **Into the QP.** The four blocks are re-split and passed to the QP's parameters (`src/deepc/controller.py:202-210`).
 - **What the first columns hold.** The first $L - 1$ online columns join the last training samples to the
@@ -315,9 +263,7 @@ real-time".
 `devkit/sim/metrics.py` (`compute_metrics`, what `tune.py` scores by) and each plant's `compute_custom_metrics`:
 
 - **RMSE per output channel**, over all $T_{ini} + K$ samples, warm-up included.
-- **Bicycle** (`tools/plants/bicycle_model.py:251-263`): the RMSE of $p_x - r_x$, of $p_y - r_y$ and of their
-  Euclidean norm (`rmse_position`). Each position is compared with the waypoint of the same time.
-- **Coupled masses** (`tools/plants/coupled_masses.py:198-205`): the RMSE of $(e_{x_1}, e_{x_2})$ jointly.
+- **Coupled masses** (`tools/plants/coupled_masses.py:195-202`): the RMSE of $(e_{x_1}, e_{x_2})$ jointly.
 - **Solve times**: mean, maximum and total wall-clock time of the `solve` call.
 - **Solves by outcome** (`devkit/sim/simulation.py`, `solve_counts`): per status, matched exactly; per solver
   that answered; and the solves that left no solution, after which zeros were applied. The "optimal" share
@@ -326,8 +272,7 @@ real-time".
 
 ## 9. Tuning (`tune.py`)
 
-Optuna's TPE sampler, seed 42 (`tune.py:333-336`), minimises one metric per trial: `rmse_position` for the
-bicycle, `rmse_e_x1` for the masses. A trial that raises, or scores NaN or infinity, stops the study (D3). Each trial
+Optuna's TPE sampler, seed 42 (`tune.py:333-336`), minimises one metric per trial: `rmse_e_x1`. A trial that raises, or scores NaN or infinity, stops the study (D3). Each trial
 collects its data at seed 42 and runs the closed loop for `--sim-duration` (default 10 s) on the `--scenario`
 (default `default`). Search space (`tune.py:61-71`):
 

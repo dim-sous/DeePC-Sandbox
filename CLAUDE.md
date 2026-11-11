@@ -1,9 +1,9 @@
 # DeePC Sandbox — data-enabled predictive control on simulated plants
 
-A DeePC controller (Coulson, Lygeros & Dörfler 2019) run on two simulated plants, a kinematic
-bicycle and a coupled two-mass spring-damper. It is being rebuilt as BESS and RCWS were: first
-the scaffolding (rules, safety net, records, a Lab) to expose the gaps and bugs in today's code,
-then the fixes. What it is and how it runs: `README.md`. This file holds the working rules.
+A DeePC controller (Coulson, Lygeros & Dörfler 2019) run on a simulated plant, a coupled two-mass
+spring-damper (the kinematic bicycle was deleted 2026-11-11). It is being rebuilt as BESS and RCWS
+were: first the scaffolding (rules, safety net, records, a Lab) to expose the gaps and bugs in
+today's code, then the fixes. What it is and how it runs: `README.md`. This file holds the working rules.
 
 **Only advisory rules live here** — the ones no test can catch. A checked rule lives in the
 test that checks it, and that test's docstring carries its incident tag. Each rule points at

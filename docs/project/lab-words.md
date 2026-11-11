@@ -10,14 +10,13 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 > λ_g, λ_y, σ_y, g, J), σ for a standard deviation.
 
 **To change a word,** edit it here and tell me; I apply it. A chart's or a number's code name
-(`output-e-lateral`, `rmse_position`) is not a word the page shows as a title: it stays the
+(`output-e-x1`, `rmse_e_x1`) is not a word the page shows as a title: it stays the
 file `deepc draw` writes and a link's address key. Hovers are sentences: they begin with a capital and
 keep their articles where a sentence needs them.
 
 **Open, for your word:** a channel's name is the plant's own code name, used as it is in a chart's
-title, ordinate and legend: the bicycle's e_lateral, e_heading, e_velocity, steering,
-acceleration; the coupled masses' e_x1, e_v1, e_x2, e_v2, F1, F2. Giving them other words
-(e_lat, δ, a, …) means each plant declares its own, a change in `tools/plants` I have not made.
+title, ordinate and legend: the coupled masses' e_x1, e_v1, e_x2, e_v2, F1, F2. Giving them
+other words means the plant declares its own, a change in `tools/plants` I have not made.
 
 ## 1. Page
 
@@ -57,8 +56,8 @@ A chart card has one control, a number card two (the developer's cut, 2026-11-11
   capital: The chart declares no statistic · The runs draw different traces · …
 - a card that cannot draw says why in its foot, in the words of what refused it, e.g. First
   declare no panel 'cost'; drawn without them, the comparison would leave them out unsaid
-- legends: a run alone is its name; a trace every run holds identically: a, b — Reference
-  (identical); a pooled line: Mean of 2 runs · e_lateral
+- legends: a run alone is its name; a trace every run holds identically: a, b — e_x1
+  (identical); a pooled line: Mean of 2 runs · e_x1
 
 ## 3. Form
 
@@ -123,34 +122,30 @@ Settings, by group -- `code name`: label [unit] -- help line:
 - **Run**
   - `seed`: Seed [-] -- The seed of the episodes' initial states, the excitation and the noise
 
-Charts of Closed loop (bicycle run), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
+Charts of Closed loop (coupled masses run), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
 
 - **Outputs**
-  - `output-e-lateral`: e_lateral · Time [s] · e_lateral [m] · e_lateral -- e_lateral at each step, warm-up included
-  - `output-e-heading`: e_heading · Time [s] · e_heading [rad] · e_heading -- e_heading at each step, warm-up included
-  - `output-e-velocity`: e_velocity · Time [s] · e_velocity [m/s] · e_velocity -- e_velocity at each step, warm-up included
+  - `output-e-x1`: e_x1 · Time [s] · e_x1 [m] · e_x1 -- e_x1 at each step, warm-up included
+  - `output-e-v1`: e_v1 · Time [s] · e_v1 [m/s] · e_v1 -- e_v1 at each step, warm-up included
+  - `output-e-x2`: e_x2 · Time [s] · e_x2 [m] · e_x2 -- e_x2 at each step, warm-up included
+  - `output-e-v2`: e_v2 · Time [s] · e_v2 [m/s] · e_v2 -- e_v2 at each step, warm-up included
 - **Inputs**
-  - `input-steering`: steering · Time [s] · steering [rad] · steering, Lower bound of steering [rad], Upper bound of steering [rad] -- The controller's steering at each step, warm-up included, before the plant's own clipping; the plant's bounds on it
-  - `input-acceleration`: acceleration · Time [s] · acceleration [m/s²] · acceleration, Lower bound of acceleration [m/s²], Upper bound of acceleration [m/s²] -- The controller's acceleration at each step, warm-up included, before the plant's own clipping; the plant's bounds on it
+  - `input-F1`: F1 · Time [s] · F1 [N] · F1, Lower bound of F1 [N], Upper bound of F1 [N] -- The controller's F1 at each step, warm-up included, before the plant's own clipping; the plant's bounds on it
+  - `input-F2`: F2 · Time [s] · F2 [N] · F2, Lower bound of F2 [N], Upper bound of F2 [N] -- The controller's F2 at each step, warm-up included, before the plant's own clipping; the plant's bounds on it
 - **Solver**
   - `solve-time`: Solve time · Solve [-] · Solve time [s] · Solve time -- Wall-clock time of the solve at each solve
   - `cost`: J · Solve [-] · J [-] · J -- Objective value J at each solve
   - `sigma-y-norm`: ‖σ_y‖₂ · Solve [-] · ‖σ_y‖₂ [-] · ‖σ_y‖₂ -- 2-norm of the past-output slack σ_y at each solve
   - `lambda-g`: λ_g · Solve [-] · λ_g [-] · λ_g -- λ_g the solve used at each solve
-- **Position**
-  - `position-x`: Position x · Step [-] · x [m] · Plant, Reference -- The plant's x after each step beside the waypoint of the same index, as the position RMSE compares them
-  - `position-y`: Position y · Step [-] · y [m] · Plant, Reference -- The plant's y after each step beside the waypoint of the same index, as the position RMSE compares them
-  - `path`: Path · x [m] · y [m] · Plant, Reference -- The plant's position in the plane at the start and after each step, and the waypoints, on equal scales
 
-Numbers of Closed loop (bicycle run), by group -- `code name`: label [unit] -- hover:
+Numbers of Closed loop (coupled masses run), by group -- `code name`: label [unit] -- hover:
 
 - **Outputs**
-  - `rmse_e_lateral`: e_lateral RMSE [m] -- Root mean square of e_lateral over every step, warm-up included
-  - `rmse_e_heading`: e_heading RMSE [rad] -- Root mean square of e_heading over every step, warm-up included
-  - `rmse_e_velocity`: e_velocity RMSE [m/s] -- Root mean square of e_velocity over every step, warm-up included
-  - `rmse_x`: X RMSE [m] -- The plant's own metric (compute_custom_metrics)
-  - `rmse_y`: Y RMSE [m] -- The plant's own metric (compute_custom_metrics)
-  - `rmse_position`: Position RMSE [m] -- The plant's own metric (compute_custom_metrics)
+  - `rmse_e_x1`: e_x1 RMSE [m] -- Root mean square of e_x1 over every step, warm-up included
+  - `rmse_e_v1`: e_v1 RMSE [m/s] -- Root mean square of e_v1 over every step, warm-up included
+  - `rmse_e_x2`: e_x2 RMSE [m] -- Root mean square of e_x2 over every step, warm-up included
+  - `rmse_e_v2`: e_v2 RMSE [m/s] -- Root mean square of e_v2 over every step, warm-up included
+  - `rmse_position_combined`: Position combined RMSE [m] -- The plant's own metric (compute_custom_metrics)
 - **Solver**
   - `solves_optimal_inaccurate`: Solves: optimal inaccurate -- Solves whose status is exactly 'optimal_inaccurate'
   - `solves_optimal`: Solves: optimal -- Solves whose status is exactly 'optimal'
@@ -161,22 +156,24 @@ Numbers of Closed loop (bicycle run), by group -- `code name`: label [unit] -- h
   - `sigma_y_norm_mean`: Mean ‖σ_y‖₂ -- Mean 2-norm of the past-output slack σ_y
   - `sigma_y_norm_max`: Max ‖σ_y‖₂ -- Largest 2-norm of the past-output slack σ_y
 
-Charts of Dataset (bicycle run), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
+Charts of Dataset (coupled masses run), by group -- `code name`: title · bottom axis · ordinate · legend -- hover:
 
 - **Inputs**
-  - `input-steering`: steering · Sample [-] · steering [rad] · steering, Lower bound of steering [rad], Upper bound of steering [rad] -- The recorded steering at each sample, episodes stacked end to end; the plant's bounds on it
-  - `input-acceleration`: acceleration · Sample [-] · acceleration [m/s²] · acceleration, Lower bound of acceleration [m/s²], Upper bound of acceleration [m/s²] -- The recorded acceleration at each sample, episodes stacked end to end; the plant's bounds on it
+  - `input-F1`: F1 · Sample [-] · F1 [N] · F1, Lower bound of F1 [N], Upper bound of F1 [N] -- The recorded F1 at each sample, episodes stacked end to end; the plant's bounds on it
+  - `input-F2`: F2 · Sample [-] · F2 [N] · F2, Lower bound of F2 [N], Upper bound of F2 [N] -- The recorded F2 at each sample, episodes stacked end to end; the plant's bounds on it
 - **Outputs**
-  - `output-e-lateral`: e_lateral · Sample [-] · e_lateral [m] · e_lateral -- The recorded e_lateral at each sample, episodes stacked end to end
-  - `output-e-heading`: e_heading · Sample [-] · e_heading [rad] · e_heading -- The recorded e_heading at each sample, episodes stacked end to end
-  - `output-e-velocity`: e_velocity · Sample [-] · e_velocity [m/s] · e_velocity -- The recorded e_velocity at each sample, episodes stacked end to end
+  - `output-e-x1`: e_x1 · Sample [-] · e_x1 [m] · e_x1 -- The recorded e_x1 at each sample, episodes stacked end to end
+  - `output-e-v1`: e_v1 · Sample [-] · e_v1 [m/s] · e_v1 -- The recorded e_v1 at each sample, episodes stacked end to end
+  - `output-e-x2`: e_x2 · Sample [-] · e_x2 [m] · e_x2 -- The recorded e_x2 at each sample, episodes stacked end to end
+  - `output-e-v2`: e_v2 · Sample [-] · e_v2 [m/s] · e_v2 -- The recorded e_v2 at each sample, episodes stacked end to end
 
-Numbers of Dataset (bicycle run), by group -- `code name`: label [unit] -- hover:
+Numbers of Dataset (coupled masses run), by group -- `code name`: label [unit] -- hover:
 
 - **Inputs**
-  - `u_rms_steering`: steering RMS [rad] -- Root mean square of the recorded steering over all samples
-  - `u_rms_acceleration`: acceleration RMS [m/s²] -- Root mean square of the recorded acceleration over all samples
+  - `u_rms_F1`: F1 RMS [N] -- Root mean square of the recorded F1 over all samples
+  - `u_rms_F2`: F2 RMS [N] -- Root mean square of the recorded F2 over all samples
 - **Outputs**
-  - `y_rms_e_lateral`: e_lateral RMS [m] -- Root mean square of the recorded e_lateral over all samples
-  - `y_rms_e_heading`: e_heading RMS [rad] -- Root mean square of the recorded e_heading over all samples
-  - `y_rms_e_velocity`: e_velocity RMS [m/s] -- Root mean square of the recorded e_velocity over all samples
+  - `y_rms_e_x1`: e_x1 RMS [m] -- Root mean square of the recorded e_x1 over all samples
+  - `y_rms_e_v1`: e_v1 RMS [m/s] -- Root mean square of the recorded e_v1 over all samples
+  - `y_rms_e_x2`: e_x2 RMS [m] -- Root mean square of the recorded e_x2 over all samples
+  - `y_rms_e_v2`: e_v2 RMS [m/s] -- Root mean square of the recorded e_v2 over all samples

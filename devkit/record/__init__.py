@@ -102,11 +102,6 @@ class Series:
     title: str = ""
     #: The statistics its traces may be pooled by across runs ("mean", "rms"); () for none.
     pooled: tuple[str, ...] = ()
-    #: Each trace's own abscissa, in ``traces`` order, for a panel whose traces do not share one
-    #: (a path: y against x, the plant's and the reference's); () when they share ``x``.
-    trace_x: tuple[Any, ...] = ()
-    #: One unit of the bottom axis drawn as long as one unit of the ordinate (a path in metres).
-    equal_axes: bool = False
 
     def __post_init__(self) -> None:
         if not self.title:
@@ -117,18 +112,6 @@ class Series:
         if unknown:
             raise ValueError(f"panel {self.name!r} pools by {unknown}; a panel pools by "
                              f"'mean' or 'rms'")
-        if self.trace_x:
-            if len(self.trace_x) != len(self.traces):
-                raise ValueError(f"panel {self.name!r}: {len(self.trace_x)} abscissae for "
-                                 f"{len(self.traces)} traces")
-            if self.bands or self.pooled:
-                raise ValueError(f"panel {self.name!r}: a band or a pooling needs one abscissa "
-                                 f"the traces share; its traces each have their own")
-            for (label, y), xs in zip(self.traces, self.trace_x):
-                if len(y) != len(xs):
-                    raise ValueError(f"panel {self.name!r}: trace {label!r} has {len(y)} values "
-                                     f"against {len(xs)} abscissa values")
-            return
         n = len(self.x)
         for label, y in self.traces:
             if len(y) != n:

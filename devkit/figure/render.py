@@ -115,8 +115,6 @@ class Panel:
     doc: str = ""
     quantity: str = ""
     x_ticks: tuple[tuple[float, str], ...] | None = None
-    #: One unit of the bottom axis as long as one of the ordinate (a path in metres).
-    equal_axes: bool = False
 
 
 def _labels(panel: Panel) -> set[str]:
@@ -156,18 +154,11 @@ def render(panel: Panel, out_dir: Path, prov, *, facts: dict[str, Any] | None = 
                       **({"marker": "o", "ms": 3.5} if len(line.x) < SHORT else {})})
             ax.plot(line.drawn_x(), np.asarray(line.y, float), color=line.color,
                     linewidth=LINE_WIDTH, label=broken(line.label), **style)
-        if panel.equal_axes:
-            ax.set_aspect("equal", adjustable="datalim")
         ax.set_ylabel(spec.y_label)
     bottom = axs[-1, 0]
     if panel.x_ticks:
         bottom.set_xticks([p for p, _ in panel.x_ticks], [w for _, w in panel.x_ticks])
     bottom.set_xlabel(panel.x_label)
-    if panel.equal_axes:
-        # the equal aspect moves the limits only when drawn; applied now, so the sidecar's
-        # xlim and ylim are the still's (code review, 2026-11-11)
-        for ax in axs[:, 0]:
-            ax.apply_aspect()
     if panel.quantity:
         fig.supylabel(panel.quantity, color=INK_SECONDARY, fontsize=10)
     if has_legend(panel):
@@ -181,7 +172,6 @@ def render(panel: Panel, out_dir: Path, prov, *, facts: dict[str, Any] | None = 
              "y_label": panel.quantity or panel.axes[0].y_label,
              "xlim": list(map(float, bottom.get_xlim())),
              "ylim": [list(map(float, ax.get_ylim())) for ax in axs[:, 0]],
-             "equal_axes": panel.equal_axes,
              "traces": [line.label for ax in panel.axes for line in ax.lines], **(facts or {})}
     return [save_figure(fig, out_dir, panel.name, facts, prov)]
 

@@ -1,27 +1,24 @@
 {
   "made": {
-    "git_sha": "aecea4a",
+    "git_sha": "c71826d",
     "git_dirty": true,
     "code_changed": [
-      " M devkit/README.md",
       " M devkit/figure/chart.py",
       " M devkit/figure/render.py",
       " M devkit/figure/twin.py",
-      " M devkit/harness/closed_loop/__init__.py",
-      " M devkit/harness/closed_loop/config.py",
       " M devkit/harness/closed_loop/record.py",
       " M devkit/harness/closed_loop/run.py",
-      " M devkit/harness/dataset/record.py",
-      " M devkit/harness/dataset/run.py",
+      " M devkit/harness/dataset/config.py",
       " M devkit/record/__init__.py",
+      " M devkit/sim/metrics.py",
       " M devkit/sim/simulation.py",
+      " M tools/plants/__init__.py",
       " M tools/plants/base.py",
-      " M tools/plants/bicycle_model.py",
-      "?? devkit/sim/bounds.py",
-      "?? devkit/sim/metrics.py"
+      "D  tools/plants/bicycle_model.py",
+      " M tools/plants/coupled_masses.py"
     ],
-    "code_sha256": "d15471bf4ffd3f4d2234e167bb136169f95e241245dd8b49aa056f049ce725df",
-    "date": "2026-11-11T15:01:11+00:00",
+    "code_sha256": "6f5095bc298ace2a8b6312672961c1373534dd2227a7f0b70b7a32267a20ecd6",
+    "date": "2026-11-11T18:06:34+00:00",
     "versions": {
       "numpy": "2.4.2",
       "scipy": "1.17.1",
@@ -32,132 +29,6 @@
     }
   },
   "cases": {
-    "bicycle-data": {
-      "plant": "bicycle",
-      "scenario": null,
-      "seed": 42,
-      "flags": {
-        "noise_adaptive": false,
-        "online_hankel": false,
-        "no_constraints": false
-      },
-      "config": {
-        "m": 2,
-        "p": 3,
-        "Ts": 0.1,
-        "sim_duration": 60.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
-        "Q_diag": [
-          10.0,
-          10.0,
-          0.0
-        ],
-        "R_diag": [
-          0.1,
-          0.1
-        ],
-        "lambda_g": 5.0,
-        "lambda_y": 10000.0,
-        "reg_norm_g": "L2",
-        "reg_norm_sigma_y": "L1",
-        "lambda_out": 0.0,
-        "noise_estimation_window": 10,
-        "baseline_noise_std": 0.01,
-        "max_lambda_scaling": 10.0,
-        "constraint_tightening_factor": 2.0,
-        "hankel_window_size": 0,
-        "hankel_warmup_steps": 100,
-        "solver": "OSQP",
-        "solver_verbose": false
-      }
-    },
-    "bicycle-reference-default": {
-      "plant": "bicycle",
-      "scenario": "default",
-      "seed": 42,
-      "flags": {
-        "noise_adaptive": false,
-        "online_hankel": false,
-        "no_constraints": false
-      },
-      "config": {
-        "m": 2,
-        "p": 3,
-        "Ts": 0.1,
-        "sim_duration": 60.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
-        "Q_diag": [
-          10.0,
-          10.0,
-          0.0
-        ],
-        "R_diag": [
-          0.1,
-          0.1
-        ],
-        "lambda_g": 5.0,
-        "lambda_y": 10000.0,
-        "reg_norm_g": "L2",
-        "reg_norm_sigma_y": "L1",
-        "lambda_out": 0.0,
-        "noise_estimation_window": 10,
-        "baseline_noise_std": 0.01,
-        "max_lambda_scaling": 10.0,
-        "constraint_tightening_factor": 2.0,
-        "hankel_window_size": 0,
-        "hankel_warmup_steps": 100,
-        "solver": "OSQP",
-        "solver_verbose": false
-      }
-    },
-    "bicycle-reference-lissajous": {
-      "plant": "bicycle",
-      "scenario": "lissajous",
-      "seed": 42,
-      "flags": {
-        "noise_adaptive": false,
-        "online_hankel": false,
-        "no_constraints": false
-      },
-      "config": {
-        "m": 2,
-        "p": 3,
-        "Ts": 0.1,
-        "sim_duration": 60.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
-        "Q_diag": [
-          10.0,
-          10.0,
-          0.0
-        ],
-        "R_diag": [
-          0.1,
-          0.1
-        ],
-        "lambda_g": 5.0,
-        "lambda_y": 10000.0,
-        "reg_norm_g": "L2",
-        "reg_norm_sigma_y": "L1",
-        "lambda_out": 0.0,
-        "noise_estimation_window": 10,
-        "baseline_noise_std": 0.01,
-        "max_lambda_scaling": 10.0,
-        "constraint_tightening_factor": 2.0,
-        "hankel_window_size": 0,
-        "hankel_warmup_steps": 100,
-        "solver": "OSQP",
-        "solver_verbose": false
-      }
-    },
     "coupled_masses-data": {
       "plant": "coupled_masses",
       "scenario": null,
@@ -287,132 +158,6 @@
         "solver_verbose": false
       }
     },
-    "bicycle-default": {
-      "plant": "bicycle",
-      "scenario": "default",
-      "seed": 42,
-      "flags": {
-        "noise_adaptive": false,
-        "online_hankel": false,
-        "no_constraints": false
-      },
-      "config": {
-        "m": 2,
-        "p": 3,
-        "Ts": 0.1,
-        "sim_duration": 5.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
-        "Q_diag": [
-          10.0,
-          10.0,
-          0.0
-        ],
-        "R_diag": [
-          0.1,
-          0.1
-        ],
-        "lambda_g": 5.0,
-        "lambda_y": 10000.0,
-        "reg_norm_g": "L2",
-        "reg_norm_sigma_y": "L1",
-        "lambda_out": 0.0,
-        "noise_estimation_window": 10,
-        "baseline_noise_std": 0.01,
-        "max_lambda_scaling": 10.0,
-        "constraint_tightening_factor": 2.0,
-        "hankel_window_size": 0,
-        "hankel_warmup_steps": 100,
-        "solver": "OSQP",
-        "solver_verbose": false
-      }
-    },
-    "bicycle-online-hankel": {
-      "plant": "bicycle",
-      "scenario": "default",
-      "seed": 42,
-      "flags": {
-        "noise_adaptive": false,
-        "online_hankel": true,
-        "no_constraints": false
-      },
-      "config": {
-        "m": 2,
-        "p": 3,
-        "Ts": 0.1,
-        "sim_duration": 5.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
-        "Q_diag": [
-          10.0,
-          10.0,
-          0.0
-        ],
-        "R_diag": [
-          0.1,
-          0.1
-        ],
-        "lambda_g": 5.0,
-        "lambda_y": 10000.0,
-        "reg_norm_g": "L2",
-        "reg_norm_sigma_y": "L1",
-        "lambda_out": 0.0,
-        "noise_estimation_window": 10,
-        "baseline_noise_std": 0.01,
-        "max_lambda_scaling": 10.0,
-        "constraint_tightening_factor": 2.0,
-        "hankel_window_size": 0,
-        "hankel_warmup_steps": 20,
-        "solver": "OSQP",
-        "solver_verbose": false
-      }
-    },
-    "bicycle-noise-adaptive": {
-      "plant": "bicycle",
-      "scenario": "default",
-      "seed": 42,
-      "flags": {
-        "noise_adaptive": true,
-        "online_hankel": false,
-        "no_constraints": false
-      },
-      "config": {
-        "m": 2,
-        "p": 3,
-        "Ts": 0.1,
-        "sim_duration": 5.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
-        "Q_diag": [
-          10.0,
-          10.0,
-          0.0
-        ],
-        "R_diag": [
-          0.1,
-          0.1
-        ],
-        "lambda_g": 5.0,
-        "lambda_y": 10000.0,
-        "reg_norm_g": "L2",
-        "reg_norm_sigma_y": "L1",
-        "lambda_out": 0.0,
-        "noise_estimation_window": 10,
-        "baseline_noise_std": 0.01,
-        "max_lambda_scaling": 10.0,
-        "constraint_tightening_factor": 2.0,
-        "hankel_window_size": 0,
-        "hankel_warmup_steps": 100,
-        "solver": "OSQP",
-        "solver_verbose": false
-      }
-    },
     "coupled_masses-sinusoidal": {
       "plant": "coupled_masses",
       "scenario": "sinusoidal",
@@ -498,38 +243,79 @@
         "solver": "OSQP",
         "solver_verbose": false
       }
-    }
-  },
-  "metrics": {
-    "metrics-bicycle": {
-      "plant": "bicycle",
-      "scenario": "default",
+    },
+    "coupled_masses-online-hankel": {
+      "plant": "coupled_masses",
+      "scenario": "sinusoidal",
       "seed": 42,
-      "version": "bicycle_default",
       "flags": {
         "noise_adaptive": false,
-        "online_hankel": false,
+        "online_hankel": true,
         "no_constraints": false
       },
       "config": {
         "m": 2,
-        "p": 3,
-        "Ts": 0.1,
+        "p": 4,
+        "Ts": 0.05,
         "sim_duration": 3.0,
-        "T_data": 400,
-        "noise_std_output": 0.01,
-        "Tini": 3,
-        "N": 15,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
         "Q_diag": [
-          10.0,
-          10.0,
-          0.0
+          20.0,
+          1.0,
+          20.0,
+          1.0
         ],
         "R_diag": [
           0.1,
           0.1
         ],
-        "lambda_g": 5.0,
+        "lambda_g": 10.0,
+        "lambda_y": 10000.0,
+        "reg_norm_g": "L2",
+        "reg_norm_sigma_y": "L1",
+        "lambda_out": 0.0,
+        "noise_estimation_window": 10,
+        "baseline_noise_std": 0.01,
+        "max_lambda_scaling": 10.0,
+        "constraint_tightening_factor": 2.0,
+        "hankel_window_size": 0,
+        "hankel_warmup_steps": 20,
+        "solver": "OSQP",
+        "solver_verbose": false
+      }
+    },
+    "coupled_masses-noise-adaptive": {
+      "plant": "coupled_masses",
+      "scenario": "sinusoidal",
+      "seed": 42,
+      "flags": {
+        "noise_adaptive": true,
+        "online_hankel": false,
+        "no_constraints": false
+      },
+      "config": {
+        "m": 2,
+        "p": 4,
+        "Ts": 0.05,
+        "sim_duration": 3.0,
+        "T_data": 600,
+        "noise_std_output": 0.005,
+        "Tini": 4,
+        "N": 20,
+        "Q_diag": [
+          20.0,
+          1.0,
+          20.0,
+          1.0
+        ],
+        "R_diag": [
+          0.1,
+          0.1
+        ],
+        "lambda_g": 10.0,
         "lambda_y": 10000.0,
         "reg_norm_g": "L2",
         "reg_norm_sigma_y": "L1",
@@ -542,9 +328,10 @@
         "hankel_warmup_steps": 100,
         "solver": "OSQP",
         "solver_verbose": false
-      },
-      "dropped": "every *solve_time_s metric (wall clock)"
-    },
+      }
+    }
+  },
+  "metrics": {
     "metrics-coupled_masses": {
       "plant": "coupled_masses",
       "scenario": "sinusoidal",
