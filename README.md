@@ -56,6 +56,8 @@ its numbers and the commit; [devkit/README.md](devkit/README.md) has an example 
 uv run deepc run dataset                       # training data from the bicycle -> results/dataset/default.json
 uv run deepc run closed_loop                   # DeePC on that data -> results/closed_loop/default.json
 uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
+uv run deepc draw results/closed_loop/default.json                       # its charts as PNGs beside it
+uv run deepc draw results/closed_loop/lg-*.json --number rmse_position --vs lambda_g
 ```
 
 The older command still writes the HTML report:
@@ -135,10 +137,10 @@ numbers.
 |---|---|
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
 | `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
-| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the `deepc` command (`devkit/terminal/`) |
+| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the charts (`devkit/figure/`), the `deepc` command (`devkit/terminal/`) |
 | `run.py` | the command: data collection, closed loop, metrics, HTML report |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
-| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the records and pieces (`test_record.py`, `test_harness.py`) and the document checks (`test_conventions.py`) |
+| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the records and pieces (`test_record.py`, `test_harness.py`), the charts (`test_figure.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
 | `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |

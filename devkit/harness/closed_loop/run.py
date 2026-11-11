@@ -68,6 +68,10 @@ def run(cfg: Config) -> Record:
     sigma = _floats(res["sigma_norms"])
     solve = np.asarray(res["solve_times"], dtype=float)
     plant_metrics = plant.compute_custom_metrics(res)
+    unitless = sorted(set(plant_metrics) - set(plant.metric_units))
+    if unitless:
+        raise ValueError(f"the plant {data.config.plant!r} returns the metrics {unitless} with no "
+                         f"unit (metric_units); a number is recorded with its unit")
     numbers = {f"rmse_{c}": float(np.sqrt(np.mean(y[:, j] ** 2)))
                for j, c in enumerate(plant.output_names)}
     numbers.update({k: float(v) for k, v in plant_metrics.items()})
@@ -87,7 +91,9 @@ def run(cfg: Config) -> Record:
                                    "date": data.provenance.date if data.provenance else "",
                                    "git_sha": data.provenance.git_sha if data.provenance else ""}},
         inputs=list(plant.input_names), outputs=list(plant.output_names),
+        input_units=list(plant.input_units), output_units=list(plant.output_units),
         plant_metrics=list(plant_metrics),
+        plant_metric_units=[plant.metric_units[k] for k in plant_metrics],
         time=np.asarray(res["times"], dtype=float), u=np.asarray(res["u_history"], dtype=float), y=y,
         reference=np.asarray(res["ref_path"], dtype=float), statuses=statuses,
         cost=_floats(res["costs"]), sigma_y_norm=sigma, lambda_g=_floats(res["lambda_g_history"]),

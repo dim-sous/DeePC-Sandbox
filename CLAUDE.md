@@ -18,7 +18,8 @@ or a test. When in doubt, the rules win.
   that moved packages, `uv sync` once (the editable install records the package list).
 - Entry points: `uv run deepc run <piece> [config.json] [--set k=v] [--sweep k=a,b]` (a piece,
   one JSON record per run under `results/<piece>/`; flags and examples: `devkit/README.md`);
-  `uv run python run.py [--plant …] [flags]` (the old HTML report, until the figures land).
+  `uv run deepc draw <record.json>… [--panel …] [--number N --vs SETTING]` (stills beside the
+  records); `uv run python run.py [--plant …] [flags]` (the old HTML report).
   `tune.py` is set aside: its `Ts` search runs through `[D1]`.
 - The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net,
   `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch
@@ -64,9 +65,9 @@ Three roots, one direction, as BESS's: `src/` is the controller a real system wo
 noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
 hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
 registry); `devkit/` the bench (`sim`, `record`, `harness`, `terminal`: `devkit/README.md`;
-figures and the Lab to come). Imports run `src ← tools ← devkit` and stay flat (`import
+`figure`; the Lab to come). Imports run `src ← tools ← devkit` and stay flat (`import
 deepc`, never `import src.deepc`), held by `tests/test_roots.py`; inside devkit, by
-`tests/test_devkit_layers.py`. `run.py` and `tune.py` stay at the root until the figures land.
+`tests/test_devkit_layers.py`. `run.py` and `tune.py` stay at the root until a branch retires them.
 
 The judgment calls no test can make yet:
 

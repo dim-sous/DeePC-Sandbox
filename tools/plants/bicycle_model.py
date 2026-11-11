@@ -557,3 +557,17 @@ class BicycleModel(PlantBase):
             ),
         )
         return fig.to_html(full_html=False, include_plotlyjs=False)
+
+    # ── Units, from the class docstring ──────────────────────────────
+
+    @property
+    def input_units(self) -> list[str]:
+        return ["rad", "m/s²"]
+
+    @property
+    def output_units(self) -> list[str]:
+        return ["m", "rad", "m/s"]
+
+    @property
+    def metric_units(self) -> dict[str, str]:
+        return {"rmse_x": "m", "rmse_y": "m", "rmse_position": "m"}

@@ -175,3 +175,20 @@ class PlantBase(ABC):
         Default: RMSE of the first output channel.
         """
         return f"rmse_{self.output_names[0]}"
+
+    # ── Units (declared after the hooks so the documents' line pointers hold) ──
+
+    @property
+    @abstractmethod
+    def input_units(self) -> list[str]:
+        """The unit of each input channel, in ``input_names`` order: what a chart's axis reads."""
+
+    @property
+    @abstractmethod
+    def output_units(self) -> list[str]:
+        """The unit of each output channel, in ``output_names`` order."""
+
+    @property
+    def metric_units(self) -> dict[str, str]:
+        """The unit of each metric ``compute_custom_metrics`` returns, by name."""
+        return {}

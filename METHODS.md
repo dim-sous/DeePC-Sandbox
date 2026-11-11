@@ -65,8 +65,9 @@ when $\lambda_{out} > 0$ (§4).
 
 ### 1.2 Coupled two-mass spring-damper
 
-`tools/plants/coupled_masses.py`. State $x = [x_1,\ v_1,\ x_2,\ v_2]$, input $u = [F_1,\ F_2]$. The code states no
-units; SI is assumed here. The continuous dynamics (docstring and `:59-70`):
+`tools/plants/coupled_masses.py`. State $x = [x_1,\ v_1,\ x_2,\ v_2]$, input $u = [F_1,\ F_2]$. The plant declares
+SI units (`input_units`, `output_units`: N, m, m/s), assumed: nothing else in the code states
+them (the developer's decision, 2026-11-11). The continuous dynamics (docstring and `:59-70`):
 
 ```math
 \begin{aligned}

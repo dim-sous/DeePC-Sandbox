@@ -280,3 +280,17 @@ class CoupledMasses(PlantBase):
     def _nominal_reference(self, k: int, Ts: float) -> np.ndarray:
         """Nominal reference for data collection: all zeros (equilibrium)."""
         return np.zeros(4)
+
+    # ── Units: SI assumed; the code states none (developer's decision, 2026-11-11) ──
+
+    @property
+    def input_units(self) -> list[str]:
+        return ["N", "N"]
+
+    @property
+    def output_units(self) -> list[str]:
+        return ["m", "m/s", "m", "m/s"]
+
+    @property
+    def metric_units(self) -> dict[str, str]:
+        return {"rmse_position_combined": "m"}

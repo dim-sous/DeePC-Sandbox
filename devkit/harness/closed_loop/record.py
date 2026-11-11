@@ -5,9 +5,9 @@ the outputs, inputs and reference over the warm-up and the loop (``time``), and 
 solve for the solver's own (``statuses``, ``cost``, ``sigma_y_norm``, ``lambda_g``,
 ``solve_time_s``). A value a solve left without one is NaN in its array, never dropped. Every
 number is a reduction of an array on this record. Solves are counted by status, each status its
-own number, so an inaccurate solve is never counted as an optimal one (D2). Panel names, labels
-and units are placeholders (RCWS #96): the plants declare no units, so an axis carries the
-channel's code name only.
+own number, so an inaccurate solve is never counted as an optimal one (D2). Every axis carries
+its unit, a channel's the plant's own (``input_units``, ``output_units``). Panel names and labels
+are placeholders (RCWS #96).
 """
 
 from __future__ import annotations
@@ -32,7 +32,10 @@ class Record(_Record):
     constants: dict                 # the resolved DeePCConfig, the plant's step and the config's, the dataset run
     inputs: list                    # input channel names
     outputs: list                   # output channel names
+    input_units: list               # the unit of each input, the plant's own
+    output_units: list              # the unit of each output, the plant's own
     plant_metrics: list             # the names the plant's compute_custom_metrics returned
+    plant_metric_units: list        # their units, the plant's own (metric_units)
     time: np.ndarray                # (T,) [s] on the config's step, warm-up included
     u: np.ndarray                   # (T, m) the controller's inputs, before the plant's own clipping
     y: np.ndarray                   # (T, p) outputs (tracking errors)
@@ -56,24 +59,24 @@ class Record(_Record):
 
     def series(self) -> tuple[Series, ...]:
         t, step = self.time, np.arange(len(self.statuses))
-        out = [Series(name=f"output-{c}".replace("_", "-"), x=t, x_label="time [s]", y_label=c,
-                      traces=((c, self.y[:, j]),), group=_OUTPUTS,
+        out = [Series(name=f"output-{c}".replace("_", "-"), x=t, x_label="time [s]",
+                      y_label=f"{c} [{unit}]", traces=((c, self.y[:, j]),), group=_OUTPUTS,
                       doc=f"The {c} at each step, warm-up included (open words)")
-               for j, c in enumerate(self.outputs)]
-        out += [Series(name=f"input-{c}".replace("_", "-"), x=t, x_label="time [s]", y_label=c,
-                       traces=((c, self.u[:, j]),), group=_INPUTS,
+               for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
+        out += [Series(name=f"input-{c}".replace("_", "-"), x=t, x_label="time [s]",
+                       y_label=f"{c} [{unit}]", traces=((c, self.u[:, j]),), group=_INPUTS,
                        doc=f"The controller's {c} at each step, warm-up included, before the "
                            f"plant's own clipping (open words)")
-                for j, c in enumerate(self.inputs)]
-        out += [Series(name=name, x=step, x_label="solve", y_label=label, traces=((label, values),),
+                for j, (c, unit) in enumerate(zip(self.inputs, self.input_units))]
+        out += [Series(name=name, x=step, x_label="solve [-]", y_label=label, traces=((label, values),),
                        group=_SOLVER, doc=f"The {label} of each solve (open words)")
                 for name, label, values in (("solve-time", "solve time [s]", self.solve_time_s),
-                                            ("cost", "cost", self.cost),
-                                            ("sigma-y-norm", "sigma_y norm", self.sigma_y_norm),
-                                            ("lambda-g", "lambda_g", self.lambda_g))]
+                                            ("cost", "cost [-]", self.cost),
+                                            ("sigma-y-norm", "sigma_y norm [-]", self.sigma_y_norm),
+                                            ("lambda-g", "lambda_g [-]", self.lambda_g))]
         if self.position is not None and self.reference_position is not None:
             n = len(self.reference_position)
-            out += [Series(name=f"position-{axis}", x=np.arange(n), x_label="step",
+            out += [Series(name=f"position-{axis}", x=np.arange(n), x_label="step [-]",
                            y_label=f"{axis} [m]",
                            traces=(("plant", self.position[:n, j]),
                                    ("reference", self.reference_position[:, j])),
@@ -85,13 +88,13 @@ class Record(_Record):
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:
-        out = [Number(f"rmse_{c}", f"{c} RMSE", headline=(j == 0), group=_OUTPUTS,
+        out = [Number(f"rmse_{c}", f"{c} RMSE", unit, headline=(j == 0), group=_OUTPUTS,
                       doc=f"Root mean square of the {c} over every step, warm-up included "
                           f"(open words)")
-               for j, c in enumerate(self.outputs)]
-        out += [Number(name, name, group=_POSITION if "position" in name or name in ("rmse_x", "rmse_y")
-                       else _OUTPUTS, doc="The plant's own metric, compute_custom_metrics (open words)")
-                for name in self.plant_metrics]
+               for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
+        out += [Number(name, name, unit, group=_OUTPUTS,
+                       doc="The plant's own metric (compute_custom_metrics) (open words)")
+                for name, unit in zip(self.plant_metrics, self.plant_metric_units)]
         out += [Number(f"solves_{s}", f"solves {s}", group=_SOLVER,
                        doc=f"Solves whose status is exactly {s!r} (open words)")
                 for s in self.status_counts()]
