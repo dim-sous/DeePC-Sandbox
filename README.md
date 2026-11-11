@@ -49,6 +49,17 @@ name. After pulling a change that moved packages, run `uv sync` once.
 
 ## Usage
 
+Each run of a piece saves one record, a JSON file with the settings it used, everything it produced,
+its numbers and the commit; [devkit/README.md](devkit/README.md) has an example of every command:
+
+```bash
+uv run deepc run dataset                       # training data from the bicycle -> results/dataset/default.json
+uv run deepc run closed_loop                   # DeePC on that data -> results/closed_loop/default.json
+uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
+```
+
+The older command still writes the HTML report:
+
 ```bash
 # Run an experiment (default: bicycle model)
 uv run python run.py
@@ -108,6 +119,9 @@ The suite runs locally and is the gate for every change. It holds:
 - **The layout's direction** (`tests/test_roots.py`). The controller (`src/`) imports neither the plants
   (`tools/`) nor the bench (`devkit/`), the plants never import the bench, and `src/` holds exactly the
   modules its inventory declares.
+- **The pieces** (`tests/test_harness.py`). Each reproduces the frozen numbers bit for bit through its
+  saved file, its numbers are reductions of its arrays, and a saved dataset run that no longer runs again
+  to its file is refused.
 - **The document checks.** CLAUDE.md's length budget and METHODS.md's citations. Every folder path and
   every `file:line` pointer in this README, METHODS.md and failures.md must exist, and each pointer must fall
   inside its file. Whether a pointer still points at the code it describes is not checked.
@@ -121,10 +135,10 @@ numbers.
 |---|---|
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
 | `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the bicycle (`bicycle_model.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
-| `devkit/sim/` | the bench: data collection (`data_generation.py`), scenarios (`scenarios.py`), the closed loop (`simulation.py`), the config built from a plant (`config.py`) |
+| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the `deepc` command (`devkit/terminal/`) |
 | `run.py` | the command: data collection, closed loop, metrics, HTML report |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
-| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`) and the document checks (`test_conventions.py`) |
+| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the records and pieces (`test_record.py`, `test_harness.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
 | `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |

@@ -16,9 +16,10 @@ or a test. When in doubt, the rules win.
 - Python through uv only, 3.13 as pinned: `uv run pytest …`, `uv run python …` — never a venv
   python. For parallel jobs `uv sync` once, then `uv run --no-sync`. After pulling a branch
   that moved packages, `uv sync` once (the editable install records the package list).
-- Entry points, until the terminal and the Lab land: `uv run python run.py [--plant …]
-  [--scenario …] [flags]` (one HTML report and one metrics file under `results/<tag>/`;
-  `--help` lists the flags). `tune.py` is set aside: its `Ts` search runs through `[D1]`.
+- Entry points: `uv run deepc run <piece> [config.json] [--set k=v] [--sweep k=a,b]` (a piece,
+  one JSON record per run under `results/<piece>/`; flags and examples: `devkit/README.md`);
+  `uv run python run.py [--plant …] [flags]` (the old HTML report, until the figures land).
+  `tune.py` is set aside: its `Ts` search runs through `[D1]`.
 - The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net,
   `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch
   that means to move the numbers, and that branch's PR says so.
@@ -62,10 +63,10 @@ Three roots, one direction, as BESS's: `src/` is the controller a real system wo
 (`deepc`: Hankel matrices, the sparse QP, the excitation check, the constraints it reads, the
 noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
 hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
-registry); `devkit/` the bench (`sim`: data collection, scenarios, the closed loop, the config
-builder; records, figures, the terminal and the Lab to come). Imports run `src ← tools ←
-devkit` and stay flat (`import deepc`, never `import src.deepc`), held by `tests/test_roots.py`.
-`run.py` and `tune.py` stay at the root until the terminal replaces them.
+registry); `devkit/` the bench (`sim`, `record`, `harness`, `terminal`: `devkit/README.md`;
+figures and the Lab to come). Imports run `src ← tools ← devkit` and stay flat (`import
+deepc`, never `import src.deepc`), held by `tests/test_roots.py`; inside devkit, by
+`tests/test_devkit_layers.py`. `run.py` and `tune.py` stay at the root until the figures land.
 
 The judgment calls no test can make yet:
 
