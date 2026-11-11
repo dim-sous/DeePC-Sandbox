@@ -13,6 +13,13 @@ Willems' fundamental lemma, in the old README's words: "for a linear time-invari
 rich input-output trajectory contains all information needed to predict future behavior". How the papers
 state it, and where the code departs from them, is in [METHODS.md](METHODS.md), §3.
 
+- **Systems, typed.** The `system` piece defines a system as rows: one per state equation
+  ($\dot x_i = f_i(x, u, \theta)$), one per output equation ($y_j = h_j(x, \theta)$), and the values
+  of the parameter vector $\theta$, in `x1…`, `u1…`, `theta1…`. SymPy reads and checks them
+  ([METHODS.md](METHODS.md) §10); nothing is simulated there. It is the first piece of a rewrite
+  ([docs/project/design.md](docs/project/design.md)): the open-loop simulation (initial state,
+  input bounds, sampling time) and the closed loop on it come next; the dataset and closed-loop
+  pieces below still run on the plant class until they are replaced.
 - **Plants.**
 
   | Plant | Type | Inputs | Outputs | Scenarios |
@@ -53,6 +60,8 @@ Each run of a piece saves one record, a JSON file with the settings it used, eve
 its numbers and the commit; [devkit/README.md](devkit/README.md) has an example of every command:
 
 ```bash
+uv run deepc run system                        # the two masses typed, read and checked -> results/system/default.json
+uv run deepc run system --set 'f=["x2", "-sin(x1) - theta1*x2 + u1"]' --set 'h=["x1"]' --set 'theta=[0.2]' --name pendulum
 uv run deepc run dataset                       # training data from the coupled masses -> results/dataset/default.json
 uv run deepc run closed_loop                   # DeePC on that data -> results/closed_loop/default.json
 uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
@@ -117,6 +126,7 @@ numbers.
 | Path | Role |
 |---|---|
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
+| `tools/system/` | the typed system: the parser (`parse.py`, text to $f$, $h$ and the sizes), the one integrator (`integrate.py`, RK45 with $u$ held), `System` and `system_of` (`__init__.py`) |
 | `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
 | `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the charts (`devkit/figure/`), the `deepc` command (`devkit/terminal/`) |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |

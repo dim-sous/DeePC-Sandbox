@@ -18,13 +18,15 @@ corrected. This is the figure face of "evidence over judgement" in `CLAUDE.md`.
 
 ## What may appear on a figure
 
-- Axis labels, **with units**. One unit per axis.
+- Axis labels naming the quantity: `t`, `u1`, `y1`, `x1`, **no units** (the developer,
+  2026-11-11: "no units anywhere"). The old pieces (`dataset`, `closed_loop` on the plant
+  classes) keep their units until the rewrite replaces them.
 - A legend naming **every** trace, when there is more than one thing to tell apart. One trace
   is named by its axis labels, so it gets no legend.
 - Scaling that shows the data.
 - A reference line or band **only when it is a quantity**: an input or rate bound, a
   reference trajectory, an expected value, a published number. It is named in the legend like
-  any other trace. A bound names the quantity it bounds, with its unit (`[D7]`). The number is
+  any other trace. A bound names the quantity it bounds (`[D7]`). The number is
   data; a judgement about it is not.
 
 ## What may not appear: check each one before you draw

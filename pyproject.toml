@@ -17,6 +17,7 @@ dependencies = [
     "param>=2.4.2",
     "plotly>=6.6.0",
     "scipy>=1.17.1",
+    "sympy>=1.14.0",
 ]
 
 [project.scripts]

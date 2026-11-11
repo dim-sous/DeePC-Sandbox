@@ -28,6 +28,18 @@ pipeline, not platforming work. The math, the pipeline, reporting, charts, numbe
 will be reexamined once the lab is finished". Fixes to what the controller or the plants compute
 wait until the platform branches are done ([[project-state]] lists them).
 
-Earlier choices, still standing: the BESS workflow; SI units for the coupled masses (assumed —
-the code states none); Lab words follow their pattern rather than being asked one by one; the
-papers stay out of git (`references/`, the repository is public); MIT licence.
+**Three directions, 2026-11-11 evening** (after PR #13, starting the system generator; "right
+after that"):
+1. "I dont know why i decided to track the error instead of the state but we are reverting to
+   the state" — the controller tracks the state, not errors against a zero reference (D15).
+2. "Since we are generating systems through the lab lets keep things as generic as possible":
+   (a) **no units anywhere**; (b) **inputs (manipulated variables) are u's, outputs
+   (measurements) are y's, true states are x's** — "the names everywhere (axis labels, chart
+   buttons, EVERYWHERE)". This replaces the plant's own channel names (F1, e_x1, …) and the SI
+   units assumed for the masses; it overrides CLAUDE.md's figure rule "axis labels with units"
+   and its test, which a branch must change on their word.
+3. Systems are generated **through the Lab** (their words; what that means is asked).
+
+Earlier choices, still standing: the BESS workflow; Lab words otherwise follow their pattern
+rather than being asked one by one; the papers stay out of git (`references/`, the repository
+is public); MIT licence. (SI units for the masses: superseded by 2a.)

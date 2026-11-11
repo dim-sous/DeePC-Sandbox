@@ -288,6 +288,39 @@ collects its data at seed 42 and runs the closed loop for `--sim-duration` (defa
 
 A trial that raises, or returns a non-finite metric, scores $10^6$ (D3).
 
+## 10. The typed system (`system`, the rewrite's first piece)
+
+`tools/system/`, the first piece of the rewrite in `docs/project/design.md`; §1–§9 describe the
+pipeline it replaces, which still runs on the plant class.
+
+**What is typed** (`tools/system/parse.py`). One row per state equation, $\dot x_i = f_i(x, u,
+\theta)$, one per output equation, $y_j = h_j(x, \theta)$, and the values of the parameter vector
+$\theta$. A row is an expression in the states `x1…xn`, the inputs `u1…um`, the parameters
+`theta1…thetaq` and the functions `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `tanh`, `abs` and the
+constant `pi`; `^` is a power. The sizes: $n$ the number of state rows, $p$ the number of output
+rows, $q$ the number of $\theta$ values, $m$ the highest input index. Refused, in words: any other
+name or character, a `.` outside a number, an empty row, a state index above $n$, a parameter index
+above $q$, a $\theta$ value that is not finite or acts in no row as SymPy reads it, an input in an
+output row, an input that acts in no state row as SymPy reads it, a row that reads as no
+expression (`()`), as not real (`sqrt(-1)`) or with a constant too large for a float. Each row is checked token by token before SymPy's
+`parse_expr` reads it (which evaluates Python); every number is read as a float, so nothing is
+computed exactly; `lambdify` makes NumPy functions $f(x, u)$, $h(x)$ at the $\theta$ values. The
+record keeps the rows as SymPy read them, with $\theta$ as symbols, and the sizes. Nothing is
+simulated here: the initial state, the input bounds and the sampling time are the open-loop
+simulation's (`docs/project/design.md` §2).
+
+**Integration** (`tools/system/integrate.py`, used by the open-loop simulation, branch 2). Over a
+step the input is held constant (zero-order hold) and the state integrated by
+`scipy.integrate.solve_ivp`, method RK45, the Dormand–Prince 5(4) pair [7], at rtol $10^{-9}$ and
+atol $10^{-12}$ (the developer's decision, 2026-11-11). A failed solve raises with the solver's
+message.
+
+**Checked against** (`tests/test_system.py`): the exact zero-order-hold sampling of a linear
+system, $x_{k+1} = A_d x_k + B_d u_k$ with $\begin{bmatrix} A_d & B_d \\ 0 & I \end{bmatrix} =
+\exp\!\left(\begin{bmatrix} A & B \\ 0 & 0 \end{bmatrix} T_s\right)$ [8], on the two masses of §1
+typed with $\theta = [k, k_{12}, c, c_{12}]$; and the closed forms of $\dot x_1 = -\theta_1 x_1$ and
+$\dot x_1 = u_1$.
+
 ## References
 
 Checked on 2026-11-11 against the arXiv version named: title and authors from the arXiv record and the
@@ -311,6 +344,10 @@ is git-ignored. [4] is not on arXiv and has not been read.
 6. H. J. van Waarde, C. De Persis, M. K. Camlibel, P. Tesi, "Willems' Fundamental Lemma for State-space
    Systems and its Extension to Multiple Datasets", arXiv:2002.01023v2, 7 May 2020. No venue on the arXiv
    record.
+7. J. R. Dormand, P. J. Prince, "A family of embedded Runge-Kutta formulae", *Journal of Computational and
+   Applied Mathematics* 6(1), 1980: as SciPy's `solve_ivp` documentation names it for RK45. Not read.
+8. C. F. Van Loan, "Computing integrals involving the matrix exponential", *IEEE Transactions on
+   Automatic Control* 23(3), 1978. Not read.
 
 Software, at the versions `uv.lock` pins: CVXPY 1.8.1, OSQP 1.1.1, SCS 3.2.11, Optuna 4.8.0, NumPy 2.4.2,
 SciPy 1.17.1, Plotly 6.6.0.

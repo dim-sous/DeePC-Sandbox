@@ -9,6 +9,7 @@ the setting it names, or against the sweep rungs when that setting is the sweep 
 
 from __future__ import annotations
 
+import json
 from pathlib import PurePath
 from typing import Any, Optional
 
@@ -22,9 +23,12 @@ CODE_DEFAULT = "Code default"
 
 def as_text(value: Any) -> str:
     """A value as the text ``--set`` reads back: ``true``/``false``, an integral float without
-    its point, else ``str``."""
+    its point, a list as JSON (a list of expressions holds quotes ``str`` would write as Python's),
+    else ``str``."""
     if value is None:
         return ""
+    if isinstance(value, (list, tuple)):
+        return json.dumps(list(value), ensure_ascii=False)
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, float) and value.is_integer() and abs(value) < 1e15:

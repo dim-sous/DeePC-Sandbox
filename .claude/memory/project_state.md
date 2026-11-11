@@ -29,6 +29,23 @@ on the developer's computer ([[multi-device]]).
 | #11 | The smaller Lab (the developer's cut, [[project-scope]]) |
 | #12 | Session notes in the repo (`.claude/memory/`) |
 | #13 | The bicycle deleted (no source for its model); position history, Position RMSE, Path chart gone; safety net gains the masses' online-Hankel and noise-adaptive cases, remade on the developer's computer |
+| #14 | Rewrite branch 1: the `system` piece (typed rows x', y, θ; Lab row editor), `tools/system/` (SymPy parser, RK45 `hold`), the no-units rule, `docs/project/design.md` |
+
+**Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
+the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
+plant with chosen configurations -> (attempt to) control the plant with deepc under different
+configuration. Literally everything else can be thrown out." Drafted in `docs/project/design.md`
+on branch `system-generator` (three pieces system → dataset → closed_loop, typed ODEs, RK45, DeePC
+as [1, eq. (8)] tracking y, names u/y/x, no units), every choice decided by the developer the same
+evening. The rewrite is three branches: (1) `system-generator` — the `system` piece
+(`devkit/harness/system/`) and `tools/system/` (parser, RK45 `hold`), SymPy added, the units rule
+changed in CLAUDE.md and the figure skill. Handed off once with f/h as `;` lines, x0, bounds and a
+free-response chart; the developer redid it ("the current way to define the odes feels off"):
+labelled rows (+/✕, a new Lab row editor for list settings declaring `rows`), θ values in the
+System tab, no chart, no x0/bounds — rebuilt, merged as PR #14 on 2026-11-11; (2) `open_loop` (today's
+`dataset`, renamed: "dataset sounds weird") on a system run, with x0, bounds, T_s, excitation,
+noise, tolerances; (3) the closed loop on [1, eq. (8)] tracking y, deleting the old pipeline and
+making a new safety net. The queue below predates it and is superseded where the design says so.
 
 **Next, in the order agreed** (the developer picks; propose, then plan mode, then build):
 1. **Test speed** — the suite took 148 s on 2026-11-11, measured with `--durations`: about 70 %
@@ -69,6 +86,10 @@ on the developer's computer ([[multi-device]]).
   bicycle; a `user_limit` solve on the coupled masses is unmeasured (one seen at λ_g = 20,
   sinusoidal, 1 s).
 - Keep the SCS retry and the zero-input stand-in (PR #9 made both counted), or stop the run on a
-  failed solve?
+  failed solve? (Moot if the rewrite's closed loop replaces it.)
+- Found handing off `system-generator` (2026-11-11), not fixed: the Lab's address holds `shown`
+  and `open` but not the piece, so a link always opens Closed loop; and switching the piece in
+  the header logs a Plotly page error ("Cannot read properties of undefined (reading
+  '_guiEditing')"), for Dataset as for System — the Lab code was not changed by that branch.
 - The plant integrates by forward Euler at T_s itself, so a T_s sweep also changes the plant's
   discretisation (answered by item 3 if it lands).

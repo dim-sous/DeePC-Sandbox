@@ -1,6 +1,6 @@
-"""The figure layer draws what records declare, and figures describe: axis labels with units (one
-unit per axis), a legend only when there is more than one label, no title (CLAUDE.md, "In
-figures"; skill ``figure-conventions``; D7 for a bound's unit)."""
+"""The figure layer draws what records declare, and figures describe: axis labels naming the
+quantity (no units on the new pieces; the old ones keep theirs until rewritten), a legend only when
+there is more than one label, no title (CLAUDE.md, "In figures"; skill ``figure-conventions``)."""
 
 from __future__ import annotations
 
@@ -45,7 +45,11 @@ def test_every_plant_declares_one_unit_per_channel(name: str) -> None:
     assert all(plant.metric_units.values())
 
 
-def test_every_axis_a_record_declares_carries_a_unit(runs) -> None:
+def test_every_axis_of_the_old_pieces_still_carries_a_unit(runs) -> None:
+    """The rule was "axis labels with units"; the developer replaced it on 2026-11-11 with "no
+    units anywhere" (``tests/test_system.py`` holds it for the system piece). The dataset and
+    closed-loop pieces on the plant classes keep their units until the rewrite replaces them
+    (``docs/project/design.md`` §6)."""
     for key, rec in runs.items():
         for s in rec.series():
             for label in (s.x_label, s.y_label):

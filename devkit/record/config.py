@@ -16,11 +16,13 @@ outside the choices in its own words. What param has no slot for rides in ``meta
 - ``draws``: on a replicate, the setting that counts the draws a run makes from it (run i of
   ``n`` uses ``seed + i``), so a figure pooling runs can tell when two share a draw; none here;
 - ``record_of``: on a path setting, the piece whose saved run it names;
-- ``folded``: the form shows the setting's group closed until it is opened.
+- ``folded``: the form shows the setting's group closed until it is opened;
+- ``rows``: on a list setting, the form draws one labeled box per item -- ``{"label": "x{}'",
+  "add": "+ State"}``, the label numbered from 1, the add button's words.
 
 A setting whose default is ``None`` means "the plant's own": the piece resolves it when it runs
-and saves what it resolved. A list setting holds numbers (the Q and R weights): JSON or commas
-on the command line. ``none`` on the command line sets a setting that allows it back to ``None``.
+and saves what it resolved. A list setting holds numbers (the Q and R weights; JSON or commas on
+the command line) or, declared ``item_type=str``, expressions (JSON on the command line). ``none`` on the command line sets a setting that allows it back to ``None``.
 
 A built Config is immutable; a changed one is a new Config (:func:`with_overrides`).
 """
@@ -103,7 +105,8 @@ def fields_of(cls: type) -> list[dict[str, Any]]:
             "high_exclusive": bounds[1] is not None and not incl[1],
             "needs": meta.get("needs"), "replicate": bool(meta.get("replicate")),
             "draws": meta.get("draws"), "record_of": meta.get("record_of", ""),
-            "folded": bool(meta.get("folded")),
+            "folded": bool(meta.get("folded")), "rows": meta.get("rows"),
+            "texts": isinstance(p, param.List) and p.item_type is str,
         })
     return out
 
@@ -111,9 +114,25 @@ def fields_of(cls: type) -> list[dict[str, Any]]:
 _TRUE, _FALSE = {"true", "1", "yes", "on"}, {"false", "0", "no", "off"}
 
 
+def _texts(p: param.Parameter, value: Any) -> list[str]:
+    """A list of expressions, or a refusal naming the setting."""
+    if not isinstance(value, (list, tuple)) or not all(isinstance(v, str) for v in value):
+        raise ValueError(f"{p.name}: {value!r} is not a list of texts, [\"x2\", \"-x1 + u1\"]")
+    return list(value)
+
+
 def coerce_value(p: param.Parameter, value: Any) -> Any:
     """A command-line text as the setting's own type; a typed value passes through, but a list
-    setting's numbers become floats (a config file may write the weight 10 as an integer)."""
+    setting's numbers become floats (a config file may write the weight 10 as an integer). A list
+    of texts (``item_type=str``) is JSON on the command line."""
+    if isinstance(p, param.List) and p.item_type is str:
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise ValueError(f"{p.name}: {value!r} is not a JSON list of texts, "
+                                 f"[\"x2\", \"-x1 + u1\"]") from None
+        return _texts(p, value)
     if isinstance(p, param.List) and isinstance(value, (list, tuple)):
         try:
             return [float(v) for v in value]
