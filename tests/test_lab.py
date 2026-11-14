@@ -94,6 +94,9 @@ def test_driving_the_lab_never_runs_the_piece_nor_builds_its_config(monkeypatch,
     lab._on_pick("noise_adaptive", "true")
     lab._on_sweep(field="N", values="10,20")
     lab._on_name("probe")
+    lab._on_sweep(values="10,x")                 # refused at Run: read against the declaration
+    lab._run()
+    assert queue.runs() == [] and lab.sweep_note.visible
     lab._use("second")
     lab._run()
     lab._poll()

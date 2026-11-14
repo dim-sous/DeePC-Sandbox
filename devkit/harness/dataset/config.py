@@ -1,9 +1,9 @@
 """The dataset piece's settings: which plant at which step, how much data, how noisy, which seed.
 
 A setting left at ``None`` takes the plant's own default (its ``get_default_config_overrides``),
-resolved when the piece runs and saved in the record's ``constants``. The labels and help lines
-follow the developer's pattern for the words a Lab user reads (CLAUDE.md;
-``docs/project/lab-words.md``).
+resolved when the piece runs and saved in the record's ``constants``. The labels follow the
+developer's pattern for the words a Lab user reads (CLAUDE.md; ``docs/project/lab-words.md``);
+the help lines are the code's documentation only, shown nowhere since Benchlab 0.3.0.
 """
 
 from __future__ import annotations

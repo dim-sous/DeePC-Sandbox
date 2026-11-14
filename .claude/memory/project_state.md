@@ -59,8 +59,17 @@ Handed off here and approved by the developer. On Benchlab installed from its pu
 piece's records and stills as before but for provenance and wall-clock fields; the whole suite
 244 passed (268 before it: 26 tests of the old terminal left, 2 checks added); the same again on
 the tag.
-Benchlab's branches 2b (words as slots, no hovers), 2c (the tree) and 2d (the cards) follow, each
-driven here before the next.
+**Benchlab branch 2b, no hovers (2026-11-14, merged here as #19 and as dim-sous/BenchLab#3,
+Benchlab pinned at its tag v0.3.0; Benchlab's `docs/plan-branch-2b.md`):** no hover on a setting, a chart, a number or a plain button; a
+greyed setting says why under it; a value outside its range, or unreadable, is refused at Run
+under its setting, nothing queued. DeePC's side: System's and Open loop's help lines deleted
+(the developer's decision 5; Dataset and Closed loop keep theirs until the rewrite deletes them);
+the naming pass settled by the developer as "standard math stuff ... symbols and acronyms": every
+label kept but `x0`, now `x_0`; `docs/project/lab-words.md` without hovers. On Benchlab installed
+from its pushed branch: whole suite 244 passed; the side door as before but System's and Open
+loop's saved pictures' notes and number declarations, now without descriptions; the same again
+on the tag. Then 2c (words
+as slots), 2d (the tree) and 2e (the cards), built straight through (`feedback_workflow.md`).
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate

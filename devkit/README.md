@@ -55,6 +55,8 @@ charts draw, summary numbers each a reduction of one of them, and its provenance
 dirty flag, date, duration, library versions). `results/` is git-ignored: a run never writes a
 tracked file.
 
-The setting labels, help lines, chart names, axes and legends follow the developer's pattern
-(a capital first, no articles, acronyms and the standard mathematical terms); every one is
-listed in `docs/project/lab-words.md`.
+The setting labels, chart names, axes and legends follow the developer's pattern (a capital
+first, no articles, acronyms and the standard mathematical terms); every one is listed in
+`docs/project/lab-words.md`. Help lines are no word a Lab user reads (Benchlab 0.3.0 shows no
+hover); System and Open loop have none, Dataset and Closed loop keep theirs as the code's
+documentation until the rewrite deletes those pieces.
