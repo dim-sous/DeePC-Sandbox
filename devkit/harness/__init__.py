@@ -20,7 +20,8 @@ __all__ = ["NAMES", "COMPONENTS", "get_component", "COMMAND", "TITLE", "ROOT", "
 #: The registered pieces, in the order every surface shows them.
 NAMES: tuple[str, ...] = ("closed_loop", "dataset", "system", "open_loop")
 
-#: The command ``pyproject.toml`` installs, which the Lab launches as ``uv run deepc run``.
+#: The command ``pyproject.toml`` installs: the side door, whose line the Lab prints beside
+#: each run it starts.
 COMMAND = "deepc"
 #: The Lab's title.
 TITLE = "DeePC Lab"

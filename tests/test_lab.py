@@ -1,9 +1,10 @@
-"""The Lab's reads and launches, driven through DeePC's own pieces (BESS's ``tests/test_lab.py``,
+"""The Lab's reads and runs, driven through DeePC's own pieces (BESS's ``tests/test_lab.py``,
 adapted). The Lab is Benchlab's: the half of this file that read the Lab's own files (its import
-allowlist, and that it never calls what could compute) moved there with it.
+allowlist, and that it never calls what could compute) moved there with it, and so did the tests
+of how a run is started and followed (Benchlab's ``tests/test_runner.py``).
 
-The Lab holds no logic of its own. What it lists is read off the files; what it launches is the
-line a person would type, every word checked against a declaration.
+The Lab holds no logic of its own. What it lists is read off the files; what it queues is checked,
+word by word, against a declaration, and each run is its own process.
 """
 
 from __future__ import annotations
@@ -12,9 +13,8 @@ import dataclasses
 import json
 import os
 import re
-import shlex
 import shutil
-import sys
+import threading
 import time
 import types
 from pathlib import Path
@@ -46,13 +46,21 @@ def own_runs(two_runs, tmp_path) -> tuple[str, str]:
     return str(tmp_path), out_dir
 
 
-def _ended(job: jobs.Job, timeout: float = 20.0) -> None:
-    """Wait for a launched job to end. One job runs per process, so a test that leaves one going
-    would have the next test's launch refused."""
-    deadline = time.time() + timeout
-    while job.running and time.time() < deadline:
-        time.sleep(0.05)
-    assert not job.running, f"{job.line} still running after {timeout} s"
+class _Unstarted:
+    """A run's process, stood in for: it never runs a piece and ends only when stopped."""
+
+    returncode = None
+
+    def __init__(self) -> None:
+        self._ended = threading.Event()
+
+    def communicate(self) -> tuple[str, str]:
+        self._ended.wait()
+        return "", ""
+
+    def terminate(self) -> None:
+        self.returncode = -15
+        self._ended.set()
 
 
 def _tripwire(real: types.ModuleType) -> types.ModuleType:
@@ -78,13 +86,9 @@ def test_driving_the_lab_never_runs_the_piece_nor_builds_its_config(monkeypatch,
     for module in (state, jobs):
         monkeypatch.setattr(module, "get_component", lambda _n, s=stand_in: s)
     root, out_dir = two_runs
-    launched: list[list[str]] = []
-
-    def launch(argv, cwd=None):
-        launched.append(list(argv))
-        return jobs.Job(list(argv))
-
-    lab = Lab(root, out_dir, launch=launch, every=lambda cb, ms: None, toast=lambda _w: None)
+    started: list[jobs.Run] = []
+    queue = jobs.Queue(at_once=1, start=lambda run: started.append(run) or _Unstarted())
+    lab = Lab(root, out_dir, queue=queue, every=lambda cb, ms: None, toast=lambda _w: None)
     lab.page()
     lab._on_type("lambda_g", "10")
     lab._on_pick("noise_adaptive", "true")
@@ -101,8 +105,12 @@ def test_driving_the_lab_never_runs_the_piece_nor_builds_its_config(monkeypatch,
         card.runs, card.table = ("mean" if card.kind == "chart" else "each"), True
     lab._draw_cards()
     lab._on_settings("all")
-    assert launched and launched[0][:5] == ["uv", "run", "deepc", "run", NAMES[0]]
+    # Use loaded the second run's settings, and with them took back the name and sweep typed
+    [run] = queue.runs()
+    assert run.piece == NAMES[0] and run.line.startswith(f"uv run deepc run {NAMES[0]} ")
+    assert started == [run], "queued and started as its own process, here a stand-in"
     assert not lab.banner.visible, lab.banner.object
+    queue.stop_all()
     assert dataclasses.fields(stand_in.Record)      # the declarations WERE readable
 
 
@@ -205,77 +213,6 @@ def test_a_record_the_class_has_moved_past_is_listed_and_marked(two_runs, tmp_pa
     assert "predates the field sigma_y_norm" in row["stale"] and "holds gone field mood" in row["stale"]
 
 
-def test_a_run_becomes_the_command_a_person_would_type() -> None:
-    assert jobs.run_argv("closed_loop", ["lambda_g=10", "N=10"], "probe") == [
-        "uv", "run", "deepc", "run", "closed_loop", "--set", "lambda_g=10", "--set", "N=10",
-        "--name", "probe"]
-    assert jobs.run_argv("closed_loop", [], "p", "elsewhere", ["lambda_g=1,5"]) == [
-        "uv", "run", "deepc", "run", "closed_loop", "--sweep", "lambda_g=1,5", "--name", "p",
-        "--out-dir", "elsewhere"]
-
-
-def test_the_echoed_line_reads_back_into_the_launched_argv() -> None:
-    argv = jobs.run_argv("closed_loop", ["lambda_g=10"], "a.b-c_1")
-    assert shlex.split(jobs.line_of(argv)) == argv
-
-
-@pytest.mark.parametrize("piece,overrides,name,words", [
-    ("bogus", [], "x", "unknown piece 'bogus'"),
-    ("closed_loop", ["nope=1"], "x", "'nope' is not a setting of closed_loop"),
-    ("closed_loop", ["lambda_g"], "x", "is not SETTING=VALUE"),
-    ("closed_loop", ["lambda_g="], "x", "is not SETTING=VALUE"),
-    ("closed_loop", [], "", "cannot name a record"),
-    ("closed_loop", [], "--out-dir", "cannot name a record"),
-    ("closed_loop", [], "../x", "cannot name a record"),
-    ("closed_loop", [], "a b", "cannot name a record"),
-])
-def test_only_a_declared_setting_and_a_file_stem_can_become_a_run(piece, overrides, name, words) -> None:
-    with pytest.raises(ValueError, match=words):
-        jobs.run_argv(piece, overrides, name)
-
-
-def test_a_job_whose_output_cannot_be_read_still_records_how_it_ended() -> None:
-    """Whatever the child prints, the exit code is recorded: a job that latched ``running`` for
-    ever would grey Run, never list what it wrote, and refuse every later run."""
-    job = jobs.launch([sys.executable, "-c",
-                       "import sys; sys.stdout.buffer.write(b'ok\\n\\xff\\n')"])
-    _ended(job)
-    assert job.returncode == 0 and job.output[0] == "ok\n"
-
-
-def test_one_run_per_process_is_refused_in_words() -> None:
-    """Each browser session builds its own page, so without this two tabs would run two
-    ``deepc run`` at once -- racing the venv and, under one name, one record file."""
-    first = jobs.launch([sys.executable, "-c", "import time; time.sleep(30)"])
-    try:
-        with pytest.raises(ValueError, match="a command is already in progress"):
-            jobs.launch([sys.executable, "-c", "pass"])
-    finally:
-        first.stop()
-        _ended(first)
-    after = jobs.launch([sys.executable, "-c", "pass"])      # the next one is free to go
-    _ended(after)
-    assert after.returncode == 0
-
-
-def test_a_job_streams_its_output_and_can_be_stopped() -> None:
-    job = jobs.launch([sys.executable, "-u", "-c",
-                       "import time; print('started'); time.sleep(30); print('never')"])
-    deadline = time.time() + 10
-    while not job.output and time.time() < deadline:
-        time.sleep(0.05)
-    assert job.output == ["started\n"] and job.running and not job.stopped
-    assert job.stop() is True and job.stopped
-    _ended(job)
-    assert job.returncode != 0 and "never" not in "".join(job.output)
-    assert job.stop() is False
-
-
-def test_a_job_that_was_never_started_cannot_be_stopped() -> None:
-    job = jobs.Job(["uv", "run", "deepc"])
-    assert not job.running and job.stop() is False and job.line == "uv run deepc"
-
-
 def test_delete_takes_only_what_it_names_and_refuses_anything_else(own_runs) -> None:
     root, out_dir = own_runs
     folder = Path(root) / out_dir / "closed_loop"
@@ -310,17 +247,3 @@ def test_a_shown_record_is_loaded_through_its_own_class_in_its_own_words(own_run
     broken.write_text(Path(run["path"]).read_text().replace('"time": [', '"tim": [', 1))
     with pytest.raises(ValueError, match="does not match the current Record"):
         state.load(dict(run, path=str(broken)))
-
-
-def test_a_path_outside_the_out_dir_is_not_under_it(tmp_path: Path) -> None:
-    (tmp_path / "results").mkdir()
-    assert state.under(str(tmp_path / "results" / "x.json"), str(tmp_path / "results"))
-    assert not state.under(str(tmp_path / "results" / ".." / "secret"), str(tmp_path / "results"))
-    assert not state.under(str(tmp_path / "results-sibling" / "x"), str(tmp_path / "results"))
-
-
-def test_wrote_keeps_only_the_printed_lines_that_are_files_under_the_out_dir(own_runs) -> None:
-    root, out_dir = own_runs
-    rel = os.path.join(out_dir, "closed_loop", "first.json")
-    lines = [rel + "\n", "  rmse_position_combined = 0.09\n", "../etc/hostname\n", "\n"]
-    assert state.wrote(lines, root, out_dir) == [os.path.join(root, rel)]

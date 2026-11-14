@@ -1,6 +1,6 @@
 """The form, the rail rows and the compare table as plain data (BESS's ``tests/test_lab_form.py``,
 adapted): what a control offers and says, which settings a gate shuts, the sweep row, and the
-``deepc run`` the form launches -- read off the pieces' own declarations, never restated here."""
+runs the form queues -- read off the pieces' own declarations, never restated here."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def test_a_gate_is_read_against_the_sweep_rungs_not_the_axis_default(piece) -> N
     assert form.state_of(form.by_name[_W])[0]
     form.sweep("noise_adaptive", "true, false, false")
     words, warns = form.note()
-    assert warns and "repeats a value — the terminal refuses the run" in words
+    assert warns and "repeats a value — Run refuses it" in words
 
 
 def test_the_sweep_axis_is_swept_once_and_not_also_set(piece) -> None:
@@ -73,7 +73,7 @@ def test_the_sweep_axis_is_swept_once_and_not_also_set(piece) -> None:
     assert form.launch_words() == (["N=20"], ["lambda_g=1,5"])
     assert form.sweep("lambda_g", "") == [] and form.swept() == ""
     assert form.launch_words() == (["N=20"], [])
-    # the values go as they were typed: what is an acceptable list is the terminal's rule
+    # the values go as they were typed: what is an acceptable list is the runner's rule
     form.sweep("lambda_g", " 1 , 5 ")
     assert form.launch_words()[1] == ["lambda_g=1 , 5"]
 
@@ -117,7 +117,7 @@ def test_a_saved_run_setting_offers_that_pieces_runs_by_name(piece) -> None:
     assert "dataset_run" not in dict(form.axes()), "a path cannot name a sweep's records"
 
 
-def test_a_list_of_numbers_launches_as_the_terminal_reads_it_and_is_no_sweep_axis(piece) -> None:
+def test_a_list_of_numbers_goes_as_the_runner_reads_it_and_is_no_sweep_axis(piece) -> None:
     """Q and R are lists: a run's own list loads into its box as the JSON ``--set`` reads back,
     and the sweep row does not offer them, because the sweep splits its values on commas."""
     form = Form(piece)
@@ -145,7 +145,7 @@ def test_a_name_says_when_run_overwrites_a_record(piece) -> None:
     assert form.name_note(_runs("other")) == "other exists — Run overwrites it"
     assert form.name_note(_runs("else")) == ""
 
-    # a sweep writes one record per rung, named as the terminal names them
+    # a sweep writes one record per rung, named as the runner names them
     held = _runs("closed_loop-1-lambda_g-2", "closed_loop-1-lambda_g-5")
     fresh = Form(piece)
     assert fresh.free_name(held) == "closed_loop-2"

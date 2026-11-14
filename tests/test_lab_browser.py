@@ -8,7 +8,7 @@ values, a watcher over both got two events from it, and the run kept its default
 showed the value. A view is validated by driving it (RCWS ``[A9]``), and only a browser drives
 it as a person does. These tests hold, on the page as served:
 
-* what is typed or pasted into the form is what the run would use;
+* what is typed or pasted into the form is what the run uses, read off the record it saves;
 * every chart's points in the browser are exactly its record's numbers;
 * driving the page raises no error in the browser or on the server;
 * at half a laptop screen and at full width, nothing runs off the page and no words on a chart
@@ -19,6 +19,7 @@ The browser is Playwright's Chromium: once per computer, ``uv run playwright ins
 
 from __future__ import annotations
 
+import json
 import socket
 import time
 import urllib.request
@@ -30,6 +31,7 @@ import pytest
 from playwright import sync_api as playwright
 
 from harness import get_component
+from benchlab.lab import jobs
 from benchlab.lab.app import serve
 from tests.lab_runs import make_runs
 
@@ -135,9 +137,20 @@ def _settle(page, ms: int = 900) -> None:
     page.wait_for_timeout(ms)
 
 
-def test_what_is_pasted_or_typed_with_tab_at_once_is_what_the_run_would_use(served) -> None:
-    url, browser, *_ = served
+def _charts(page, n: int, timeout: float = 30.0) -> list[dict]:
+    """The page's charts once ``n`` are drawn, or those drawn when ``timeout`` runs out. (Read
+    1.5 s after the network went idle, they were none in two runs of the whole suite,
+    2026-11-14; the log kept of one shows plotly had not yet reported a chart's size.)"""
+    deadline = time.time() + timeout
+    while len(plots := page.evaluate(_PLOTS)) < n and time.time() < deadline:
+        page.wait_for_timeout(200)
+    return plots
+
+
+def test_what_is_pasted_or_typed_with_tab_at_once_is_what_the_run_uses(served) -> None:
+    url, browser, root, out_dir = served
     page, errors = _page(browser, url)
+    record = Path(root) / out_dir / "closed_loop" / "closed_loop-1.json"   # the name offered
     try:
         page.locator("button", has_text="New run").click()
         _settle(page)
@@ -152,18 +165,26 @@ def test_what_is_pasted_or_typed_with_tab_at_once_is_what_the_run_would_use(serv
         page.keyboard.type("3", delay=0)                         # a key and Tab, at once
         page.keyboard.press("Tab")
         _settle(page)
-        line = next(t for t in _text(page) if t.startswith("uv run deepc run"))
-        assert "--set sim_duration=0.5" in line and "--set lambda_g=3" in line, line
+        page.get_by_role("button", name="Run", exact=True).click()
+        deadline = time.time() + 120
+        while not record.exists() and time.time() < deadline:
+            page.wait_for_timeout(500)
+        config = json.loads(record.read_text())["config"]
+        assert config["sim_duration"] == 0.5 and config["lambda_g"] == 3, config
         assert not errors, errors
     finally:
         page.close()
+        jobs.QUEUE.stop_all()                                     # the next tests see the page
+        for run in jobs.QUEUE.runs():                             # they were written for
+            jobs.QUEUE.dismiss(run.id)
+        record.unlink(missing_ok=True)
 
 
 def test_every_chart_in_the_browser_is_exactly_its_records_numbers(served) -> None:
     url, browser, root, out_dir = served
     page, errors = _page(browser, f"{url}?shown=second,first&open=output-e-x1,input-F1,cost")
     try:
-        plots = page.evaluate(_PLOTS)
+        plots = _charts(page, 3)
         assert sorted(p["meta"]["panel"] for p in plots) == ["cost", "input-F1", "output-e-x1"]
         records = {name: get_component("closed_loop").Record.load(
             Path(root) / out_dir / "closed_loop" / f"{name}.json") for name in ("first", "second")}

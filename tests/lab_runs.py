@@ -1,4 +1,4 @@
-"""Tiny real records for the Lab's tests, written by the terminal itself (BESS's
+"""Tiny real records for the Lab's tests, written by the command line itself (BESS's
 ``tests/lab_runs.py``, adapted): the coupled masses' default dataset run, and two 1 s closed loops
 on it, scenario ``sinusoidal`` (the ``default`` steps hold zero for their first 5 s), that differ
 in λ_g alone -- about four seconds each, short enough to be cheap and long enough to hold twenty

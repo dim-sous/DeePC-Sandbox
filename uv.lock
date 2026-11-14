@@ -26,8 +26,8 @@ wheels = [
 
 [[package]]
 name = "benchlab"
-version = "0.1.0"
-source = { git = "https://github.com/dim-sous/BenchLab?tag=v0.1.0#9976b82345b437ce70aca89d8f2e015900887a0a" }
+version = "0.2.0"
+source = { git = "https://github.com/dim-sous/BenchLab?tag=v0.2.0#4bcd51008f009e5e5a94e2c2299bed8b1f4494f8" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
@@ -412,7 +412,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "benchlab", git = "https://github.com/dim-sous/BenchLab?tag=v0.1.0" },
+    { name = "benchlab", git = "https://github.com/dim-sous/BenchLab?tag=v0.2.0" },
     { name = "control", specifier = ">=0.10.2" },
     { name = "cvxpy", specifier = ">=1.8.1" },
     { name = "matplotlib", specifier = ">=3.7" },

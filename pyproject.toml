@@ -48,7 +48,7 @@ namespaces = false
 
 [tool.uv.sources]
 # Benchlab at a tag, raised by hand, then the whole suite (Benchlab's README)
-benchlab = { git = "https://github.com/dim-sous/BenchLab", tag = "v0.1.0" }
+benchlab = { git = "https://github.com/dim-sous/BenchLab", tag = "v0.2.0" }
 
 [tool.uv]
 # The editable install records the package list at install time, so a package added or moved
