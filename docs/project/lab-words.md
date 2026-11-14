@@ -10,8 +10,8 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 > λ_g, λ_y, σ_y, g, J), σ for a standard deviation.
 
 **To change a word,** edit it here and tell me; I apply it. A piece's words (its settings, charts
-and numbers) are written in `devkit/harness/`, and so are the page's title and the command it
-launches (`TITLE`, `COMMAND` in `devkit/harness/__init__.py`). The page's other words (its buttons,
+and numbers) are written in `devkit/harness/`, and so are the page's title and the command
+whose line it prints beside each run (`TITLE`, `COMMAND` in `devkit/harness/__init__.py`). The page's other words (its buttons,
 headings and refusals, the charts' refusals among them) are written in Benchlab, which DeePC
 installs, until Benchlab turns them into cells this repository fills (its `docs/design.md`,
 decision 4): a change to one of those is made in Benchlab and reaches this page with Benchlab's
@@ -28,8 +28,7 @@ classes' names (e_x1, F1, …) and units until the rewrite replaces them (`docs/
 ## 1. Page
 
 - header: DeePC Lab · the pieces' names: Closed loop · Dataset · System · Open loop
-- job state: Idle · Running… · Done · Ended with exit N
-- header buttons: Stop · Refresh · New run; the folder beside them: results/closed_loop · N records
+- header buttons: Refresh · New run; the folder beside them: results/closed_loop · N records
 - headings: Runs · Compare · Figures; beside Compare's settings choice: Settings
 - run list: Filter runs (empty box) · All · None; the count: N on disk · N shown · N listed
 - a run's row: Use (hover: Load this run's settings into the form) · ✕ (hover: Delete this run's record, after asking)
@@ -47,9 +46,16 @@ classes' names (e_x1, F1, …) and units until the rewrite replaces them (`docs/
 - a card: ✕ (hover: Close this card)
 - a number card's title: <number> vs <setting>, e.g. Position RMSE vs λ_g; its foot under one
   run: One run shown, or nothing differs between the shown runs: tick runs that differ in a setting
-- terminal drawer: ▸ Terminal · ▾ Terminal; before any run: Nothing has been run in this session.
-- messages: A run is in progress — stop it first · Stopping… · N settings loaded from <run> ·
-  Closed loop: wrote N records · … stopped after it wrote N records · … the run was refused
+- runs in progress, along the bottom: ▸ Runs in progress · ▾ Runs in progress; beside it, the
+  count in this order, each only when there is one: N running · N queued · N done · N failed ·
+  N stopped (Nothing running before any run), and up to N side by side; a run's row: <name> ·
+  <piece>, its state Running m:ss · Queued · Done m:ss · Failed m:ss with the words of what
+  failed it · Stopped (m:ss once it had started), and Stop, or ✕ once it ended
+- a failed run's words, when they are not its own: ended with exit N · ended by signal SIGKILL
+  (or another signal's name) · could not start: <words> · its answer could not be read: <words>
+  · its end could not be read: <words>
+- messages: Stopping… · N settings loaded from <run> · Deleted <path> · Not deleted: <words> ·
+  reading the runs failed: <words>
 
 ## 2. Card controls
 
@@ -75,9 +81,10 @@ A chart card has one control, a number card two (the developer's cut, 2026-11-11
   <value> (default)
 - the dataset run's pick: default (default) · each saved dataset run by its name, its path on the line
 - a group's note: N at defaults · N of M changed; a folded group's heading: ▸ Noise-adaptive · ▾ Noise-adaptive (and Online Hankel)
-- under the bar: <names> exists — Run overwrites it; the line Run would type: lab: uv run deepc run …
+- under the bar: <names> exists — Run overwrites it; why Run would be refused: refused: <words>,
+  e.g. refused: <name> is queued or running already; give this run another name
 - the note: N set — <setting> taken back: the run would ignore it · the sweep repeats a value —
-  the terminal refuses the run · <setting> is set, and only some sweep values open it
+  Run refuses it · <setting> is set, and only some sweep values open it
 - a greyed setting's hover: <setting> applies only when <setting> is <value>; it is <value> ·
   <setting> is the sweep axis; its values come from the sweep row
 - a bound in a hover: [0 … ∞)

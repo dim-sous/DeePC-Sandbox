@@ -46,6 +46,21 @@ Benchlab and DeePC together on one computer, point `[tool.uv.sources]` at the lo
 while, never committed (Benchlab's `README.md`). From then on a change to the page, the charts, the records or the command is
 made in Benchlab and taken here by raising its pin.
 
+**Benchlab branch 2a, runs in progress (2026-11-14, PR open here and as dim-sous/BenchLab#2, Benchlab
+pinned to its branch `runs-in-progress` until it is tagged v0.2.0):** the Lab runs each run as
+its own process (`python -m benchlab.runner`), up to the machine's cores side by side, the rest
+queued, shown in a strip along the bottom in place of the terminal (Queued, Running with its time,
+Done, Failed with its words, Stopped; Stop and ✕). DeePC's side: the Lab's tests that drove the
+old terminal moved to Benchlab or went with it; the browser test now reads the settings from the
+record a run saved, and its chart test waits until the charts are drawn (read at a fixed 1.5 s,
+they were none twice in the whole suite); `docs/project/lab-words.md` holds the strip's words. Measured: a λ_g sweep of
+three closed loops at `sim_duration=10`, 43.7 s one after another before, about 32 s side by side.
+Handed off here and approved by the developer. On Benchlab installed from its pushed branch: every
+piece's records and stills as before but for provenance and wall-clock fields; the whole suite
+244 passed (268 on `master`: 26 tests of the old terminal left, 2 checks added).
+Benchlab's branches 2b (words as slots, no hovers), 2c (the tree) and 2d (the cards) follow, each
+driven here before the next.
+
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
 plant with chosen configurations -> (attempt to) control the plant with deepc under different
@@ -94,7 +109,7 @@ at which u and in what region equilibria are sought (a pendulum has one at every
 1. **Test speed** — the suite took 148 s on 2026-11-11, measured with `--durations`: about 70 %
    simulating closed loops (the same loops rebuilt in several test files), 22 % the browser
    tests. Proposed: pytest-xdist `-n auto` as RCWS's `pyproject.toml` does (4 cores in the cloud
-   container), the tests sharing a port or the Lab's one-command lock kept on one worker; and
+   container), the tests sharing a port or the Lab's queue kept on one worker; and
    the shared runs built once per suite. No number moves.
 2. **Fewer charts and numbers per record** — proposed, not yet confirmed in detail: charts =
    each output, each input (with its bounds), solve time; numbers = RMSE per output, solves by

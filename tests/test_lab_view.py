@@ -2,8 +2,10 @@
 
 A screen is validated by DRIVING it, never by a checklist (RCWS's own Lab incident: four designs
 passed their checklists and were rejected on first contact). These tests drive the widgets a
-person touches -- not the handlers behind them -- with ``launch``, ``every`` and ``toast``
-injected, and one of them drives the real ``uv run deepc run`` through the page end to end.
+person touches -- not the handlers behind them -- with the queue, ``every`` and ``toast``
+injected, and one of them drives a real run of the closed loop through the page end to end. How a
+run is queued, followed and stopped is Benchlab's, and tested there (``tests/test_runner.py``,
+``tests/test_lab.py``).
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import os
 import re
 import shutil
 import socket
+import threading
 import time
 import types
 import urllib.request
@@ -34,7 +37,7 @@ _W = "noise_estimation_window"
 
 
 def _dataset(root: str, out_dir: str, name: str, *sets: str) -> str:
-    """A saved dataset run under ``<root>/<out_dir>/dataset/``, written by the terminal; its path
+    """A saved dataset run under ``<root>/<out_dir>/dataset/``, written by the command line; its path
     as the Lab offers it."""
     cli.main(["run", "dataset", "--name", name, "--out-dir", str(Path(root) / out_dir),
                    *(w for item in sets for w in ("--set", item))])
@@ -59,40 +62,35 @@ class _Ticker:
         self.stopped += 1
 
 
-class _Process:
+class _Unstarted:
+    """A run's process, stood in for: it never runs a piece and ends only when stopped."""
+
+    returncode = None
+
     def __init__(self) -> None:
-        self.terminated = 0
+        self._ended = threading.Event()
+
+    def communicate(self) -> tuple[str, str]:
+        self._ended.wait()
+        return "", ""
 
     def terminate(self) -> None:
-        self.terminated += 1
+        self.returncode = -15
+        self._ended.set()
 
 
-class _Launcher:
-    """A ``launch`` that records the argv and hands back a job the test finishes by hand."""
-
-    def __init__(self) -> None:
-        self.argvs: list[list[str]] = []
-        self.cwds: list[str] = []
-        self.job: jobs.Job | None = None
-
-    def __call__(self, argv, cwd=None) -> jobs.Job:
-        self.argvs.append(list(argv))
-        self.cwds.append(cwd)
-        self.job = jobs.Job(list(argv), process=_Process())
-        return self.job
-
-    def finish(self, returncode: int, *lines: str) -> None:
-        assert self.job is not None
-        self.job.output.extend(line + "\n" for line in lines)
-        self.job.returncode = returncode
-
-
-def _lab(two_runs) -> tuple[Lab, _Launcher, _Ticker, list[str]]:
+def _lab(two_runs) -> tuple[Lab, jobs.Queue, _Ticker, list[str]]:
+    """The page over ``two_runs``, its runs queued but never run (their processes stand-ins)."""
     root, out_dir = two_runs
-    launcher, ticker, toasts = _Launcher(), _Ticker(), []
-    lab = Lab(root, out_dir, launch=launcher, every=ticker, toast=toasts.append)
+    queue, ticker, toasts = jobs.Queue(start=lambda run: _Unstarted()), _Ticker(), []
+    lab = Lab(root, out_dir, queue=queue, every=ticker, toast=toasts.append)
     lab.page()
-    return lab, launcher, ticker, toasts
+    return lab, queue, ticker, toasts
+
+
+def _queued(queue: jobs.Queue) -> list[tuple[str, list[tuple[str, str]]]]:
+    """What Run queued: each run's record name and setting pairs."""
+    return [(r.name, r.pairs) for r in queue.runs()]
 
 
 def _type(lab: Lab, name: str, text: str) -> None:
@@ -190,128 +188,10 @@ def _columns(lab: Lab) -> list[str]:
     return list(lab.compare_table.heads)
 
 
-def _console(lab: Lab) -> str:
-    return lab.console_text.object
-
-
 # ---------------------------------------------------------------- running a piece
 
-def test_run_launches_the_form_as_the_command_and_shows_what_it_wrote(two_runs, capsys) -> None:
-    lab, launcher, ticker, toasts = _lab(two_runs)
-    root, out_dir = two_runs
-    assert "Nothing has been run in this session." in _console(lab)
-    assert _names(lab) == ["second", "first"]
-    assert not lab.console.visible and not lab.drawer.visible
-
-    lab.open_drawer()
-    _type(lab, "lambda_g", "10")
-    _name(lab, "probe")
-    expected = jobs.run_argv("closed_loop", ["lambda_g=10"], "probe", out_dir)
-    assert jobs.line_of(expected) in lab.command_line.object, "the line Run would type, live"
-    lab._run()
-    assert launcher.argvs == [expected] and launcher.cwds == [root]
-    assert capsys.readouterr().out.strip() == f"lab: {jobs.line_of(expected)}"
-    assert ticker.calls and ticker.calls[0][1] == 700
-    assert lab.run_btn.disabled and not lab.stop_btn.disabled and "Running" in lab.job_tag.object
-    assert lab.console.visible and not lab.drawer.visible, "Run opens the terminal, shuts the form"
-    assert f"lab: {jobs.line_of(expected)}" in _console(lab)
-
-    # the terminal writes the record and prints its path; the page lists it, ticked
-    written = Path(root) / out_dir / "closed_loop" / "probe.json"
-    shutil.copy(Path(root) / out_dir / "closed_loop" / "first.json", written)
-    launcher.finish(0, f"{out_dir}/closed_loop/probe.json", "  rmse_position_combined = 0.01")
-    lab._poll()
-    assert ticker.stopped == 1 and lab._ticker is None
-    assert _names(lab)[0] == "probe" and "probe.json" in _console(lab)
-    assert "probe" in lab.shown and "probe" in _columns(lab)
-    assert not lab.run_btn.disabled and lab.stop_btn.disabled and "Done" in lab.job_tag.object
-    assert "wrote 1 record" in lab.last_line.object
-    assert toasts[-1] == "Closed loop: wrote 1 record"
-
-
-def test_a_running_job_greys_run_and_a_second_click_launches_nothing(two_runs) -> None:
-    lab, launcher, _ticker, toasts = _lab(two_runs)
-    _name(lab, "a b")
-    assert "cannot name a record" in lab.command_line.object, "said before Run is pressed"
-    lab._run()
-    assert launcher.argvs == [] and lab.banner.visible and "cannot name a record" in lab.banner.object
-
-    _name(lab, "ok")
-    lab._run()
-    assert len(launcher.argvs) == 1 and not lab.banner.visible
-    lab._run()
-    assert len(launcher.argvs) == 1 and toasts[-1] == "A run is in progress — stop it first"
-
-
-@pytest.mark.parametrize("stop,returncode,lines,words", [
-    (False, 1, (), "the run was refused"),
-    (True, 143, (), "stopped after it wrote 0 records"),
-    (False, 1, ("RECORD",), "wrote 1 record, then ended with exit 1"),
-])
-def test_what_a_finished_run_did_counts_what_it_wrote_and_not_only_how_it_ended(
-        two_runs, stop, returncode, lines, words) -> None:
-    """A stopped run refused nothing, and a sweep can write some records before being refused."""
-    lab, launcher, _ticker, toasts = _lab(two_runs)
-    root, out_dir = two_runs
-    _name(lab, "outcome")
-    lab._run()
-    if stop:
-        lab._stop()
-        assert launcher.job.process.terminated == 1 and toasts[-1] == "Stopping…"
-    printed = []
-    for line in lines:
-        if line == "RECORD":
-            target = Path(root) / out_dir / "closed_loop" / "part.json"
-            shutil.copy(Path(root) / out_dir / "closed_loop" / "first.json", target)
-            printed.append(f"{out_dir}/closed_loop/part.json")
-    launcher.finish(returncode, *printed)
-    lab._poll()
-    assert toasts[-1] == f"Closed loop: {words}"
-    assert not lab.run_btn.disabled
-
-
-def test_a_refusal_from_the_terminal_lands_in_the_console_in_its_own_words(two_runs) -> None:
-    lab, launcher, _ticker, toasts = _lab(two_runs)
-    _name(lab, "bad")
-    lab._run()
-    launcher.finish(1, "deepc: Ts: 'x' is not a number")
-    lab._poll()
-    assert "is not a number" in _console(lab)
-    assert toasts[-1] == "Closed loop: the run was refused" and "exit 1" in lab.job_tag.object
-
-
-def test_the_output_of_one_run_stays_in_the_terminal_under_the_next(two_runs) -> None:
-    lab, launcher, _ticker, _toasts = _lab(two_runs)
-    _name(lab, "one")
-    lab._run()
-    launcher.finish(0, "one said this")
-    lab._poll()
-    _name(lab, "two")
-    lab._run()
-    launcher.finish(0, "two said that")
-    lab._poll()
-    text = _console(lab)
-    assert text.index("one said this") < text.index("--name two") < text.index("two said that")
-    assert text.count("one said this") == 1, "folded into the history once, not on every redraw"
-
-
-def test_reading_what_a_run_wrote_shows_its_failure_on_the_page(two_runs, monkeypatch) -> None:
-    """Panel's periodic callback has no exception hook, so the poll routes its own failures."""
-    lab, launcher, _ticker, _toasts = _lab(two_runs)
-    _name(lab, "boom")
-    lab._run()
-    launcher.finish(0)
-
-    def raises() -> None:
-        raise ValueError("the out-dir went away")
-
-    monkeypatch.setattr(lab, "reload", raises)
-    lab._poll()                                      # does not propagate
-    assert lab.banner.visible and "the out-dir went away" in lab.banner.object
-
-
 def test_use_loads_a_runs_settings_into_the_form_and_the_widgets_and_clear_empties(two_runs) -> None:
-    lab, _launcher, _ticker, toasts = _lab(two_runs)
+    lab, _queue, _ticker, toasts = _lab(two_runs)
     lab.open_drawer("second")                        # what the list's `use` reaches
     assert lab.drawer.visible and "From second" in lab.from_words.object
     data = str(Path(two_runs[0]) / two_runs[1] / "dataset" / "default.json")
@@ -334,7 +214,7 @@ def test_use_loads_a_runs_settings_into_the_form_and_the_widgets_and_clear_empti
 def test_a_value_the_page_itself_wrote_does_not_hide_the_next_keystroke(two_runs) -> None:
     """A box carries two values and a programmatic write sets one: retyping what ``use`` loaded
     over must reach the form, or the run uses a number the box does not show."""
-    lab, _launcher, _ticker, _toasts = _lab(two_runs)
+    lab, _queue, _ticker, _toasts = _lab(two_runs)
     _type(lab, "lambda_g", "2")
     lab._use("second")                               # writes lambda_g = 2 over the typed 2
     _type(lab, "lambda_g", "5")
@@ -344,7 +224,7 @@ def test_a_value_the_page_itself_wrote_does_not_hide_the_next_keystroke(two_runs
 
 
 def test_a_sweep_the_page_cleared_is_not_resurrected_by_picking_an_axis(two_runs) -> None:
-    lab, _launcher, _ticker, _toasts = _lab(two_runs)
+    lab, _queue, _ticker, _toasts = _lab(two_runs)
     _sweep(lab, "lambda_g", "1,5")
     assert lab.form.launch_words()[1] == ["lambda_g=1,5"]
     lab._clear()
@@ -354,8 +234,8 @@ def test_a_sweep_the_page_cleared_is_not_resurrected_by_picking_an_axis(two_runs
 
 def test_the_dataset_run_is_picked_from_the_dataset_pieces_saved_runs(own_runs) -> None:
     """RCWS's record picker (``record_of``): the closed loop's form offers the dataset piece's
-    saved runs by name, the default first, and launches the path picked."""
-    lab, launcher, *_ = _lab(own_runs)
+    saved runs by name, the default first, and queues the path picked."""
+    lab, queue, *_ = _lab(own_runs)
     root, out_dir = own_runs
     _dataset(root, out_dir, "default")
     noisy = _dataset(root, out_dir, "noisy", "noise_std_output=0.05")
@@ -364,8 +244,7 @@ def test_the_dataset_run_is_picked_from_the_dataset_pieces_saved_runs(own_runs) 
     _pick(lab, "dataset_run", noisy)
     _name(lab, "on-noisy")
     lab._run()
-    assert launcher.argvs[-1] == jobs.run_argv("closed_loop", [f"dataset_run={noisy}"],
-                                               "on-noisy", out_dir)
+    assert _queued(queue) == [("on-noisy", [("dataset_run", noisy)])]
 
 
 def test_a_features_settings_are_folded_until_opened_and_say_what_changed(two_runs) -> None:
@@ -409,7 +288,7 @@ def test_a_typed_box_is_empty_and_greyed_once_a_pick_shuts_its_gate(two_runs) ->
 
 
 def test_the_sweep_axis_box_is_greyed_once_the_sweep_row_names_it_and_holds_values(two_runs) -> None:
-    lab, launcher, *_ = _lab(two_runs)
+    lab, queue, *_ = _lab(two_runs)
     _type(lab, "lambda_g", "10")
     lab.sweep_field.value = "lambda_g"
     assert not lab._controls["lambda_g"].disabled           # named, no values yet
@@ -418,8 +297,8 @@ def test_the_sweep_axis_box_is_greyed_once_the_sweep_row_names_it_and_holds_valu
     assert "is the sweep axis" in lab._labels["lambda_g"].object
     _name(lab, "sw")
     lab._run()
-    assert launcher.argvs[-1] == jobs.run_argv("closed_loop", [], "sw", two_runs[1],
-                                               ["lambda_g=1,5"])
+    assert _queued(queue) == [("sw-lambda_g-1", [("lambda_g", "1")]),
+                              ("sw-lambda_g-5", [("lambda_g", "5")])]
 
 
 def test_a_record_that_cannot_be_read_is_listed_and_offers_nothing_to_load(two_runs, tmp_path) -> None:
@@ -480,58 +359,33 @@ def test_the_page_is_served_on_127_0_0_1_and_builds_for_that_root(two_runs) -> N
 
 
 def test_a_real_run_from_the_page_writes_a_record_the_list_shows(tmp_path: Path, capsys) -> None:
-    """End to end: the real ``uv run deepc run`` subprocess, launched by the page from the project
-    root into a temporary out-dir, and stopped by the page if it outlives the wait."""
+    """End to end: a real closed loop, its own process started by the page from the project root
+    into a temporary out-dir, as every run the Lab starts, and stopped if it outlives the wait."""
     out_dir = str(tmp_path / "results")
-    toasts: list[str] = []
     data = _dataset("/", out_dir, "short")           # what the closed loop runs on
-    capsys.readouterr()                              # the terminal's own lines for it
-    lab = Lab(ROOT, out_dir, every=_Ticker(), toast=toasts.append)
+    capsys.readouterr()                              # the command line's own lines for it
+    queue = jobs.Queue(at_once=2)
+    lab = Lab(ROOT, out_dir, queue=queue, every=_Ticker(), toast=lambda _w: None)
     _pick(lab, "dataset_run", data)
     _type(lab, "sim_duration", "1")
     _name(lab, "live")
     lab._run()
-    assert lab.job is not None and f"--out-dir {out_dir}" in lab.job.line
+    [run] = queue.runs()
     deadline = time.time() + 180
-    while lab.job.running and time.time() < deadline:
+    while not run.finished and time.time() < deadline:
         time.sleep(0.3)
-    if lab.job.running:
-        lab.stop_job()
-        pytest.fail(f"the run did not finish in 180 s: {''.join(lab.job.output)}")
+    if not run.finished:
+        queue.stop(run.id)
+        pytest.fail("the run did not finish in 180 s")
     lab._poll()
-    assert lab.job.returncode == 0, "".join(lab.job.output)
+    assert run.state == "done", run.error
     record = Path(out_dir) / "closed_loop" / "live.json"
     assert record.exists() and json.loads(record.read_text())["config"]["sim_duration"] == 1
-    assert _names(lab) == ["live"] and str(record) in _console(lab)
+    assert _names(lab) == ["live"]
     assert lab.shown == ["live"] and _rows_of(lab, "output-e-x1") == ["live"], \
         "shown, and charted"
-    assert toasts[-1] == "Closed loop: wrote 1 record"
     assert capsys.readouterr().out.startswith(
         f"lab: uv run deepc run closed_loop --set dataset_run={data}")
-
-
-def test_the_end_of_a_browser_session_stops_the_run_it_left_going(two_runs) -> None:
-    """A closed tab otherwise leaves a full run burning CPU with no page watching it."""
-    lab, launcher, _ticker, _toasts = _lab(two_runs)
-    _name(lab, "orphan")
-    lab._run()
-    assert lab.stop_job() is True and launcher.job.process.terminated == 1
-    launcher.job.returncode = -15
-    assert lab.stop_job() is False
-
-
-def test_a_running_job_is_reachable_with_the_form_open(two_runs) -> None:
-    """Pressing stop must not need the drawer the Run button is in."""
-    lab, _launcher, _ticker, _toasts = _lab(two_runs)
-    lab.open_drawer()
-    _name(lab, "going")
-    lab._run()
-    assert not lab.drawer.visible and not lab.stop_btn.disabled and "Running" in lab.job_tag.object
-    lab.open_drawer()
-    assert lab.drawer.visible and not lab.stop_btn.disabled, "stop is in the header, not the drawer"
-
-
-# ---------------------------------------------------------------- the runs and their charts
 
 @pytest.fixture
 def own_runs(two_runs, tmp_path) -> tuple[str, str]:
@@ -554,7 +408,7 @@ def test_one_browser_message_carrying_both_values_of_a_box_is_one_edit(own_runs)
     box showed the value (2026-10-27, headless Chromium): the box is read on `value_input`."""
     lab, *_ = _lab(own_runs)
     lab._controls["lambda_g"].param.update(value="4", value_input="4")
-    assert lab.form.set == {"lambda_g": "4"} and "--set lambda_g=4" in lab.command_line.object
+    assert lab.form.set == {"lambda_g": "4"} and lab.form.launch_words()[0] == ["lambda_g=4"]
     lab.run_name.param.update(value="probe", value_input="probe")
     assert lab.form.name == "probe"
     lab.sweep_values.param.update(value="1,2", value_input="1,2")
@@ -579,10 +433,10 @@ def test_the_newest_run_is_shown_and_charted_and_ticking_another_adds_it_and_a_c
     assert lab.shown == ["first"] and _columns(lab) == ["first"] and _rows_of(lab, "output-e-x1") == ["first"]
 
 
-def test_opening_a_chart_is_the_figure_layers_and_asks_the_terminal_for_nothing(own_runs) -> None:
-    lab, launcher, *_ = _lab(own_runs)
+def test_opening_a_chart_is_the_figure_layers_and_queues_no_run(own_runs) -> None:
+    lab, queue, *_ = _lab(own_runs)
     _tabs(lab)["solve-time"].value = True
-    assert launcher.argvs == [], "a chart is drawn by the figure layer in the page, not a subprocess"
+    assert queue.runs() == [], "a chart is drawn by the figure layer in the page, not a run"
     assert [lab.cards_box.objects.index(_card(lab, p))
             for p in ("output-e-x1", "solve-time")] == [0, 1], "cards in the record's declared order"
     fig = _figure(lab, "solve-time")
@@ -848,9 +702,9 @@ def test_the_filter_lists_the_runs_holding_every_word_and_all_and_none_tick_them
     assert lab.shown == ["second"], "a run the filter does not list keeps its tick"
 
 
-def test_deleting_a_run_asks_first_and_then_takes_only_its_record(own_runs) -> None:
+def test_deleting_a_run_asks_first_and_then_takes_only_its_record(own_runs, capsys) -> None:
     root, out_dir = own_runs
-    lab, *_ = _lab(own_runs)
+    lab, _queue, _ticker, toasts = _lab(own_runs)
     lab.run_list._handle_msg({"delete": "first"})
     assert "Delete results/closed_loop/first.json?" in lab.question.object
     lab._on_no()
@@ -858,7 +712,8 @@ def test_deleting_a_run_asks_first_and_then_takes_only_its_record(own_runs) -> N
     lab.run_list._handle_msg({"delete": "first"})
     lab._on_yes()
     assert not (Path(root) / out_dir / "closed_loop" / "first.json").exists()
-    assert _names(lab) == ["second"] and "lab: deleted" in _console(lab)
+    assert _names(lab) == ["second"] and toasts[-1] == "Deleted results/closed_loop/first.json"
+    assert "lab: deleted results/closed_loop/first.json" in capsys.readouterr().out
     lab._on_yes()                                    # a second yes finds nothing left to do
     assert _names(lab) == ["second"]
 

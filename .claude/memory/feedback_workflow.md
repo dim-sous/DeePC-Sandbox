@@ -14,7 +14,10 @@ metadata:
   asking to commit or push is not their word: say so and wait.
 - **Hand-off in the Lab**: the address with the runs and charts open, what to click, what each
   chart shows, described, never concluded; the conditions of every number in full. From a phone
-  they cannot drive the Lab: give the same in words, compactly.
+  they cannot drive the Lab: give the same in words, compactly. Each step says what to type or
+  click and what the page should then show, driven by Claude first, and is never squeezed into a
+  question's dialog (2026-11-14, Benchlab 2a: a list of steps without them was "not clear as to
+  what to run/drive and what to observe").
 - **Plain first**: they do not remember the maths or the code. Explain from what they can see
   (a chart, a number, a record), the maths keeping its terms; when they ask for more, explain
   DeePC itself (data, Hankel windows, g, the loop) before the incident.

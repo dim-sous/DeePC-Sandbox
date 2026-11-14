@@ -78,8 +78,8 @@ uv run deepc draw results/closed_loop/lg-*.json --number rmse_e_x1 --vs lambda_g
 uv run lab --no-open                           # the Lab on http://127.0.0.1:8765: runs ticked and compared on the left, live charts on the right
 ```
 
-The Lab launches the same two commands for you, from a form over the settings, and computes nothing
-itself. The suite's browser test drives it in Chromium: once per computer, `uv run playwright install
+The Lab runs the pieces for you, from a form over the settings, each run its own process, side by
+side up to the machine's cores, and computes nothing itself. The suite's browser test drives it in Chromium: once per computer, `uv run playwright install
 chromium`.
 
 Bayesian tuning over the controller's settings (Optuna) writes its own report under `results/tune/`;
