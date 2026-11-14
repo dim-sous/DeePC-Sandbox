@@ -33,18 +33,17 @@ on the developer's computer ([[multi-device]]).
 | #15 | Rewrite branch 2: the `open_loop` piece (excitation, actuator clip, typed disturbances d, y_k = h(x_k) + noise; numbers PE order, SNR, clipped, step time); the old `dataset` kept until branch 3 |
 | #16 | System analysis S1: the Analysis group (x*, u*, pair), exact linearisation, poles, Bode (declared log axes), step/impulse/ramp, DC gain, margins; python-control 0.10.2 |
 
-**Moving onto Benchlab (2026-11-13/14, not merged):** the developer's shared Lab for DeePC,
+**Moved onto Benchlab (2026-11-14, PR #17):** the developer's shared Lab for DeePC,
 Hydrofoil and BESS (`github.com/dim-sous/benchlab`; its `docs/design.md` and
 `docs/plan-branch-1.md`). Its branch 1 moves `devkit/record`, `figure`, `terminal` and `lab` there
 unchanged but for the four ties to DeePC (the `deepc` name, the title, the `harness` import, the
 provenance's repo and libraries); DeePC installs Benchlab and declares itself in
 `devkit/harness/__init__.py` and `pyproject.toml`'s entry point. Built 2026-11-14; every record
 and still checked identical to `master`'s but for provenance and the wall-clock fields two runs of
-`master` already differ in. On the developer's word the same day: branch `benchlab-move` pushed
-and its PR opened, Benchlab pinned to its branch `core-from-deepc` (dim-sous/BenchLab#1). On
-their next word: BenchLab#1 merged and tagged `v0.1.0`, the pin moved to the tag (`uv lock`), the
-whole suite again, then this PR merged. Until then this repository's `master` still holds the old
-layers. From then on a change to the page, the charts, the records or the command is
+`master` already differ in. Merged the same day on the developer's word: dim-sous/BenchLab#1 merged and
+tagged `v0.1.0`, the pin moved to the tag, the whole suite run again, then #17 merged. To work on
+Benchlab and DeePC together on one computer, point `[tool.uv.sources]` at the local copy for the
+while, never committed (Benchlab's `README.md`). From then on a change to the page, the charts, the records or the command is
 made in Benchlab and taken here by raising its pin.
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
