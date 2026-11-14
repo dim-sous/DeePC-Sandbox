@@ -49,10 +49,9 @@ class Record(_Record):
                       title="Bode phase", x_log=True)]
         out += [Series(name=kind, x=self.t, x_label="t", y_label=f"δy{i}",
                        traces=((f"δy{i}", values),), group=_TIME, title=words)
-                for kind, words, values, how in (
-                    ("step", "Step response", self.step, f"after a unit step in u{j}"),
-                    ("impulse", "Impulse response", self.impulse, f"after a unit impulse in u{j}"),
-                    ("ramp", "Ramp response", self.ramp, f"under u{j} - u{j}* = t"))]
+                for kind, words, values in (("step", "Step response", self.step),
+                                            ("impulse", "Impulse response", self.impulse),
+                                            ("ramp", "Ramp response", self.ramp))]
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:

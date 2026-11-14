@@ -46,7 +46,8 @@ that sentence goes in the hand-off, not in the figure.
 - Use the terms standard in the wider field (DeePC, Hankel, persistency of excitation, the
   literature's symbols: `Tini`, `N`, `λ_g`, `σ_y`), not only in this repo, and never give a
   word already in use here a second meaning.
-- The words a Lab user reads (chart names, labels, legends, hovers, units) follow the
+- The words a Lab user reads (chart names, labels, legends, units; no hovers but a greyed
+  control's reason and a chart's own) follow the
   developer's pattern (a capital first, no articles, acronyms and the standard mathematical
   terms), each listed in `docs/project/lab-words.md` and changed on their word.
 

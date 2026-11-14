@@ -4,9 +4,10 @@ dataset run's (its plant's), not a setting here (D1).
 
 A setting left at ``None`` takes the code's own default -- the plant's
 (``get_default_config_overrides``), else ``DeePCConfig``'s; the run saves what it resolved (``constants["deepc_config"]``). The settings of
-the two optional features apply only while their feature is on (``needs``). The labels and help
-lines follow the developer's pattern for the words a Lab user reads (CLAUDE.md;
-``docs/project/lab-words.md``); the two features' groups show closed until opened (``folded``).
+the two optional features apply only while their feature is on (``needs``). The labels follow
+the developer's pattern for the words a Lab user reads (CLAUDE.md;
+``docs/project/lab-words.md``); the help lines are the code's documentation only, shown nowhere
+since Benchlab 0.3.0. The two features' groups show closed until opened (``folded``).
 """
 
 from __future__ import annotations

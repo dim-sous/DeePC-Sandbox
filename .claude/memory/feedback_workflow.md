@@ -1,9 +1,9 @@
 ---
 name: workflow
-description: How the developer works on DeePC-Sandbox — the BESS workflow, git only on their word, hand-off in the Lab, plain explanations
+description: How the developer works on DeePC-Sandbox — the BESS workflow, git only on their word (but Benchlab's 2b to 2e, straight through, 2026-11-14), hand-off in the Lab, plain explanations
 metadata:
   type: feedback
-  modified: 2026-11-11
+  modified: 2026-11-14
 ---
 
 - **The BESS workflow** (CLAUDE.md, "Workflow"): one branch per gap, propose then plan mode then

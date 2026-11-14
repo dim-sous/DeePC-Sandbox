@@ -89,7 +89,7 @@ The judgment calls no test can make yet:
   Lab, with no other edit (RCWS `dd18796` took ten files).
 - After any move, search code, docs and settings for the old names (RCWS #159).
 - The words a Lab user reads — labels, chart names, legends; no hovers but a greyed control's
-  reason (Benchlab's `docs/design.md` decision 5) — follow the developer's
+  reason and a chart's own (Benchlab's `docs/design.md` decision 5) — follow the developer's
   pattern (2026-11-11): inputs u1…, outputs y1…, states x1…, time t, everywhere; no units; a
   capital first for words, no articles, acronyms and the standard mathematical terms; each is
   listed in `docs/project/lab-words.md`, changed on their word (RCWS #96).

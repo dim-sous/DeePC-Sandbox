@@ -18,8 +18,10 @@ decision 4): a change to one of those is made in Benchlab and reaches this page 
 next pinned tag. A chart's or a number's code name
 (`output-e-x1`, `rmse_e_x1`) is not a word the page shows as a title: it stays the
 file `deepc draw` writes and a link's address key. No word is on a hover but a greyed control's
-reason (Benchlab's `docs/design.md` decision 5, since Benchlab 0.3.0); a reason is a sentence: it
-begins with a capital and keeps its articles where a sentence needs them.
+reason and a chart's own -- a point's run and value, and the chart toolbar's button names (Zoom,
+Pan, Zoom in, Zoom out, Reset axes), plotly's -- (Benchlab's `docs/design.md` decision 5, since
+Benchlab 0.3.0); a reason is a sentence: it begins with a capital and keeps its articles where a
+sentence needs them.
 
 **Your word, 2026-11-11:** inputs (manipulated variables) are u1…, outputs (measurements) y1…,
 true states x1…, time t — "the names everywhere (axis labels, chart buttons, EVERYWHERE)" — and
@@ -90,8 +92,9 @@ A chart card has one control, a number card two (the developer's cut, 2026-11-11
   <setting> is the sweep axis; its values come from the sweep row
 - under a setting, in red, when Run refuses its value (nothing is queued): <setting> must be at
   least <low> | above <low> | at most <high> | below <high>, got <text> · <setting> takes a
-  number | a whole number | a list of numbers, got <text>; under the sweep row, the same for the
-  first sweep value refused
+  number | a whole number | a list of numbers | a list of texts | true or false | one of <its
+  choices>, got <text>; under the sweep row, the same for the first sweep value refused; a
+  refused setting's folded group opens
 
 ## 4. The pieces' own words
 

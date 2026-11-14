@@ -68,7 +68,7 @@ the naming pass settled by the developer as "standard math stuff ... symbols and
 label kept but `x0`, now `x_0`; `docs/project/lab-words.md` without hovers. On Benchlab installed
 from its pushed branch: whole suite 244 passed; the side door as before but System's and Open
 loop's saved pictures' notes and number declarations, now without descriptions. Then 2c (words
-as slots), 2d (the tree) and 2e (the cards), built straight through (below).
+as slots), 2d (the tree) and 2e (the cards), built straight through (`feedback_workflow.md`).
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
