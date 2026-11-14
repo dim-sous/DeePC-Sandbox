@@ -11,11 +11,11 @@ import re
 import numpy as np
 import pytest
 
-import figure.render as render_module
-import terminal
-from figure import draw
-from figure.chart import chart_of, sweep_of
-from figure.render import has_legend
+import benchlab.figure.render as render_module
+from benchlab import cli
+from benchlab.figure import draw
+from benchlab.figure.chart import chart_of, sweep_of
+from benchlab.figure.render import has_legend
 from harness import get_component
 from plants import PLANT_REGISTRY
 
@@ -142,7 +142,7 @@ def test_a_sweep_puts_one_point_per_run_at_its_settings_value(runs, tmp_path) ->
 def test_deepc_draw_writes_what_it_prints(runs, tmp_path, capsys) -> None:
     path = tmp_path / "loop.json"
     runs["loop-coupled_masses"].save(path)
-    terminal.main(["draw", str(path), "--panel", "output-e-x1", "--out-dir", str(tmp_path / "out")])
+    cli.main(["draw", str(path), "--panel", "output-e-x1", "--out-dir", str(tmp_path / "out")])
     printed = capsys.readouterr().out.split()
     assert printed == [str(tmp_path / "out" / "output-e-x1.png")]
     sidecar = json.loads((tmp_path / "out" / "output-e-x1.png.json").read_text())
@@ -164,7 +164,7 @@ def test_deepc_draw_refuses_a_flag_its_draw_would_not_use(runs, tmp_path, flags,
     path = tmp_path / "loop.json"
     runs["loop-coupled_masses"].save(path)
     with pytest.raises(SystemExit, match=re.escape(words)):
-        terminal.main(["draw", str(path), *flags, "--out-dir", str(tmp_path / "out")])
+        cli.main(["draw", str(path), *flags, "--out-dir", str(tmp_path / "out")])
 
 
 def test_a_number_against_a_list_setting_places_each_list_by_name(runs, tmp_path) -> None:
@@ -185,9 +185,9 @@ def test_a_number_against_a_list_setting_places_each_list_by_name(runs, tmp_path
 def test_a_log_axis_the_record_declares_reaches_both_drawings(tmp_path) -> None:
     """A Bode plot reads ω and |G| in decades: the record declares the axes logarithmic, and the
     still and the Lab's twin draw them so; a card offers no log control (the developer's cut)."""
-    from figure.render import render
-    from figure.twin import figure_of
-    from record import stamp
+    from benchlab.figure.render import render
+    from benchlab.figure.twin import figure_of
+    from benchlab.record import stamp
     system = get_component("system")
     rec = system.run(system.Config())
     magnitude = chart_of([("a", rec)], "bode-magnitude")

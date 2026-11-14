@@ -1,9 +1,10 @@
 """Three roots, one direction: src <- tools <- devkit, and src holds exactly what a controller runs.
 
 `src/` is the DeePC controller a real system would run. It may not import the simulated world
-(`tools/`) or the test bench (`devkit/`): on real hardware neither exists. `tools/` may import
-`src/` and libraries, never the bench. The bench may import everything. (BESS's #1, adopted here
-by the layout move; the three wrong-way imports it removed are in its PR.)
+(`tools/`) or the test bench (`devkit/`, and Benchlab, the bench's records, charts, command line and
+Lab): on real hardware neither exists. `tools/` may import `src/` and libraries, never the bench.
+The bench may import everything. (BESS's #1, adopted here by the layout move; the three wrong-way
+imports it removed are in its PR.)
 
 Stdlib only, so a broken package cannot break the test that explains why it is broken. The
 forbidden package names are read off the tree, so a package added to tools/ or devkit/ tomorrow
@@ -18,6 +19,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC, TOOLS, DEVKIT = ROOT / "src", ROOT / "tools", ROOT / "devkit"
+#: The bench that is installed rather than held under `devkit/`: it was `devkit/record`,
+#: `figure`, `terminal` and `lab` until they moved to Benchlab.
+BENCH_INSTALLED = ["benchlab"]
 
 
 def _packages(root: Path) -> list[str]:
@@ -42,7 +46,7 @@ def _importers(root: Path, packages: list[str]) -> list[str]:
 
 def test_src_imports_neither_tools_nor_devkit() -> None:
     """The controller may not depend on the world it is simulated in, nor on the bench."""
-    offenders = _importers(SRC, _packages(TOOLS) + _packages(DEVKIT))
+    offenders = _importers(SRC, _packages(TOOLS) + _packages(DEVKIT) + BENCH_INSTALLED)
     assert not offenders, (
         f"{offenders} import tools or devkit packages; the dependency runs ONE way — "
         f"src <- tools <- devkit, never the reverse"
@@ -51,7 +55,7 @@ def test_src_imports_neither_tools_nor_devkit() -> None:
 
 def test_tools_never_imports_devkit() -> None:
     """The world knows nothing about a run, a report or a tuner."""
-    offenders = _importers(TOOLS, _packages(DEVKIT))
+    offenders = _importers(TOOLS, _packages(DEVKIT) + BENCH_INSTALLED)
     assert not offenders, f"{offenders} import devkit packages; tools may import src and libraries only"
 
 

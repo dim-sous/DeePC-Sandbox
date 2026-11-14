@@ -3,7 +3,7 @@ name: project-state
 description: Where the DeePC-Sandbox rebuild stands — what is merged, what comes next, what is still open for the developer
 metadata:
   type: project
-  modified: 2026-11-11
+  modified: 2026-11-14
 ---
 
 The developer came back to this repository on 2026-11-10 after months away, remembering neither
@@ -32,6 +32,20 @@ on the developer's computer ([[multi-device]]).
 | #14 | Rewrite branch 1: the `system` piece (typed rows x', y, θ; Lab row editor), `tools/system/` (SymPy parser, RK45 `hold`), the no-units rule, `docs/project/design.md` |
 | #15 | Rewrite branch 2: the `open_loop` piece (excitation, actuator clip, typed disturbances d, y_k = h(x_k) + noise; numbers PE order, SNR, clipped, step time); the old `dataset` kept until branch 3 |
 | #16 | System analysis S1: the Analysis group (x*, u*, pair), exact linearisation, poles, Bode (declared log axes), step/impulse/ramp, DC gain, margins; python-control 0.10.2 |
+
+**Moving onto Benchlab (2026-11-13/14, not merged):** the developer's shared Lab for DeePC,
+Hydrofoil and BESS (`github.com/dim-sous/benchlab`; its `docs/design.md` and
+`docs/plan-branch-1.md`). Its branch 1 moves `devkit/record`, `figure`, `terminal` and `lab` there
+unchanged but for the four ties to DeePC (the `deepc` name, the title, the `harness` import, the
+provenance's repo and libraries); DeePC installs Benchlab and declares itself in
+`devkit/harness/__init__.py` and `pyproject.toml`'s entry point. Built 2026-11-14; every record
+and still checked identical to `master`'s but for provenance and the wall-clock fields two runs of
+`master` already differ in. On the developer's word the same day: branch `benchlab-move` pushed
+and its PR opened, Benchlab pinned to its branch `core-from-deepc` (dim-sous/BenchLab#1). On
+their next word: BenchLab#1 merged and tagged `v0.1.0`, the pin moved to the tag (`uv lock`), the
+whole suite again, then this PR merged. Until then this repository's `master` still holds the old
+layers. From then on a change to the page, the charts, the records or the command is
+made in Benchlab and taken here by raising its pin.
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate

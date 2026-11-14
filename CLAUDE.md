@@ -67,10 +67,11 @@ Three roots, one direction, as BESS's: `src/` is the controller a real system wo
 (`deepc`: Hankel matrices, the sparse QP, the excitation check, the constraints it reads, the
 noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
 hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
-registry); `devkit/` the bench (`sim`, `record`, `harness`, `figure`, `terminal`, `lab`:
-`devkit/README.md`). Imports run `src ← tools ← devkit` and stay flat (`import
-deepc`, never `import src.deepc`), held by `tests/test_roots.py`; inside devkit, by
-`tests/test_devkit_layers.py`. `tune.py` stays at the root until a branch retires it.
+registry); `devkit/` the bench (`sim`, `harness`: `devkit/README.md`) on Benchlab, which holds
+the records, charts, `deepc` command and Lab, pinned in `pyproject.toml`: a change to those is made
+in Benchlab and taken here by raising the pin, then the whole suite. Imports run `src ← tools ←
+devkit` and stay flat (`import deepc`, never `import src.deepc`), held by `tests/test_roots.py`;
+inside devkit, by `tests/test_devkit_layers.py`. `tune.py` stays at the root until a branch retires it.
 
 The judgment calls no test can make yet:
 

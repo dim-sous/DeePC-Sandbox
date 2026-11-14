@@ -23,9 +23,9 @@ from typing import Any
 import panel as pn
 import pytest
 
-from lab import jobs, skin, state
-from lab.app import Lab, page, serve
-import terminal
+from benchlab.lab import jobs, skin, state
+from benchlab.lab.app import Lab, page, serve
+from benchlab import cli
 from tests.lab_runs import make_runs
 
 ROOT = str(Path(__file__).resolve().parent.parent)
@@ -36,7 +36,7 @@ _W = "noise_estimation_window"
 def _dataset(root: str, out_dir: str, name: str, *sets: str) -> str:
     """A saved dataset run under ``<root>/<out_dir>/dataset/``, written by the terminal; its path
     as the Lab offers it."""
-    terminal.main(["run", "dataset", "--name", name, "--out-dir", str(Path(root) / out_dir),
+    cli.main(["run", "dataset", "--name", name, "--out-dir", str(Path(root) / out_dir),
                    *(w for item in sets for w in ("--set", item))])
     return f"{out_dir}/dataset/{name}.json"
 
@@ -444,7 +444,7 @@ def test_a_page_that_cannot_be_built_shows_why_instead_of_nothing(tmp_path: Path
     def raises(*_a, **_k):
         raise ValueError("the registry would not read")
 
-    import lab.app as app_module
+    import benchlab.lab.app as app_module
     original = app_module.Lab
     app_module.Lab = raises
     try:

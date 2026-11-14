@@ -30,7 +30,7 @@ import pytest
 from playwright import sync_api as playwright
 
 from harness import get_component
-from lab.app import serve
+from benchlab.lab.app import serve
 from tests.lab_runs import make_runs
 
 
