@@ -9,13 +9,14 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 > Standard terminology: the literature's symbols for DeePC's settings (T_s, T_ini, N, Q, R,
 > λ_g, λ_y, σ_y, g, J), σ for a standard deviation.
 
-**To change a word,** edit it here and tell me; I apply it. A piece's words (its settings, charts
-and numbers) are written in `devkit/harness/`, and so are the page's title and the command
-whose line it prints beside each run (`TITLE`, `COMMAND` in `devkit/harness/__init__.py`). The page's other words (its buttons,
-headings and refusals, the charts' refusals among them) are written in Benchlab, which DeePC
-installs, until Benchlab turns them into cells this repository fills (its `docs/design.md`,
-decision 4): a change to one of those is made in Benchlab and reaches this page with Benchlab's
-next pinned tag. A chart's or a number's code name
+**Where a word is written.** The page's own words -- its buttons, headings, counts, notes and
+refusals -- are in `devkit/harness/words.toml`, one slot each that Benchlab names (Benchlab
+0.4.0, its `docs/design.md` decision 4): to change one, change it there. A piece's words (its
+settings, charts and numbers) are in `devkit/harness/<piece>/`, listed below (§2); the page's
+title and the command whose line it prints beside each run are `TITLE` and `COMMAND` in
+`devkit/harness/__init__.py`. The words of what refused something -- the figure layer's, a
+record's, param's, the runner's -- are those layers' own, shown as they are (§1). A chart's
+or a number's code name
 (`output-e-x1`, `rmse_e_x1`) is not a word the page shows as a title: it stays the
 file `deepc draw` writes and a link's address key. No word is on a hover but a greyed control's
 reason and a chart's own -- a point's run and value, and the chart toolbar's button names (Zoom,
@@ -28,75 +29,26 @@ true states x1…, time t — "the names everywhere (axis labels, chart buttons,
 no units anywhere. The System piece follows it; the Dataset and Closed loop pieces keep the plant
 classes' names (e_x1, F1, …) and units until the rewrite replaces them (`docs/project/design.md`).
 
-## 1. Page
+## 1. The page's own words
 
-- header: DeePC Lab · the pieces' names: Closed loop · Dataset · System · Open loop
-- header buttons: Refresh · New run; the folder beside them: results/closed_loop · N records
-- headings: Runs · Compare · Figures; beside Compare's settings choice: Settings
-- run list: Filter runs (empty box) · All · None; the count: N on disk · N shown · N listed
-- a run's row: Use · ✕
-- empty lists: No records yet: <the command that writes one> · No run holds every word typed ·
-  No run shown: tick one above ·
-  Tick a run to see what it can draw · Tick a run to see its charts ·
-  Open a chart above, or click a number in the compare table
-- compare: None · Differing · All; the corner: Column by column; the count: N numbers; tick
-  another run to compare · N numbers, none of them differs · N settings · N numbers differ;
-  the headings of a run's resolved values: Constants (each `group · key` as the record holds it,
-  e.g. deepc_config · lambda_g)
-- chart list: Show all · Hide all · N of M open; under a toggle: N of M runs · No shown run draws it;
-  a group's index entry: ▸ Outputs · ▾ Outputs
-- delete dialog: Delete <path>? · Delete · Cancel; after: Deleted … · Not deleted: …
-- a card: ✕
-- a number card's title: <number> vs <setting>, e.g. Position RMSE vs λ_g; its foot under one
-  run: One run shown, or nothing differs between the shown runs: tick runs that differ in a setting
-- runs in progress, along the bottom: ▸ Runs in progress · ▾ Runs in progress; beside it, the
-  count in this order, each only when there is one: N running · N queued · N done · N failed ·
-  N stopped (Nothing running before any run), and up to N side by side; a run's row: <name> ·
-  <piece>, its state Running m:ss · Queued · Done m:ss · Failed m:ss with the words of what
-  failed it · Stopped (m:ss once it had started), and Stop, or ✕ once it ended
-- a failed run's words, when they are not its own: ended with exit N · ended by signal SIGKILL
-  (or another signal's name) · could not start: <words> · its answer could not be read: <words>
-  · its end could not be read: <words>
-- messages: Stopping… · N settings loaded from <run> · Deleted <path> · Not deleted: <words> ·
-  reading the runs failed: <words>
+In `devkit/harness/words.toml`, grouped as the page is: the top line, the runs, the compare
+table, the chart list, the cards, the form, what Run refuses in a setting, the runs in
+progress, and what a click says. Beside them the page shows words it does not write itself:
 
-## 2. Card controls
+- the figure layer's, on the cards: a greyed control's reason when it is the figure layer's
+  (The chart declares no statistic · The runs draw different traces · …), a card that cannot
+  draw saying why in its foot (e.g. First declare no panel 'cost'; drawn without them, the
+  comparison would leave them out unsaid), and the legends: a run alone is its name; a trace
+  every run holds identically: a, b — e_x1 (identical); a pooled line: Mean of 2 runs · e_x1
+- a record's: the constants it keeps (each `group · key` as the record holds it, e.g.
+  deepc_config · lambda_g), and why a file cannot be read, in the loader's words
+- param's and the runner's, on a failed run in the strip and in the form's refusal, e.g.
+  Number parameter 'Config.sim_duration' must be at least 0.0, not -1.0.
+- the controls a card has (the developer's cut, 2026-11-11): a chart card one, its runs
+  (Overlay · Split · Mean · RMS); a number card two, X, offering the settings that differ
+  between the shown runs by their label, and its runs (All · Mean · RMS)
 
-A chart card has one control, a number card two (the developer's cut, 2026-11-11):
-
-- runs on a chart: Runs: Overlay · Split · Mean · RMS
-- on a number card: X, offering the settings that differ between the shown runs, by their label;
-  Runs: All · Mean · RMS
-- greyed, with the reason on the hover: One run shown · Nothing differs between the shown runs ·
-  No colour holds two runs at one value · and the figure layer's own reasons, begun with a
-  capital: The chart declares no statistic · The runs draw different traces · …
-- a card that cannot draw says why in its foot, in the words of what refused it, e.g. First
-  declare no panel 'cost'; drawn without them, the comparison would leave them out unsaid
-- legends: a run alone is its name; a trace every run holds identically: a, b — e_x1
-  (identical); a pooled line: Mean of 2 runs · e_x1
-
-## 3. Form
-
-- drawer: New run · From defaults · From <run> · Clear · Close · Name · Sweep (none, then each
-  setting's label) · v1, v2, … · Run
-- a setting the code resolves (None in the settings): its empty box reads Code default, a pick's
-  first option Code default; a setting with a declared default: its value, a pick's first option
-  <value> (default)
-- the dataset run's pick: default (default) · each saved dataset run by its name
-- a group's note: N at defaults · N of M changed; a folded group's heading: ▸ Noise-adaptive · ▾ Noise-adaptive (and Online Hankel)
-- under the bar: <names> exists — Run overwrites it; why Run would be refused: refused: <words>,
-  e.g. refused: <name> is queued or running already; give this run another name
-- the note: N set — <setting> taken back: the run would ignore it · the sweep repeats a value —
-  Run refuses it · <setting> is set, and only some sweep values open it
-- under a greyed setting: <setting> applies only when <setting> is <value>; it is <value> ·
-  <setting> is the sweep axis; its values come from the sweep row
-- under a setting, in red, when Run refuses its value (nothing is queued): <setting> must be at
-  least <low> | above <low> | at most <high> | below <high>, got <text> · <setting> takes a
-  number | a whole number | a list of numbers | a list of texts | true or false | one of <its
-  choices>, got <text>; under the sweep row, the same for the first sweep value refused; a
-  refused setting's folded group opens
-
-## 4. The pieces' own words
+## 2. The pieces' own words
 
 ### Closed loop (`closed_loop`)
 

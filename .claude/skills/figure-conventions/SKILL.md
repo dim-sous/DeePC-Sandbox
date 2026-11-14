@@ -49,7 +49,8 @@ that sentence goes in the hand-off, not in the figure.
 - The words a Lab user reads (chart names, labels, legends, units; no hovers but a greyed
   control's reason and a chart's own) follow the
   developer's pattern (a capital first, no articles, acronyms and the standard mathematical
-  terms), each listed in `docs/project/lab-words.md` and changed on their word.
+  terms), the page's own in `devkit/harness/words.toml`, the rest listed in
+  `docs/project/lab-words.md`, each changed on their word.
 
 ## Every figure regenerates
 

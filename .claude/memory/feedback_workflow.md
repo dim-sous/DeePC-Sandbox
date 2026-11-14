@@ -22,6 +22,9 @@ metadata:
   Benchlab's `docs/for-review.md`. Stop only for a change to the run file, anything outside these
   two repositories, or a failure not fixable inside the branch. At the end: one walkthrough of
   everything, and that list.
+  From 2c on, no parallel reviewers (the developer, 2026-11-14, at 93% of their weekly
+  usage: "skip the reviwers ... Mistakes and bugs are fine for now. We will fix everything
+  at the delivery"): tests, Claude's own drive, then the git steps; lean on tokens.
 - **Hand-off in the Lab**: the address with the runs and charts open, what to click, what each
   chart shows, described, never concluded; the conditions of every number in full. From a phone
   they cannot drive the Lab: give the same in words, compactly. Each step says what to type or

@@ -4,7 +4,7 @@ nothing; naming a piece imports that piece only (BESS's ``devkit/harness/__init_
 
 It is also DeePC's declaration to Benchlab, which runs, draws and shows the pieces: the module
 ``pyproject.toml`` names in ``[project.entry-points.benchlab]``, holding ``COMMAND``, ``TITLE``,
-``ROOT`` and ``LIBRARIES`` beside the registry (Benchlab's ``README.md``).
+``ROOT``, ``LIBRARIES`` and ``WORDS`` beside the registry (Benchlab's ``README.md``).
 """
 
 from __future__ import annotations
@@ -15,7 +15,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Iterator
 
-__all__ = ["NAMES", "COMPONENTS", "get_component", "COMMAND", "TITLE", "ROOT", "LIBRARIES"]
+__all__ = ["NAMES", "COMPONENTS", "get_component", "COMMAND", "TITLE", "ROOT", "LIBRARIES",
+           "WORDS"]
 
 #: The registered pieces, in the order every surface shows them.
 NAMES: tuple[str, ...] = ("closed_loop", "dataset", "system", "open_loop")
@@ -29,6 +30,8 @@ TITLE = "DeePC Lab"
 ROOT = Path(__file__).resolve().parent.parent.parent
 #: The libraries a run's numbers depend on, recorded with every run.
 LIBRARIES: tuple[str, ...] = ("numpy", "scipy", "cvxpy", "osqp", "scs")
+#: Every word the Lab's page writes itself, a slot Benchlab names for each.
+WORDS = Path(__file__).with_name("words.toml")
 
 
 class _Registry(Mapping):
