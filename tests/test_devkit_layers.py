@@ -1,11 +1,12 @@
-"""The shape of the devkit's layers and of every registered piece (BESS's
+"""The shape of the devkit's packages and of every registered piece (BESS's
 ``tests/test_devkit_layers.py``, adapted).
 
-The generic layers -- ``record`` (settings + records), ``figure`` (stills), ``terminal`` (the
-commands) and ``lab`` (the page) -- only ever touch a Config or a Record and never know what is
-inside: if a line of code in them names a
-piece, it is in the wrong layer. A piece is a package under ``harness/`` exposing exactly
-``Config``, ``run`` and ``Record``. Reading the registry imports no piece.
+The generic layers -- the records, the charts, the command line and the Lab -- are Benchlab's; the
+half of this file about their shape moved there with them (Benchlab's ``tests/test_layers.py``).
+That they never name one of DeePC's pieces stays here, read off the Benchlab DeePC installs: only
+this repository knows its pieces' names. A piece is a package under ``harness/`` exposing exactly
+``Config``, ``run`` and ``Record``, and reaches Benchlab's record layer alone. Reading the registry
+imports no piece.
 """
 
 from __future__ import annotations
@@ -19,21 +20,24 @@ from pathlib import Path
 import param
 import pytest
 
-import record
+import benchlab
+from benchlab import record
 from harness import COMPONENTS, NAMES
-from record.config import Settings, fields_of
+from benchlab.record.config import Settings, fields_of
 
 ROOT = Path(__file__).resolve().parent.parent
 DEVKIT = ROOT / "devkit"
-GENERIC = ("record", "figure", "terminal", "lab")
-#: Who may import whom among the devkit's packages. ``harness`` covers the registry and the
-#: pieces; ``sim`` is the bench's simulation code the pieces drive; ``figure`` draws what records
-#: declare and never reaches a piece. The Lab reaches the figure layer for what a card draws
-#: (``figure.chart``, ``figure.twin``): it holds no drawing rule of its own, and that every chart
-#: on the page IS the figure layer's is held by ``tests/test_lab.py``, not by this table.
-_MAY_IMPORT = {"record": set(), "sim": set(), "harness": {"record", "sim"},
-               "figure": {"record"}, "terminal": {"record", "harness", "figure"},
-               "lab": {"record", "harness", "terminal", "figure"}}
+#: Not a devkit package, but held like one: before the move ``sim`` could not import ``record``,
+#: and the pieces could not import ``figure``, ``terminal`` or ``lab``.
+_BENCHLAB = "benchlab"
+#: Who may import whom among the devkit's packages and Benchlab, by dotted prefix. ``harness``
+#: covers the registry and the pieces, which declare their settings and records on Benchlab's
+#: record layer and reach nothing else of it; ``sim`` is the bench's simulation code the pieces
+#: drive, and reaches neither.
+_MAY_IMPORT = {"sim": set(), "harness": {"sim", f"{_BENCHLAB}.record"}}
+#: The Benchlab DeePC runs on, as installed: the editable working copy or the pinned tag alike.
+BENCHLAB_SOURCES = sorted(p for p in Path(benchlab.__file__).parent.rglob("*.py")
+                          if "__pycache__" not in p.parts)
 
 
 def _sources(package: str) -> list[Path]:
@@ -41,12 +45,19 @@ def _sources(package: str) -> list[Path]:
 
 
 def _imports(path: Path):
+    """Every module a file imports by its full name; ``from a import b`` as ``a.b``, since ``b``
+    may be a module (``from benchlab import lab`` reaches the Lab)."""
     for node in ast.walk(ast.parse(path.read_text())):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 yield alias.name
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            yield node.module
+            for alias in node.names:
+                yield f"{node.module}.{alias.name}"
+
+
+def _within(name: str, prefixes: set[str]) -> bool:
+    return any(name == p or name.startswith(p + ".") for p in prefixes)
 
 
 def test_every_devkit_package_is_in_the_import_table() -> None:
@@ -57,32 +68,26 @@ def test_every_devkit_package_is_in_the_import_table() -> None:
 @pytest.mark.parametrize("package", sorted(_MAY_IMPORT))
 def test_the_dependency_runs_one_way_between_the_layers(package: str) -> None:
     allowed = _MAY_IMPORT[package] | {package}
-    others = set(_MAY_IMPORT) - allowed
+    held = set(_MAY_IMPORT) | {_BENCHLAB}
     for path in _sources(package):
-        crossing = sorted({n for n in _imports(path) if n.split(".")[0] in others})
+        crossing = sorted({n for n in _imports(path)
+                           if n.split(".")[0] in held and not _within(n, allowed)})
         assert not crossing, (f"{path.relative_to(ROOT)} imports {crossing}; {package} may "
                               f"reach only {sorted(allowed)}")
 
 
-@pytest.mark.parametrize("package", GENERIC)
-def test_a_generic_layer_imports_the_registry_and_never_a_piece(package: str) -> None:
-    """``harness`` is the registry, how the terminal finds a piece; ``harness.<x>`` is a piece."""
-    for path in _sources(package):
-        deeper = sorted({n for n in _imports(path) if n.startswith("harness.")})
-        assert not deeper, f"{path.relative_to(ROOT)} imports a piece: {deeper}"
-
-
-@pytest.mark.parametrize("package", GENERIC)
-def test_a_generic_layer_never_names_a_piece_in_its_code(package: str) -> None:
-    """A string literal, an attribute or an imported name equal to a piece's name couples a
-    generic layer to that piece. Prose, comments and local variables cannot couple."""
+@pytest.mark.parametrize("path", BENCHLAB_SOURCES,
+                         ids=[str(p.relative_to(Path(benchlab.__file__).parent)) for p in BENCHLAB_SOURCES])
+def test_benchlab_never_names_one_of_these_pieces_in_its_code(path: Path) -> None:
+    """A string literal, an attribute or an imported name equal to a piece's name couples the
+    bench to that piece; it was this file's check on the layers before they moved (Benchlab holds
+    it against its own made-up pieces only). Prose, comments and local variables cannot couple."""
     names = set(NAMES)
-    for path in _sources(package):
-        for node in ast.walk(ast.parse(path.read_text())):
-            spelled = ((isinstance(node, ast.Constant) and node.value in names)
-                       or (isinstance(node, ast.Attribute) and node.attr in names)
-                       or (isinstance(node, ast.alias) and node.name in names))
-            assert not spelled, f"{path.relative_to(ROOT)}:{node.lineno} names a piece"
+    for node in ast.walk(ast.parse(path.read_text())):
+        spelled = ((isinstance(node, ast.Constant) and node.value in names)
+                   or (isinstance(node, ast.Attribute) and node.attr in names)
+                   or (isinstance(node, ast.alias) and node.name in names))
+        assert not spelled, f"benchlab/{path.relative_to(Path(benchlab.__file__).parent)}:{node.lineno} names a piece"
 
 
 @pytest.mark.parametrize("name", NAMES)

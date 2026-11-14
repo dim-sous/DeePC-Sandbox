@@ -9,7 +9,13 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 > Standard terminology: the literature's symbols for DeePC's settings (T_s, T_ini, N, Q, R,
 > λ_g, λ_y, σ_y, g, J), σ for a standard deviation.
 
-**To change a word,** edit it here and tell me; I apply it. A chart's or a number's code name
+**To change a word,** edit it here and tell me; I apply it. A piece's words (its settings, charts
+and numbers) are written in `devkit/harness/`, and so are the page's title and the command it
+launches (`TITLE`, `COMMAND` in `devkit/harness/__init__.py`). The page's other words (its buttons,
+headings and refusals, the charts' refusals among them) are written in Benchlab, which DeePC
+installs, until Benchlab turns them into cells this repository fills (its `docs/design.md`,
+decision 4): a change to one of those is made in Benchlab and reaches this page with Benchlab's
+next pinned tag. A chart's or a number's code name
 (`output-e-x1`, `rmse_e_x1`) is not a word the page shows as a title: it stays the
 file `deepc draw` writes and a link's address key. Hovers are sentences: they begin with a capital and
 keep their articles where a sentence needs them.

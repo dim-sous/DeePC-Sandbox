@@ -10,7 +10,7 @@ import pytest
 from scipy.linalg import expm
 
 from harness import get_component
-from record.config import with_overrides
+from benchlab.record.config import with_overrides
 from system import ATOL, RTOL, hold, parse
 
 SYSTEM = get_component("system")

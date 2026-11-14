@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import terminal
+from benchlab import cli
 
 OUT_DIR = "results"
 
@@ -22,12 +22,12 @@ def make_runs(root: Path) -> tuple[str, str]:
     ``<root>/results/closed_loop/``, the first one older by the clock; return ``(root, out_dir)``
     as the Lab takes them."""
     out = root / OUT_DIR
-    terminal.main(["run", "dataset", "--name", "default", "--out-dir", str(out)])
+    cli.main(["run", "dataset", "--name", "default", "--out-dir", str(out)])
     data = out / "dataset" / "default.json"
     base = ["run", "closed_loop", "--set", f"dataset_run={data}", "--set", "sim_duration=1.0",
             "--set", "scenario=sinusoidal", "--out-dir", str(out)]
-    terminal.main(base + ["--name", "first"])
-    terminal.main(base + ["--set", "lambda_g=2", "--name", "second"])
+    cli.main(base + ["--name", "first"])
+    cli.main(base + ["--set", "lambda_g=2", "--name", "second"])
     first, second = out / "closed_loop" / "first.json", out / "closed_loop" / "second.json"
     now = second.stat().st_mtime
     os.utime(first, (now - 60, now - 60))            # the clock can step; pin the order

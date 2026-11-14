@@ -13,7 +13,7 @@ import numpy as np
 
 from plants import PLANT_REGISTRY
 from plants.base import PlantBase
-from record import stamp
+from benchlab.record import stamp
 from sim.bounds import input_bounds_of
 from sim.config import build_deepc_config
 from sim.data_generation import collect_data, episode_lengths

@@ -18,7 +18,7 @@ import time as _time
 import numpy as np
 
 from harness.dataset import dataset_of, plant_of
-from record import stamp
+from benchlab.record import stamp
 from sim.bounds import input_bounds_of
 from sim.config import build_deepc_config
 from sim.scenarios import get_reference

@@ -7,9 +7,9 @@ from __future__ import annotations
 import pytest
 
 from harness import get_component
-from lab import state, view
-from lab.form import CODE_DEFAULT, Form, as_text, hover, term
-from record.config import coerce_value
+from benchlab.lab import state, view
+from benchlab.lab.form import CODE_DEFAULT, Form, as_text, hover, term
+from benchlab.record.config import coerce_value
 
 #: The closed loop's: it applies only while the noise-adaptive λ is on.
 _W = "noise_estimation_window"

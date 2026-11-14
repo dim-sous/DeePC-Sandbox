@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import param
 
-from record.config import Settings
+from benchlab.record.config import Settings
 from system import ATOL, RTOL
 
 SYSTEM, INPUTS, SIMULATION, INTEGRATOR = "System", "Inputs", "Simulation", "Integrator"

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import param
 
-from record.config import Settings
+from benchlab.record.config import Settings
 
 # words, not the symbols: the form writes its group headings in capitals, which would turn x
 # into X; the rows themselves are labelled x1', y1, θ1

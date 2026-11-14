@@ -40,8 +40,9 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
 - **Variants**, both off by default: noise-adaptive regularisation (`noise_adaptive`) and an online
   Hankel window fed by closed-loop data (`online_hankel`).
 - **Tuning.** A Bayesian search over the controller's settings with Optuna.
-- **Stack.** CVXPY with OSQP (SCS as the fallback), Optuna's TPE sampler, matplotlib and Plotly for
-  the charts (a still and the Lab's live twin), Plotly for `tune.py`'s report, NumPy and SciPy.
+- **Stack.** CVXPY with OSQP (SCS as the fallback), Optuna's TPE sampler, Benchlab for the records,
+  the charts (a still and the Lab's live twin), the `deepc` command and the Lab, Plotly for
+  `tune.py`'s report, NumPy and SciPy.
 
 The equations, the data collection, the controller, its variants, the metrics and their sources are in
 [METHODS.md](METHODS.md). The project is being rebuilt, first with the scaffolding that will expose its gaps
@@ -135,9 +136,9 @@ numbers.
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
 | `tools/system/` | the typed system: the parser (`parse.py`, text to $f$, $h$ and the sizes), the one integrator (`integrate.py`, RK45 with $u$ held), `System` and `system_of` (`__init__.py`) |
 | `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
-| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`), settings and records (`devkit/record/`), the pieces `dataset` and `closed_loop` (`devkit/harness/`), the charts (`devkit/figure/`), the `deepc` command (`devkit/terminal/`) |
+| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`) and the pieces (`devkit/harness/`), declared to Benchlab, which holds the settings and records, the charts, the `deepc` command and the Lab |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
-| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the records and pieces (`test_record.py`, `test_harness.py`), the charts (`test_figure.py`) and the document checks (`test_conventions.py`) |
+| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the pieces and their records (`test_harness.py`), the charts (`test_figure.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
 | `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |

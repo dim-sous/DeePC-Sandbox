@@ -1,14 +1,13 @@
-"""The Lab's constraints, reads and launches (BESS's ``tests/test_lab.py``, adapted).
+"""The Lab's reads and launches, driven through DeePC's own pieces (BESS's ``tests/test_lab.py``,
+adapted). The Lab is Benchlab's: the half of this file that read the Lab's own files (its import
+allowlist, and that it never calls what could compute) moved there with it.
 
-The Lab holds no logic of its own: it imports only what lets it read declarations and files and
-launch the terminal, reaches no third-party package but Panel, and never calls anything that
-could compute on what it reads. What it lists is read off the files; what it launches is the
+The Lab holds no logic of its own. What it lists is read off the files; what it launches is the
 line a person would type, every word checked against a declaration.
 """
 
 from __future__ import annotations
 
-import ast
 import dataclasses
 import json
 import os
@@ -22,42 +21,11 @@ from pathlib import Path
 
 import pytest
 
-import record
 from harness import NAMES, get_component
-from lab import jobs, state
-from lab.app import Lab
-from record.config import fields_of
+from benchlab.lab import jobs, state
+from benchlab.lab.app import Lab
+from benchlab.record.config import fields_of
 from tests.lab_runs import make_runs
-
-ROOT = Path(__file__).resolve().parent.parent
-LAB = ROOT / "devkit" / "lab"
-SOURCES = sorted(p for p in LAB.glob("*.py"))
-#: Exactly what the Lab may take from the rest of the repo, by module and name.
-_ALLOWED = {"harness": {"NAMES", "get_component"},
-            # a record's header keys, and how every word the page shows begins (the developer's
-            # rule, 2026-10-27)
-            "record": {"read_header", "COMPONENT_KEY", "PANELS_KEY", "NUMBER_SPECS_KEY",
-                       "PANEL_GROUPS_KEY", "HEADER_KEYS", "capital"},
-            "record.config": {"fields_of"},
-            # the one constant saying where records live
-            "terminal": {"DEFAULT_OUT_DIR"},
-            # what a card draws is the figure layer's own: the panel built from what the records
-            # declare and the card's controls hold, the refusal a control is greyed with, and the
-            # twin of it the page shows; the colour a run wears is the figure layer's slot, so
-            # its dot in the list matches its lines; the page's paper, inks, rules and type are
-            # the figure layer's, so a chart sits on its card's paper
-            "figure.chart": {"chart_of", "sweep_of", "pool_refusal", "distinct"},
-            "figure.twin": {"figure_of"},
-            "figure.style": {"series_color", "FONT", "MONO", "SURFACE", "INK", "INK_SECONDARY",
-                             "GRID"}}
-_THIRD_PARTY = {"panel", "param"}
-_PROJECT = {p.name for r in ("src", "tools", "devkit") for p in (ROOT / r).iterdir()
-            if (p / "__init__.py").exists()}
-#: Call names that would make the Lab compute instead of read. Cheap to check and easy to
-#: dodge by renaming, which is why the capability itself is held by the tripwire test below.
-#: Loading a record through its class is READING (every rule of it the class's own), so
-#: ``load`` is not here; building a trace is not reading, which the chart test holds.
-_COMPUTES = {"run", "Config", "run_command", "draw_command"}
 
 
 @pytest.fixture(scope="module")
@@ -78,10 +46,6 @@ def own_runs(two_runs, tmp_path) -> tuple[str, str]:
     return str(tmp_path), out_dir
 
 
-def _top(name: str) -> str:
-    return name.split(".")[0]
-
-
 def _ended(job: jobs.Job, timeout: float = 20.0) -> None:
     """Wait for a launched job to end. One job runs per process, so a test that leaves one going
     would have the next test's launch refused."""
@@ -89,47 +53,6 @@ def _ended(job: jobs.Job, timeout: float = 20.0) -> None:
     while job.running and time.time() < deadline:
         time.sleep(0.05)
     assert not job.running, f"{job.line} still running after {timeout} s"
-
-
-@pytest.mark.parametrize("path", SOURCES, ids=[p.name for p in SOURCES])
-def test_the_lab_imports_only_its_allowlist_and_no_third_party_but_panel(path: Path) -> None:
-    for node in ast.walk(ast.parse(path.read_text())):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                top = _top(alias.name)
-                assert top in sys.stdlib_module_names or top in _THIRD_PARTY, \
-                    f"{path.name} imports {alias.name}"
-                assert top not in _PROJECT, f"{path.name}: `import {alias.name}` — only `from X import` of the allowlist"
-        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            top = _top(node.module)
-            if top in sys.stdlib_module_names or top in _THIRD_PARTY:
-                continue
-            taken = {a.name for a in node.names}
-            allowed = _ALLOWED.get(node.module, set())
-            assert taken <= allowed, (f"{path.name} takes {sorted(taken - allowed)} from "
-                                      f"{node.module}; allowed: {sorted(allowed)}")
-
-
-def test_the_header_keys_the_lab_reads_are_the_records_own() -> None:
-    """``state`` names the header keys one by one; if the record layer gains another, this fails
-    instead of every rail row turning red with a false 'holds gone field'."""
-    assert state._HEADER == record.HEADER_KEYS
-
-
-def test_the_lab_never_calls_what_could_compute_on_what_it_reads() -> None:
-    hits = []
-    for path in SOURCES:
-        for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, ast.Call):
-                continue
-            func = node.func
-            if isinstance(func, ast.Name) and func.id in _COMPUTES:
-                hits.append(f"{path.name}:{node.lineno} {func.id}(")
-            elif isinstance(func, ast.Attribute) and func.attr in _COMPUTES:
-                owner = func.value.id if isinstance(func.value, ast.Name) else ""
-                if owner not in {"json", "subprocess"}:
-                    hits.append(f"{path.name}:{node.lineno} .{func.attr}(")
-    assert not hits, hits
 
 
 def _tripwire(real: types.ModuleType) -> types.ModuleType:
@@ -187,7 +110,7 @@ def test_every_chart_on_the_page_is_the_figure_layers(monkeypatch, two_runs) -> 
     """The page draws nothing of its own: with the figure layer's twin stubbed, every chart on
     the page is exactly what the stub returned, of exactly the panel the figure layer built for
     the shown runs' records in the order they were ticked."""
-    import lab.app as app_module
+    import benchlab.lab.app as app_module
     built: list[tuple[str, list[str]]] = []
     real_chart = app_module.chart_of
 
@@ -367,7 +290,7 @@ def test_delete_takes_only_what_it_names_and_refuses_anything_else(own_runs) -> 
 
 
 def test_a_draw_of_many_runs_writes_a_folder_a_filesystem_takes() -> None:
-    from terminal import folder_of
+    from benchlab.cli import folder_of
     assert folder_of(["a", "b"]) == "a+b"
     names = [f"default-lambda_g-{20 + i}-run-{i}" for i in range(20)]
     many = folder_of(names)

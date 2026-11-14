@@ -9,6 +9,7 @@ description = "DeePC sandbox — developing, testing, and benchmarking Data-Enab
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "benchlab",             # the bench: records, charts, the command line, the Lab (devkit/README.md)
     "control>=0.10.2",
     "cvxpy>=1.8.1",
     "matplotlib>=3.7",
@@ -22,8 +23,12 @@ dependencies = [
 ]
 
 [project.scripts]
-deepc = "terminal:main"     # run a piece, save its record (devkit/README.md)
-lab = "lab:main"            # the Lab: one local page over the pieces (devkit/README.md)
+deepc = "benchlab.cli:main"     # run a piece, save its record (devkit/README.md)
+lab = "benchlab.lab:main"       # the Lab: one local page over the pieces (devkit/README.md)
+
+[project.entry-points.benchlab]
+# DeePC's declaration to Benchlab: the registry module, beside its COMMAND, TITLE, ROOT, LIBRARIES
+project = "harness"
 
 [dependency-groups]
 dev = [
@@ -40,6 +45,10 @@ where = ["src", "tools", "devkit"]
 # Only folders with an __init__.py are packages (BESS, 2026-10-26: a deleted package's leftover
 # __pycache__ folder was installed as an empty namespace package).
 namespaces = false
+
+[tool.uv.sources]
+# Benchlab at a tag, raised by hand, then the whole suite (Benchlab's README)
+benchlab = { git = "https://github.com/dim-sous/BenchLab", tag = "v0.1.0" }
 
 [tool.uv]
 # The editable install records the package list at install time, so a package added or moved

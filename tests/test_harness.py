@@ -11,7 +11,7 @@ import json
 import numpy as np
 import pytest
 
-import terminal
+from benchlab import cli
 from harness import get_component
 from plants import PLANT_REGISTRY
 from sim.config import build_deepc_config
@@ -99,7 +99,7 @@ def test_a_scenario_the_plant_does_not_offer_is_refused(datasets, monkeypatch) -
 
 
 def test_deepc_run_writes_one_record_per_swept_value(datasets, tmp_path, capsys) -> None:
-    terminal.main(["run", "closed_loop", "--set", f"dataset_run={datasets['coupled_masses']}",
+    cli.main(["run", "closed_loop", "--set", f"dataset_run={datasets['coupled_masses']}",
                    "--set", "sim_duration=0.5", "--sweep", "Tini=2,3", "--name", "s",
                    "--out-dir", str(tmp_path)])
     written = sorted(p.name for p in (tmp_path / "closed_loop").iterdir())
@@ -128,5 +128,5 @@ def test_a_step_given_to_the_config_and_not_to_the_plant_is_refused(datasets, tm
     with pytest.raises(ValueError, match=r"plant\.Ts = 0\.05\)"):
         build_deepc_config(PLANT_REGISTRY["coupled_masses"](), Ts=0.039)
     with pytest.raises(SystemExit, match="unknown setting 'Ts'"):
-        terminal.main(["run", "closed_loop", "--set", f"dataset_run={datasets['coupled_masses']}",
+        cli.main(["run", "closed_loop", "--set", f"dataset_run={datasets['coupled_masses']}",
                        "--set", "Ts=0.039", "--out-dir", str(tmp_path)])
