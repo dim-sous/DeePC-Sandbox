@@ -47,8 +47,8 @@ where = ["src", "tools", "devkit"]
 namespaces = false
 
 [tool.uv.sources]
-# Benchlab's branch while its PR (dim-sous/BenchLab#2) is open; its tag v0.2.0 once merged
-benchlab = { git = "https://github.com/dim-sous/BenchLab", branch = "runs-in-progress" }
+# Benchlab at a tag, raised by hand, then the whole suite (Benchlab's README)
+benchlab = { git = "https://github.com/dim-sous/BenchLab", tag = "v0.2.0" }
 
 [tool.uv]
 # The editable install records the package list at install time, so a package added or moved

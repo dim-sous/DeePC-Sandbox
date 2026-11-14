@@ -46,8 +46,8 @@ Benchlab and DeePC together on one computer, point `[tool.uv.sources]` at the lo
 while, never committed (Benchlab's `README.md`). From then on a change to the page, the charts, the records or the command is
 made in Benchlab and taken here by raising its pin.
 
-**Benchlab branch 2a, runs in progress (2026-11-14, PR open here and as dim-sous/BenchLab#2, Benchlab
-pinned to its branch `runs-in-progress` until it is tagged v0.2.0):** the Lab runs each run as
+**Benchlab branch 2a, runs in progress (2026-11-14, merged here as #18 and as dim-sous/BenchLab#2,
+Benchlab pinned at its tag v0.2.0):** the Lab runs each run as
 its own process (`python -m benchlab.runner`), up to the machine's cores side by side, the rest
 queued, shown in a strip along the bottom in place of the terminal (Queued, Running with its time,
 Done, Failed with its words, Stopped; Stop and ✕). DeePC's side: the Lab's tests that drove the
@@ -57,7 +57,8 @@ they were none twice in the whole suite); `docs/project/lab-words.md` holds the 
 three closed loops at `sim_duration=10`, 43.7 s one after another before, about 32 s side by side.
 Handed off here and approved by the developer. On Benchlab installed from its pushed branch: every
 piece's records and stills as before but for provenance and wall-clock fields; the whole suite
-244 passed (268 on `master`: 26 tests of the old terminal left, 2 checks added).
+244 passed (268 before it: 26 tests of the old terminal left, 2 checks added); the same again on
+the tag.
 Benchlab's branches 2b (words as slots, no hovers), 2c (the tree) and 2d (the cards) follow, each
 driven here before the next.
 
