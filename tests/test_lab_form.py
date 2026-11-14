@@ -8,7 +8,7 @@ import pytest
 
 from harness import get_component
 from benchlab.lab import state, view
-from benchlab.lab.form import CODE_DEFAULT, Form, as_text, hover, term
+from benchlab.lab.form import CODE_DEFAULT, Form, as_text, term
 from benchlab.record.config import coerce_value
 
 #: The closed loop's: it applies only while the noise-adaptive λ is on.
@@ -51,8 +51,7 @@ def test_a_gate_is_read_against_the_sweep_rungs_not_the_axis_default(piece) -> N
     form = Form(piece)
     assert form.sweep("noise_adaptive", "true,false") == []
     assert form.type_or_pick(_W, "10") == []                  # some rungs open it: kept
-    off, words = form.state_of(form.by_name[_W])
-    assert not off and f"only some sweep values of {form.label('noise_adaptive')} open it" in words
+    assert form.state_of(form.by_name[_W]) == (False, ""), "not greyed: the note warns, below"
     assert form.note() == (f"1 set — {form.label(_W)} is set, and only some sweep values open it",
                            True)
     assert form.sweep("noise_adaptive", "false") == [_W]       # no rung opens it: taken back
@@ -101,12 +100,11 @@ def test_a_default_the_code_resolves_is_said_so_not_left_blank(piece, dataset) -
 
 def test_a_saved_run_setting_offers_that_pieces_runs_by_name(piece) -> None:
     """RCWS's ``record_of``: the dataset run is picked from the dataset piece's saved runs, each
-    worded by its name with its path as its line; the run it holds stays offered."""
+    worded by its name; the run it holds stays offered."""
     form = Form(piece)
     f = form.by_name["dataset_run"]
     assert f["record_of"] == "dataset"
-    assert form.options(f) == [{"value": "", "words": "default (default)",
-                                "line": "results/dataset/default.json"}]
+    assert form.options(f) == [{"value": "", "words": "default (default)"}]
     form.saved = {"dataset": ["results/dataset/noisy.json", "results/dataset/default.json"],
                   "closed_loop": ["results/closed_loop/x.json"]}
     assert [(o["value"], o["words"]) for o in form.options(f)] == [
@@ -128,12 +126,8 @@ def test_a_list_of_numbers_goes_as_the_runner_reads_it_and_is_no_sweep_axis(piec
     assert {"Q_diag", "R_diag"}.isdisjoint(dict(form.axes()))
 
 
-def test_a_hover_carries_the_bounds_a_field_declares_as_an_interval(piece) -> None:
+def test_a_control_wears_its_label_and_its_unit(piece) -> None:
     by = Form(piece).by_name
-    assert hover(by["sim_duration"]).endswith("[0 … ∞)")
-    assert hover({"doc": "d", "low": 0, "high": 100, "low_exclusive": True,
-                  "high_exclusive": False}) == "d (0 … 100]", "an included end is a square bracket"
-    assert hover(by["scenario"]) == by["scenario"]["doc"]      # no bounds, no interval
     assert term(by["sim_duration"]) == "Duration [s]" and term(by["scenario"]) == "Scenario"
 
 
@@ -237,13 +231,12 @@ def test_the_compare_table_puts_the_numbers_first_and_the_settings_by_group(piec
     rows = view.compare_rows(runs, piece["fields"], settings="all")
 
     assert rows[0] == {"kind": "head", "group": "Outputs", "key": "", "term": "Outputs",
-                       "hover": "", "values": [], "differs": False}
+                       "values": [], "differs": False}
     numbers = [r for r in rows if r["kind"] == "number"]
     assert [r["key"] for r in numbers] == ["rmse_position_combined", "solve_time_mean_s"], \
         "a row opens its card"
     assert [r["term"] for r in numbers] == ["Position combined RMSE [m]", "Mean solve time [s]"]
     assert numbers[0]["values"] == ["0.00267", "0.00412"] and numbers[0]["differs"]
-    assert numbers[0]["hover"] == "The plant's own metric"
     assert numbers[1]["values"] == ["3", "—"], "a number a run does not carry is an em dash"
 
     heads = [r["term"] for r in rows if r["kind"] == "head"]
@@ -258,8 +251,6 @@ def test_the_compare_table_puts_the_numbers_first_and_the_settings_by_group(piec
     fields = {f["name"]: f for f in piece["fields"]}
     lam = by_term[term(fields["lambda_g"])]
     assert lam["values"] == ["1", "5"] and lam["differs"]
-    duration = by_term[term(fields["sim_duration"])]
-    assert "[0 … ∞)" in duration["hover"], "the bounds ride along in the hover"
     scenario = by_term[term(fields["scenario"])]
     assert not scenario["differs"] and scenario["values"] == ["default", "default"]
     assert by_term[term(fields["N"])]["values"] == ["—", "—"], \

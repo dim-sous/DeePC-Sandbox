@@ -281,7 +281,8 @@ def test_a_typed_box_is_empty_and_greyed_once_a_pick_shuts_its_gate(two_runs) ->
     box = lab._controls[_W]
     assert box.value == "" and box.value_input == "" and box.disabled
     assert lab.form.set == {}
-    assert "applies only when Noise-adaptive λ is true" in lab._labels[_W].object
+    assert lab._notes[_W].visible and \
+        "applies only when Noise-adaptive λ is true" in lab._notes[_W].object, "said under it"
     assert "taken back" in lab.form_note.object      # said, not silently dropped
     _pick(lab, "noise_adaptive", "true")
     assert not box.disabled
@@ -294,7 +295,7 @@ def test_the_sweep_axis_box_is_greyed_once_the_sweep_row_names_it_and_holds_valu
     assert not lab._controls["lambda_g"].disabled           # named, no values yet
     _sweep(lab, "lambda_g", "1,5")
     assert lab._controls["lambda_g"].disabled and lab._controls["lambda_g"].value == ""
-    assert "is the sweep axis" in lab._labels["lambda_g"].object
+    assert lab._notes["lambda_g"].visible and "is the sweep axis" in lab._notes["lambda_g"].object
     _name(lab, "sw")
     lab._run()
     assert _queued(queue) == [("sw-lambda_g-1", [("lambda_g", "1")]),
@@ -443,9 +444,9 @@ def test_opening_a_chart_is_the_figure_layers_and_queues_no_run(own_runs) -> Non
     assert fig["layout"]["yaxis"]["title"]["text"] == "Solve time [s]", "the record's own words"
     assert fig["layout"]["xaxis"]["title"]["text"] == "Solve [-]"
     title = _card(lab, "solve-time").objects[0].objects[0].object
-    assert "Wall-clock time of the solve" in html.unescape(title), "its description on the title's hover"
+    assert "title=" not in title, "no hover on the title (docs/design.md decision 5)"
     assert not any("Wall-clock time" in w for w in _card_words(lab, "solve-time")), \
-        "and not repeated under it (RCWS)"
+        "nor its description anywhere on the card"
     assert "2 of 10 open" in lab.open_count.object
     assert list(lab._lines) == ["Outputs", "Inputs", "Solver"], \
         "listed in the record's groups"

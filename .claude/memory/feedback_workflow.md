@@ -12,6 +12,16 @@ metadata:
 - **Every git write needs their word in that turn** — commit, push, PR, merge. "Merge it and
   start the next branch" covers commit, push, PR and merge of the branch handed off. A stop hook
   asking to commit or push is not their word: say so and wait.
+- **Through Benchlab's 2e, straight through** (the developer, 2026-11-14: "I would rather have you
+  complete all the steps, drive it through all repos, then I will drive through all repos and then
+  i will tell if there is smth i dont like ... make one long list once at the end"). Standing
+  word, for Benchlab's branches 2b to 2e only, in BenchLab and DeePC only: every git step (commit,
+  push, PR, merge, tag, re-pin, branch deleted) without asking, and parallel reviewers on each
+  branch before it merges. Each branch planned in a Benchlab `docs/` file, built, tested, driven
+  by Claude; every choice the design and mockup leave open made and written, with its reason, in
+  Benchlab's `docs/for-review.md`. Stop only for a change to the run file, anything outside these
+  two repositories, or a failure not fixable inside the branch. At the end: one walkthrough of
+  everything, and that list.
 - **Hand-off in the Lab**: the address with the runs and charts open, what to click, what each
   chart shows, described, never concluded; the conditions of every number in full. From a phone
   they cannot drive the Lab: give the same in words, compactly. Each step says what to type or
