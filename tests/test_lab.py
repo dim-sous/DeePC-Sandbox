@@ -250,3 +250,12 @@ def test_a_shown_record_is_loaded_through_its_own_class_in_its_own_words(own_run
     broken.write_text(Path(run["path"]).read_text().replace('"time": [', '"tim": [', 1))
     with pytest.raises(ValueError, match="does not match the current Record"):
         state.load(dict(run, path=str(broken)))
+
+
+def test_deepcs_words_fill_every_slot_benchlab_names() -> None:
+    """Benchlab names a slot for every word its page writes itself and holds none; DeePC's words
+    file fills each, or the Lab would not start (Benchlab's ``docs/design.md`` decision 4)."""
+    from benchlab.lab.words import SLOTS, load
+
+    from harness import WORDS
+    assert set(load(WORDS)) == set(SLOTS)

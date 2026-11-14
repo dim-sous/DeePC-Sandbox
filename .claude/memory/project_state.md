@@ -71,6 +71,15 @@ loop's saved pictures' notes and number declarations, now without descriptions; 
 on the tag. Then 2c (words
 as slots), 2d (the tree) and 2e (the cards), built straight through (`feedback_workflow.md`).
 
+**Benchlab branch 2c, words as slots (2026-11-14, merged, Benchlab pinned at v0.4.0, the whole
+suite 246 passed on it; Benchlab's `docs/plan-branch-2c.md`):**
+the page's own words -- its buttons, headings, counts, notes and refusals -- are in
+`devkit/harness/words.toml`, one slot each that Benchlab names (136), declared as `WORDS` in
+`devkit/harness/__init__.py`; `uv run lab` will not start on a file that misses one, naming it.
+The page reads word for word as on Benchlab v0.3.0 in every state of a toured page (scratchpad
+tours, before and after). `docs/project/lab-words.md` points at the file for those words and
+keeps the pieces' own.
+
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
 plant with chosen configurations -> (attempt to) control the plant with deepc under different

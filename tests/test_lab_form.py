@@ -8,7 +8,8 @@ import pytest
 
 from harness import get_component
 from benchlab.lab import state, view
-from benchlab.lab.form import CODE_DEFAULT, Form, as_text, term
+from benchlab.lab.form import Form, as_text, term
+from benchlab.lab.words import say
 from benchlab.record.config import coerce_value
 
 #: The closed loop's: it applies only while the noise-adaptive λ is on.
@@ -92,9 +93,10 @@ def test_a_default_the_code_resolves_is_said_so_not_left_blank(piece, dataset) -
     and a pick worded " (default)" said nothing about it."""
     form = Form(piece)
     by = form.by_name
-    assert by["lambda_g"]["code_default"] and form.shown_default(by["lambda_g"]) == CODE_DEFAULT
+    assert by["lambda_g"]["code_default"] and \
+        form.shown_default(by["lambda_g"]) == say("form.code_default")
     assert [(o["value"], o["words"]) for o in form.options(by["reg_norm_g"])] == [
-        ("", CODE_DEFAULT), ("L1", "L1"), ("L2", "L2")]
+        ("", say("form.code_default")), ("L1", "L1"), ("L2", "L2")]
     assert Form(dataset).shown_default(Form(dataset).by_name["seed"]) == "42"
 
 
