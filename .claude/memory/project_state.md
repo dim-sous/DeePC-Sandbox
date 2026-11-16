@@ -186,3 +186,10 @@ test files that read Benchlab's insides are deleted (their tests run in Benchlab
 matplotlib. Benchlab #5 is merged and tagged `v0.5.0` (`0c99bf1`), and `uv.lock` holds that
 commit; a later Benchlab is taken, when wanted, by `uv lock --upgrade-package benchlab` and the
 whole suite. The suite on it: 131 passed in 118 s (246 in about 200 s before).
+
+**2026-11-17, Benchlab's branch R3** (Benchlab's `docs/plan-branch-R3.md`, "As built"). The
+System piece draws a pole map itself (`devkit/harness/system/record.py`, `figures()`, Benchlab's
+`Figure`), from the poles a run already saves, so System runs saved before it show it too; one
+test in `tests/test_system.py`; `pyproject.toml` takes `benchlab>=0.7,<1` from Benchlab's `main`,
+and `uv.lock` holds `5023526` (`v0.7.0`). The suite on Benchlab's pushed branch, whose tree that
+commit's equals: 132 passed in 111 s. The developer drove it in the Lab ("Looks right").

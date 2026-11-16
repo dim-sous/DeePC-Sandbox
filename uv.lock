@@ -26,8 +26,8 @@ wheels = [
 
 [[package]]
 name = "benchlab"
-version = "0.5.0"
-source = { git = "https://github.com/dim-sous/BenchLab?branch=main#0c99bf145bd45278115055f259fd7e05b4bc79b0" }
+version = "0.7.0"
+source = { git = "https://github.com/dim-sous/BenchLab?branch=main#5023526453c805bdfcea50bc814b9e407949d607" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },

@@ -2,7 +2,9 @@
 symbols) and its sizes, and its analysis at the requested point (x*, u*) for the pair u_j -> y_i:
 the linearisation (A, B, C), its poles, the pair's frequency response (Bode) and its step,
 impulse and ramp responses, by python-control. Names as the developer names them (2026-11-11):
-ω, |G|, ∠G, t, δy; no units (the phase is in degrees, by the Bode plot's convention).
+ω, |G|, ∠G, t, δy; no units (the phase is in degrees, by the Bode plot's convention). The poles
+are also drawn, on the complex plane: a figure the record draws itself, since a chart is lines
+against an abscissa (Benchlab's ``Figure``).
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ import dataclasses
 
 import numpy as np
 
-from benchlab import Number, Provenance, Series
+from benchlab import Figure, Number, Provenance, Series
 from benchlab import Record as _Record
 
 from .config import Config
@@ -53,6 +55,16 @@ class Record(_Record):
                                             ("impulse", "Impulse response", self.impulse),
                                             ("ramp", "Ramp response", self.ramp))]
         return tuple(out)
+
+    def figures(self) -> tuple[Figure, ...]:
+        """The poles of A on the complex plane, a cross each, both axes on one scale."""
+        return (Figure(name="pole-map", group=_POLES, title="Pole map", figure={
+            "data": [{"type": "scatter", "mode": "markers", "x": self.constants["poles_re"],
+                      "y": self.constants["poles_im"], "marker": {"symbol": "x", "size": 11},
+                      "showlegend": False}],
+            "layout": {"xaxis": {"title": {"text": "Re"}, "zeroline": True},
+                       "yaxis": {"title": {"text": "Im"}, "zeroline": True,
+                                 "scaleanchor": "x"}}}),)
 
     def number_specs(self) -> tuple[Number, ...]:
         out = [Number(name, name, group=_SIZES) for name in ("n", "m", "p", "q", "r")]

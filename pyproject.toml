@@ -9,7 +9,7 @@ description = "DeePC sandbox — developing, testing, and benchmarking Data-Enab
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "benchlab>=0.5,<1",     # the bench: records, charts, the command line, the Lab (devkit/README.md)
+    "benchlab>=0.7,<1",     # the bench: records, charts, the command line, the Lab (devkit/README.md)
     "control>=0.10.2",
     "cvxpy>=1.8.1",
     "numpy>=2.4.2",
