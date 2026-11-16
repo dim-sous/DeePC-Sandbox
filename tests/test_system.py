@@ -170,6 +170,25 @@ def test_the_pole_numbers_say_whether_the_point_is_stable() -> None:
     assert standing.numbers["dc_gain"] == pytest.approx(-1.0)
 
 
+def test_the_pole_map_is_the_saved_poles_on_one_scale_with_no_title_and_no_unit() -> None:
+    """A figure the record draws itself (Benchlab's ``Figure``): the poles a run saves, a cross
+    each, real part across and imaginary part up."""
+    hanging = SYSTEM.run(SYSTEM.Config(**PENDULUM, x_star=[0.0, 0.0]))
+    [pole_map] = hanging.figures()
+    assert (pole_map.name, pole_map.title, pole_map.group) == ("pole-map", "Pole map", "Poles")
+    [trace] = pole_map.figure["data"]
+    assert trace["x"] == hanging.constants["poles_re"] and trace["y"] == hanging.constants["poles_im"]
+    assert trace["mode"] == "markers" and trace["showlegend"] is False
+    poles = np.sort_complex(np.array(trace["x"]) + 1j * np.array(trace["y"]))
+    np.testing.assert_allclose(poles, [-0.1 - 1j * np.sqrt(0.99), -0.1 + 1j * np.sqrt(0.99)],
+                               rtol=1e-12)                              # s² + 0.2 s + 1
+    assert max(trace["x"]) == hanging.numbers["max_pole_re"], "the number is the rightmost cross"
+    layout = pole_map.figure["layout"]
+    assert layout["yaxis"]["scaleanchor"] == "x", "one scale on both axes"
+    assert "title" not in layout
+    assert [layout[axis]["title"]["text"] for axis in ("xaxis", "yaxis")] == ["Re", "Im"]
+
+
 def test_a_number_with_no_finite_answer_is_left_out_says_why_and_the_run_saves(tmp_path) -> None:
     """A pole at the origin has no damping ratio and an integrator no DC gain (code review,
     2026-11-11: the NaN damping went into the numbers and the run could not be saved)."""
