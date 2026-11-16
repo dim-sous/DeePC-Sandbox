@@ -47,7 +47,7 @@ namespaces = false
 [tool.uv.sources]
 # Benchlab from its main line; uv.lock holds the commit, raised by
 # `uv lock --upgrade-package benchlab`, then the whole suite (Benchlab's README)
-benchlab = { git = "https://github.com/dim-sous/BenchLab", branch = "r1-shore" }
+benchlab = { git = "https://github.com/dim-sous/BenchLab", branch = "main" }
 
 [tool.uv]
 # The editable install records the package list at install time, so a package added or moved

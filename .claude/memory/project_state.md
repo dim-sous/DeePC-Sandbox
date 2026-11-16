@@ -177,13 +177,12 @@ at which u and in what region equilibria are sought (a pendulum has one at every
 - The plant integrates by forward Euler at T_s itself, so a T_s sweep also changes the plant's
   discretisation (answered by item 3 if it lands).
 
-**2026-11-16, Benchlab's branch R1, built and uncommitted here** (Benchlab's
-`docs/plan-branch-R1.md`, "As built", holds the whole state). On `master`, no branch yet: the 12
-files under `devkit/harness/*/` import from `benchlab` itself; `tests/test_bench.py` is Benchlab's
-one check on a small run of every piece; `tests/test_units.py` keeps the two tests of
-`tests/test_figure.py` that were DeePC's own; the five test files that read Benchlab's insides are
-deleted (their tests run in Benchlab's suite now); `pyproject.toml` takes `benchlab>=0.5,<1` and
-no longer lists panel or matplotlib. `pyproject.toml`'s source line and `uv.lock` point at the
-local copy `../BenchLab`: never committed that way. The suite: 131 tests in 114 s, one failure
-(`CLAUDE.md` a line over its budget) fixed afterwards. Every git step waits for the developer's
-word.
+**2026-11-16, Benchlab's branch R1** (Benchlab's `docs/plan-branch-R1.md`, "As built", holds the
+whole state; here it is PR #21). The 12 files under `devkit/harness/*/` import from `benchlab`
+itself; `tests/test_bench.py` is Benchlab's one check on a small run of every piece;
+`tests/test_units.py` keeps the two tests of `tests/test_figure.py` that were DeePC's own; the five
+test files that read Benchlab's insides are deleted (their tests run in Benchlab's suite now);
+`pyproject.toml` takes `benchlab>=0.5,<1` from Benchlab's `main` and no longer lists panel or
+matplotlib. Benchlab #5 is merged and tagged `v0.5.0` (`0c99bf1`), and `uv.lock` holds that
+commit; a later Benchlab is taken, when wanted, by `uv lock --upgrade-package benchlab` and the
+whole suite. The suite on it: 131 passed in 118 s (246 in about 200 s before).
