@@ -52,7 +52,7 @@ capability.
 ## 6. Check the Lab shows it
 
 Open the address you will hand over in headless Chromium and check that every chart named in
-it draws and that no error shows on the page; `tests/test_lab_browser.py` shows how to serve the
+it draws and that no error shows on the page; Benchlab's `tests/test_lab_browser.py` shows how to serve the
 page and drive it. If the developer already has a Lab running, the new runs appear in it after
 Refresh.
 

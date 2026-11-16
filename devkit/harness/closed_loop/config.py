@@ -15,7 +15,7 @@ from __future__ import annotations
 import param
 
 from plants import PLANT_REGISTRY
-from benchlab.record.config import Settings
+from benchlab import Settings
 
 DATA, SCENARIO, CONTROLLER, FEATURES = "Data", "Scenario", "Controller", "Features"
 NOISE_ADAPTIVE, ONLINE_HANKEL = "Noise-adaptive", "Online Hankel"

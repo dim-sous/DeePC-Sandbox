@@ -11,7 +11,7 @@ from __future__ import annotations
 import param
 
 from plants import PLANT_REGISTRY
-from benchlab.record.config import Settings
+from benchlab import Settings
 
 PLANT, DATA, RUN = "Plant", "Data", "Run"
 GROUPS: tuple[str, ...] = (PLANT, DATA, RUN)

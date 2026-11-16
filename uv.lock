@@ -26,8 +26,8 @@ wheels = [
 
 [[package]]
 name = "benchlab"
-version = "0.4.0"
-source = { git = "https://github.com/dim-sous/BenchLab?tag=v0.4.0#5f6431a623132ad0d370f56a4b0c1fc5e6e9db85" }
+version = "0.5.0"
+source = { git = "https://github.com/dim-sous/BenchLab?branch=r1-shore#25d7dde8f2c91dafc8d92b035a7e790a61f199da" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
@@ -394,10 +394,8 @@ dependencies = [
     { name = "benchlab" },
     { name = "control" },
     { name = "cvxpy" },
-    { name = "matplotlib" },
     { name = "numpy" },
     { name = "optuna" },
-    { name = "panel" },
     { name = "param" },
     { name = "plotly" },
     { name = "scipy" },
@@ -412,13 +410,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "benchlab", git = "https://github.com/dim-sous/BenchLab?tag=v0.4.0" },
+    { name = "benchlab", git = "https://github.com/dim-sous/BenchLab?branch=r1-shore" },
     { name = "control", specifier = ">=0.10.2" },
     { name = "cvxpy", specifier = ">=1.8.1" },
-    { name = "matplotlib", specifier = ">=3.7" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "optuna", specifier = ">=4.8.0" },
-    { name = "panel", specifier = ">=1.9.4,<1.10" },
     { name = "param", specifier = ">=2.4.2" },
     { name = "plotly", specifier = ">=6.6.0" },
     { name = "scipy", specifier = ">=1.17.1" },
