@@ -15,7 +15,7 @@ import time
 import control
 import numpy as np
 
-from benchlab.record import stamp
+from benchlab import stamp
 from system import Parsed, linearize, parse
 
 from .config import Config

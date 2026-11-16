@@ -3,7 +3,7 @@ name: project-state
 description: Where the DeePC-Sandbox rebuild stands — what is merged, what comes next, what is still open for the developer
 metadata:
   type: project
-  modified: 2026-11-14
+  modified: 2026-11-16
 ---
 
 The developer came back to this repository on 2026-11-10 after months away, remembering neither
@@ -79,6 +79,12 @@ the page's own words -- its buttons, headings, counts, notes and refusals -- are
 The page reads word for word as on Benchlab v0.3.0 in every state of a toured page (scratchpad
 tours, before and after). `docs/project/lab-words.md` points at the file for those words and
 keeps the pieces' own.
+
+**Benchlab's 2d and 2e on hold (2026-11-15).** The developer set Benchlab a new direction
+(Benchlab's `docs/design.md` §10): Benchlab, to be renamed RunLab, is to be used like numpy, so a
+change here never needs a change in it, and the other way round. Its rewrite is planned later, on
+their word. Until then DeePC stays on `v0.4.0`; this repository's words file and its tests of the
+Lab are among what that plan will weigh.
 
 **Now (2026-11-11 evening): the target design.** The developer: "dont fixate on the current state of
 the codebase at all ... The only sure thing is the aforementioned scope: define plant -> simulate
@@ -170,3 +176,13 @@ at which u and in what region equilibria are sought (a pendulum has one at every
   '_guiEditing')"), for Dataset as for System — the Lab code was not changed by that branch.
 - The plant integrates by forward Euler at T_s itself, so a T_s sweep also changes the plant's
   discretisation (answered by item 3 if it lands).
+
+**2026-11-16, Benchlab's branch R1** (Benchlab's `docs/plan-branch-R1.md`, "As built", holds the
+whole state; here it is PR #21). The 12 files under `devkit/harness/*/` import from `benchlab`
+itself; `tests/test_bench.py` is Benchlab's one check on a small run of every piece;
+`tests/test_units.py` keeps the two tests of `tests/test_figure.py` that were DeePC's own; the five
+test files that read Benchlab's insides are deleted (their tests run in Benchlab's suite now);
+`pyproject.toml` takes `benchlab>=0.5,<1` from Benchlab's `main` and no longer lists panel or
+matplotlib. Benchlab #5 is merged and tagged `v0.5.0` (`0c99bf1`), and `uv.lock` holds that
+commit; a later Benchlab is taken, when wanted, by `uv lock --upgrade-package benchlab` and the
+whole suite. The suite on it: 131 passed in 118 s (246 in about 200 s before).

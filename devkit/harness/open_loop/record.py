@@ -10,8 +10,8 @@ import dataclasses
 
 import numpy as np
 
-from benchlab.record import Number, Provenance, Series
-from benchlab.record import Record as _Record
+from benchlab import Number, Provenance, Series
+from benchlab import Record as _Record
 
 from .config import Config
 

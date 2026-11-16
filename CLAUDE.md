@@ -21,8 +21,7 @@ or a test. When in doubt, the rules win.
   `uv run deepc draw <record.json>… [--panel …] [--number N --vs SETTING]` (stills beside the
   records); `uv run lab [--no-open]` (the Lab: one local page over the records; it computes
   nothing); `uv run python tune.py …` (Optuna over the closed loop's settings).
-- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate; its browser test
-  needs `uv run playwright install chromium` once per computer. Its safety net,
+- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net,
   `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch
   that means to move the numbers, and that branch's PR says so.
 
@@ -68,8 +67,9 @@ Three roots, one direction, as BESS's: `src/` is the controller a real system wo
 noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
 hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
 registry); `devkit/` the bench (`sim`, `harness`: `devkit/README.md`) on Benchlab, which holds
-the records, charts, `deepc` command and Lab, pinned in `pyproject.toml`: a change to those is made
-in Benchlab and taken here by raising the pin, then the whole suite. Imports run `src ← tools ←
+the records, charts, `deepc` command and Lab, taken by a range in `pyproject.toml` at the commit
+`uv.lock` holds: a change to those is made in Benchlab, of which DeePC uses only what its README
+lists for a project (`tests/test_bench.py`; `devkit/README.md`). Imports run `src ← tools ←
 devkit` and stay flat (`import deepc`, never `import src.deepc`), held by `tests/test_roots.py`;
 inside devkit, by `tests/test_devkit_layers.py`. `tune.py` stays at the root until a branch retires it.
 

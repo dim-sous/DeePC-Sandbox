@@ -79,8 +79,8 @@ uv run lab --no-open                           # the Lab on http://127.0.0.1:876
 ```
 
 The Lab runs the pieces for you, from a form over the settings, each run its own process, side by
-side up to the machine's cores, and computes nothing itself. The suite's browser test drives it in Chromium: once per computer, `uv run playwright install
-chromium`.
+side up to the machine's cores, and computes nothing itself. Benchlab's own suite drives the page; here one test
+checks that the pieces plug into it (`tests/test_bench.py`).
 
 Bayesian tuning over the controller's settings (Optuna) writes its own report under `results/tune/`;
 a failed trial stops the study:
@@ -138,7 +138,7 @@ numbers.
 | `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
 | `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`) and the pieces (`devkit/harness/`), declared to Benchlab, which holds the settings and records, the charts, the `deepc` command and the Lab |
 | `tune.py` | Bayesian search over the controller's settings (Optuna) |
-| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the pieces and their records (`test_harness.py`), the charts (`test_figure.py`) and the document checks (`test_conventions.py`) |
+| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the pieces and their records (`test_harness.py`), that they plug into Benchlab (`test_bench.py`), the units they declare (`test_units.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
 | `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |

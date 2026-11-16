@@ -1,9 +1,9 @@
 ---
 name: workflow
-description: How the developer works on DeePC-Sandbox — the BESS workflow, git only on their word (but Benchlab's 2b to 2e, straight through, 2026-11-14), hand-off in the Lab, plain explanations
+description: How the developer works on DeePC-Sandbox — the BESS workflow, git only on their word (Benchlab's 2b to 2e straight through ended 2026-11-15), hand-off in the Lab, plain explanations, no software language
 metadata:
   type: feedback
-  modified: 2026-11-14
+  modified: 2026-11-15
 ---
 
 - **The BESS workflow** (CLAUDE.md, "Workflow"): one branch per gap, propose then plan mode then
@@ -25,6 +25,8 @@ metadata:
   From 2c on, no parallel reviewers (the developer, 2026-11-14, at 93% of their weekly
   usage: "skip the reviwers ... Mistakes and bugs are fine for now. We will fix everything
   at the delivery"): tests, Claude's own drive, then the git steps; lean on tokens.
+  **Ended 2026-11-15**: Benchlab's 2d and 2e are on hold for a new direction (Benchlab's
+  `docs/design.md` §10); every git write again needs their word in that turn.
 - **Hand-off in the Lab**: the address with the runs and charts open, what to click, what each
   chart shows, described, never concluded; the conditions of every number in full. From a phone
   they cannot drive the Lab: give the same in words, compactly. Each step says what to type or
@@ -34,6 +36,9 @@ metadata:
 - **Plain first**: they do not remember the maths or the code. Explain from what they can see
   (a chart, a number, a record), the maths keeping its terms; when they ask for more, explain
   DeePC itself (data, Hankel windows, g, the loop) before the incident.
+- **No software language** (2026-11-15: "plain it bro, i dont understand software language, i am
+  not a software engineer"): say it with what they know, such as instruments, plants and
+  controllers.
 - **Choices through AskUserQuestion**, phone-friendly: few options, the recommended one first.
   When they answer "keep more" or the like without saying what, ask again with the parts named.
 - **Lab words** follow their pattern (a capital first, no articles, acronyms, the standard
