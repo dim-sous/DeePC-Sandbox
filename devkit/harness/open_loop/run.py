@@ -87,7 +87,7 @@ def run(cfg: Config) -> Record:
     sigma_d = _sized("sigma_d", cfg.sigma_d, plant.r, "disturbances")
     _finite("sigma_d", sigma_d)
     if np.any(sigma_d < 0):
-        raise ValueError(f"sigma_d = {sigma_d.tolist()}: a standard deviation is not negative")
+        raise ValueError(f"sigma_d = {sigma_d.tolist()}: a standard deviation may not be negative")
     for name, ends in (("u_exc_min", e_min), ("u_exc_max", e_max)):
         if not np.all(np.isfinite(ends)):
             raise ValueError(f"{name} = {ends.tolist()}: an excitation is drawn from a finite "
