@@ -224,11 +224,22 @@ for byte; in tolerance mode only ‖σ_y‖₂ catches it (largest change 3.9e-9
 near-zero array (~1e-14) is the one most likely to differ on another computer. The net's branch
 also added SymPy and python-control to `harness.LIBRARIES` (code review: the net read a second list).
 
-**Next after it:** the developer's pick, among what stays in this repo with no maths (2026-11-17):
-housekeeping (the leftovers below), the controller tidy-up (bench settings in `DeePCConfig`, the
-code no piece reaches, D6, D18's ±∞ rows -- their call whether that counts as maths); outside
-it, taking RunLab v0.10.0 (`uv lock --upgrade-package benchlab`, no edit expected: RunLab's R6
-keeps `benchlab` as a stand-in until 1.0, when DeePC's install lines and `<1` must change). Found
-on the way, not fixed: `docs/project/lab-words.md` does not list the
-System piece's pole map; `devkit/README.md`'s Benchlab table still names `tests/test_lab.py`, gone
-with R1.
+Merged as PR #24 (`dfdef32`) on the developer's word.
+
+**Housekeeping** (built 2026-11-17 while the developer was away, on their "What can you do that
+does not require my attention?"; not committed until their word): the System pole map in
+`docs/project/lab-words.md`; `devkit/README.md`'s Benchlab table rid of the deleted pieces'
+examples and of `tests/test_lab.py`, gone with R1; Open loop's refusal "a standard deviation may
+not be negative".
+
+**D18 measured, scratch only (2026-11-17):** a copy of the controller that leaves the infinite
+rate rows out of the QP gave both closed-loop net cases byte for byte (no array moved), and SCS
+then answered `optimal` at once on the solve where it had given no solution after 41 s. So the
+D18 fix is a refactor the net proves.
+
+**Next:** the developer's pick (2026-11-17, I recommended): first they run the suite on their
+computer to see the net in tolerance mode; then the controller tidy-up without D18 (bench
+settings in `DeePCConfig`, the code no piece reaches, D6 -- their call whether that counts as
+maths); then D18 (now known to move no number). Outside this repo: taking RunLab v0.10.0
+(`uv lock --upgrade-package benchlab`, no edit expected: RunLab's R6 keeps `benchlab` as a
+stand-in until 1.0, when DeePC's install lines and `<1` must change).

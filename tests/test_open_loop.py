@@ -81,7 +81,7 @@ def test_one_seed_one_record_and_another_seed_another(systems) -> None:
     ({"sigma_d": [0.1]}, "sigma_d holds 1 value; the system has 2 disturbances"),
     ({"Ts": float("inf")}, "Ts = [inf] is not finite"),
     ({"sigma": float("inf")}, "sigma = [inf] is not finite"),
-    ({"sigma_d": [0.1, -0.1]}, "a standard deviation is not negative"),
+    ({"sigma_d": [0.1, -0.1]}, "a standard deviation may not be negative"),
     ({"u_min": [float("inf"), -5.0], "u_max": [float("inf"), 5.0]}, "u_min may be -inf"),
     ({"u_exc_max": [3.0, 3.0, 3.0]}, "u_exc_max holds 3 values"),
     ({"u_min": [6.0, -5.0]}, "u1: u_min 6.0 is above u_max 5.0"),

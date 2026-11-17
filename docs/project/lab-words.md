@@ -76,6 +76,8 @@ Charts of System (default run, the two masses at the origin, u1 → y1), by grou
   - `step`: Step response · t · δy1 · δy1
   - `impulse`: Impulse response · t · δy1 · δy1
   - `ramp`: Ramp response · t · δy1 · δy1
+- **Poles**
+  - `pole-map`: Pole map · Re · Im · (no legend: one set of crosses, the poles of A)
 
 Numbers of System, by group -- `code name`: label:
 
