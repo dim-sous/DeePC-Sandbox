@@ -18,8 +18,10 @@ point Claude Code's own notes here: `.claude/settings.local.json` (git-ignored) 
 `{"autoMemoryDirectory": "<this repository>/.claude/memory"}`.
 
 **On their computer after a pull**: `uv sync` when packages moved; `uv run playwright install
-chromium` once; `uv run deepc run dataset`, `uv run deepc run closed_loop --set sim_duration=10`,
-`uv run lab`. Records saved before a branch that changed a record's fields show as stale in the
+chromium` once; `uv run deepc run system`, `uv run deepc run open_loop`, `uv run deepc run
+closed_loop --set duration=10`, `uv run lab`. After the 2026-11-17 branch, also delete the
+leftover `devkit/sim/`, `devkit/harness/dataset/` and `tools/plants/` folders if git left them
+holding only `__pycache__`. Records saved before a branch that changed a record's fields show as stale in the
 Lab: re-run them. A computer that held the code before the layout move (PR #4) may keep git-ignored
 `control/`, `plants/`, `sim/` folders at the root holding only `__pycache__`: they shadow the real
 packages (`import plants` finds an empty namespace) and every test fails to import. On the

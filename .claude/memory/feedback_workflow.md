@@ -3,7 +3,7 @@ name: workflow
 description: How the developer works on DeePC-Sandbox — the BESS workflow, git only on their word (Benchlab's 2b to 2e straight through ended 2026-11-15), hand-off in the Lab, plain explanations, no software language
 metadata:
   type: feedback
-  modified: 2026-11-15
+  modified: 2026-11-17
 ---
 
 - **The BESS workflow** (CLAUDE.md, "Workflow"): one branch per gap, propose then plan mode then
@@ -44,3 +44,7 @@ metadata:
 - **Lab words** follow their pattern (a capital first, no articles, acronyms, the standard
   mathematical terms; `docs/project/lab-words.md`); they do not want to be asked word by word.
 - **Scope** is theirs: [[project-scope]]. Keep a branch to its gap; say plainly what is left out.
+- **No maths decisions in the platform phase** (2026-11-17, answering a solver/duration question
+  with "No math-based edit/decisions yet, only framework/structure work"): do not ask them to
+  choose a solver, a norm, a regulariser or a default that is a maths posture; keep today's and
+  record the measurement for the maths phase.

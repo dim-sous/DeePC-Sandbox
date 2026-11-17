@@ -115,7 +115,7 @@ def system_of(path: str) -> Parsed:
     """The system the saved run at ``path`` defines, checked: its settings are read again and
     must give the rows as read and the sizes the file holds -- a file written by code this
     checkout no longer holds is refused, with the command that writes it again (as
-    ``harness.dataset.dataset_of``). Only the rows are read again, and their reading and sizes
+    ``harness.open_loop.open_loop_of``). Only the rows are read again, and their reading and sizes
     compared: the analysis at (x*, u*) is the System tab's, and a piece that simulates the system
     neither needs it nor should fail on it."""
     if not os.path.exists(path):

@@ -20,9 +20,9 @@ GROUPS: tuple[str, ...] = (X, Y, THETA, ANALYSIS)
 class Config(Settings):
     """The system piece's settings; see the module."""
 
-    # The coupled masses of tools/plants/coupled_masses.py at its defaults, m1 = m2 = 1 and
-    # θ = [k1 = k2, k12, c1 = c2, c12] = [2, 1, 0.3, 0.1], typed out (the developer's pick,
-    # 2026-11-11). Copied, not read: that plant class is deleted by the rewrite's third branch.
+    # The coupled masses of c7f4569:tools/plants/coupled_masses.py at its defaults, m1 = m2 = 1
+    # and θ = [k1 = k2, k12, c1 = c2, c12] = [2, 1, 0.3, 0.1], typed out (the developer's pick,
+    # 2026-11-11). Copied, not read: that plant class was deleted on 2026-11-17.
     # The disturbances d1, d2 act as forces on the two masses, beside u1, u2 (the developer's
     # preview, 2026-11-11).
     f = param.List(

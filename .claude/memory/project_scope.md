@@ -3,7 +3,7 @@ name: project-scope
 description: The developer's scope for DeePC-Sandbox (2026-11-11) — small, three parts, a small Lab, platform before maths
 metadata:
   type: project
-  modified: 2026-11-11
+  modified: 2026-11-17
 ---
 
 The developer, 2026-11-11: "Contrary to the BESS and RCWS project, this project scope is much
@@ -15,7 +15,8 @@ same holds for the lab as well (less numbers, less charts, less buttons and less
 general)."
 
 So the shape is three parts: a **system generator** (a plant from its ODEs), a **data generator**
-(the `dataset` piece), and **DeePC in closed loop** (the `closed_loop` piece). Measured the same
+(the `open_loop` piece, which replaced `dataset` on 2026-11-17), and **DeePC in closed loop**
+(the `closed_loop` piece). Measured the same
 day: the bench (`devkit/`) was 3.8 times the code it studies (`src/` + `tools/`), BESS's 2.4.
 
 **The Lab cut** (their choices, AskUserQuestion, merged as PR #11): kept Split and Mean/RMS on a
@@ -26,7 +27,10 @@ saved stills and the Table view. A chart card's one control is Runs; a number ca
 **Platform first, maths after** (2026-11-11, on D4/D10/D12): "these sound more like a faulty
 pipeline, not platforming work. The math, the pipeline, reporting, charts, numbers, tools etc
 will be reexamined once the lab is finished". Fixes to what the controller or the plants compute
-wait until the platform branches are done ([[project-state]] lists them).
+wait until the platform branches are done ([[project-state]] lists them). Again 2026-11-17, asked
+to pick a solver and a default duration for the new closed loop: "No math-based edit/decisions
+yet, only framework/structure work" -- the controller, its solver, norms and defaults stay as
+they are; offer such choices in the maths phase, not before.
 
 **Three directions, 2026-11-11 evening** (after PR #13, starting the system generator; "right
 after that"):

@@ -3,7 +3,7 @@ name: project-state
 description: Where the DeePC-Sandbox rebuild stands — what is merged, what comes next, what is still open for the developer
 metadata:
   type: project
-  modified: 2026-11-16
+  modified: 2026-11-17
 ---
 
 The developer came back to this repository on 2026-11-10 after months away, remembering neither
@@ -193,3 +193,25 @@ System piece draws a pole map itself (`devkit/harness/system/record.py`, `figure
 test in `tests/test_system.py`; `pyproject.toml` takes `benchlab>=0.7,<1` from Benchlab's `main`,
 and `uv.lock` holds `5023526` (`v0.7.0`). The suite on Benchlab's pushed branch, whose tree that
 commit's equals: 132 passed in 111 s. The developer drove it in the Lab ("Looks right").
+
+**2026-11-17, the rewrite's branch 3, framework only** (on this session's branch; built and handed
+off, not yet committed when this was written). The developer: "No math-based edit/decisions yet,
+only framework/structure work" ([[project-scope]]). Closed loop now runs on a saved Open loop run
+(`harness.open_loop.open_loop_of`, run again and checked); the loop's plant is that run's, sampled
+by the same `system.measure` and `system.step`; r typed per output in t (`system.parse_signal`, with
+`Heaviside`); its own seed (default 1) and x_0 (none: the data's); zero input for T_ini samples;
+a solve with no solution stops the run (decisions 3e–3h in `docs/project/design.md`). The
+controller (`src/deepc/`) untouched: today's QP, OSQP, L2-squared on g, the old masses' defaults,
+the old `sinusoidal` typed as r. Deleted: Dataset, the old closed loop, `devkit/sim/`,
+`tools/plants/`, `tune.py`, Optuna and Plotly from the dependencies, the old safety net and its
+tests. Tabs: System, Open loop, Closed loop. Found: D18 (with ±∞ rate bounds, SCS found no
+solution in 41 s where OSQP found one). Measured while planning, for the maths phase: [1, eq. (8)]'s
+‖g‖₁ at λ_g 10 made OSQP stop 34 of 40 solves at its iteration limit (~1.4 s each), Clarabel
+(installed with CVXPY) solved all 40 (~0.8 s).
+
+**Next after it:** the new safety net (decision 3h; which computer makes it is the developer's
+call, still open); then S2/S3 of the system analysis or the maths phase, the developer's pick. Found
+on the way, not fixed: `LIBRARIES` in `devkit/harness/__init__.py` omits SymPy and python-control,
+which the open and closed loops' numbers depend on; `docs/project/lab-words.md` does not list the
+System piece's pole map; `devkit/README.md`'s Benchlab table still names `tests/test_lab.py`, gone
+with R1.

@@ -1,7 +1,8 @@
-"""One sampling step of the plant: the input clipped to the actuator bounds and, with the
-disturbance, held over T_s (zero-order hold), and the state integrated (``integrate.hold``). The
-clip is the plant's own limit; which channels it changed is returned, so the caller counts it
-(CLAUDE.md: a guard defaults to reporting)."""
+"""One sample of the plant, the one formula every piece that simulates it uses: the output measured
+at the sample (``measure``), then the input clipped to the actuator bounds and, with the
+disturbance, held over T_s (zero-order hold), and the state integrated (``step``, through
+``integrate.hold``). The clip is the plant's own limit; which channels it changed is returned, so
+the caller counts it (CLAUDE.md: a guard defaults to reporting)."""
 
 from __future__ import annotations
 
@@ -11,7 +12,15 @@ import numpy as np
 
 from system.integrate import ATOL, RTOL, hold
 
-__all__ = ["step"]
+__all__ = ["measure", "step"]
+
+
+def measure(h: Callable[[np.ndarray], np.ndarray], x: np.ndarray,
+            noise: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """The output at a sample from the state ``x`` (n,) there, as Coulson et al. [1, eq. (1)]
+    y(t) = Cx(t) + Du(t) with D = 0: ``h(x)`` (p,), and the measured output ``h(x) + noise`` (p,)."""
+    clean = h(x)
+    return clean, clean + noise
 
 
 def step(f: Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray], x: np.ndarray,

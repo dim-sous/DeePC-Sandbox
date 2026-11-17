@@ -1,14 +1,13 @@
 # devkit/ — the test bench
 
-Runs the controller (`src/`) on the simulated plants (`tools/`) through its pieces; Benchlab
+Runs the controller (`src/`) on the simulated world (`tools/`) through its pieces; Benchlab
 records each run, draws the records, and shows them in the Lab. May import everything; nothing in
 `src/` or `tools/` imports it or Benchlab (`tests/test_roots.py`). Who imports whom inside it is
 held by `tests/test_devkit_layers.py`.
 
 | package | holds |
 |---|---|
-| `sim/` | the simulation code the pieces drive: data collection (`collect_data`, `episode_lengths`), the scenarios (`get_reference`), the closed loop (`run_simulation`), the `DeePCConfig` built from a plant (`build_deepc_config`), the solves counted by outcome (`solve_counts`), the metrics `tune.py` scores by (`metrics.compute_metrics`, moved from the retired `run.py`) and a plant's input bounds as records keep them (`bounds.input_bounds_of`) |
-| `harness/` | the registry of pieces (`NAMES`, `get_component`: reading it imports no piece) and one package per piece, each exposing `Config`, `run(config) -> Record` and `Record`. `system`: a system typed as rows, one per state equation x_i' = f_i(x, u, d, θ) (d the disturbance inputs, where the unmodelled disturbance enters) and one per output equation y_j = h_j(x, θ), with the values of θ, read and checked (`tools/system`), and analysed at a requested point (x*, u*) for one pair u_j -> y_i: the exact linearisation (`system.linearize`), poles, Bode and step/impulse/ramp responses by python-control, the poles drawn on the complex plane (a figure the record draws itself, Benchlab's `Figure`), its numbers the poles' stability, damping, DC gain, margins and the equilibrium residual; a chart may declare log axes (`Series.x_log`, `y_log`); names x1…, u1…, y1…, theta1…, no units -- the first piece of the rewrite (`docs/project/design.md`); in the Lab each list is drawn as labelled rows with + and ✕. `open_loop`: a saved system run (read again and checked, `harness.system.system_of`) simulated from x0 under an i.i.d. uniform excitation, clipped to the actuator bounds and counted, and a Gaussian disturbance d where the rows name one, the outputs y_k = h(x_k) plus noise; records the applied u, y, the true x and d; numbers: the PE order of u, each output's SNR, the clipped inputs, the time per step. `dataset`: training data from a plant at its step T_s, as `collect_data` makes it, episodes stacked end to end. `closed_loop`: DeePC on a saved dataset run (re-run first and checked against its file, `harness.dataset.dataset_of`), following one of its plant's scenarios; every solve's status, cost, slack and time kept, solves counted by status (D2), stepping at its dataset run's T_s (`harness.dataset.plant_of`, D1). The registry is also DeePC's declaration to Benchlab: beside `NAMES` and `get_component`, its `COMMAND`, `TITLE`, `ROOT` and `LIBRARIES`, the module `pyproject.toml` names in `[project.entry-points.benchlab]` |
+| `harness/` | the registry of pieces (`NAMES`, `get_component`: reading it imports no piece) and one package per piece, each exposing `Config`, `run(config) -> Record` and `Record`. `system`: a system typed as rows, one per state equation x_i' = f_i(x, u, d, θ) (d the disturbance inputs, where the unmodelled disturbance enters) and one per output equation y_j = h_j(x, θ), with the values of θ, read and checked (`tools/system`), and analysed at a requested point (x*, u*) for one pair u_j -> y_i: the exact linearisation (`system.linearize`), poles, Bode and step/impulse/ramp responses by python-control, the poles drawn on the complex plane (a figure the record draws itself, Benchlab's `Figure`), its numbers the poles' stability, damping, DC gain, margins and the equilibrium residual; a chart may declare log axes (`Series.x_log`, `y_log`); names x1…, u1…, y1…, theta1…, no units -- the first piece of the rewrite (`docs/project/design.md`); in the Lab each list is drawn as labelled rows with + and ✕. `open_loop`: a saved system run (read again and checked, `harness.system.system_of`) simulated from x0 under an i.i.d. uniform excitation, clipped to the actuator bounds and counted, and a Gaussian disturbance d where the rows name one, the outputs y_k = h(x_k) plus noise; records the applied u, y, the true x and d; numbers: the PE order of u, each output's SNR, the clipped inputs, the time per step. `closed_loop`: DeePC on a saved open-loop run (re-run first and checked against its file, `harness.open_loop.open_loop_of`), its data the controller's and its plant the loop's plant -- the same system, T_s, actuator bounds, σ, σ_d and tolerances, sampled by the same `system.measure` and `system.step` -- from its own x_0 (none: the open-loop run's) and seed, following a reference typed as one row in t per output (`system.parse_signal`); zero input for the first T_ini samples, then one solve per sample, a solve with no solution stopping the run; records u, y, h(x), r, the true x and d, and every solve's status, solver, cost, ‖σ_y‖₂ and time; numbers: the RMSE of h(x) - r per output, solves by status (D2) and by solver (D3), the solve time's mean, std and max, ‖σ_y‖₂, the clipped inputs. The registry is also DeePC's declaration to Benchlab: beside `NAMES` and `get_component`, its `COMMAND`, `TITLE`, `ROOT` and `LIBRARIES`, the module `pyproject.toml` names in `[project.entry-points.benchlab]` |
 
 ## Benchlab: the records, the charts, the command and the Lab
 
@@ -31,33 +30,29 @@ uv run deepc run system                                    # the two masses type
 uv run deepc run system --set 'f=["x2", "-sin(x1) - theta1*x2 + u1"]' --set 'h=["x1"]' --set 'theta=[0.2]' --name pendulum
 uv run deepc run open_loop                                 # the default system simulated -> results/open_loop/default.json
 uv run deepc run open_loop --set system_run=results/system/pendulum.json --set x0=1,0 --set u_min=-1 --set u_max=1 --set u_exc_min=-0.5 --set u_exc_max=0.5 --set 'sigma_d=[]' --name pendulum
-uv run deepc run dataset                                   # coupled masses, their own defaults -> results/dataset/default.json
-uv run deepc run dataset --set seed=7 --name seed7
-uv run deepc run closed_loop                               # DeePC on results/dataset/default.json -> results/closed_loop/default.json
-uv run deepc run closed_loop --set dataset_run=results/dataset/seed7.json --set scenario=sinusoidal --name sine
-uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
+uv run deepc run open_loop --set seed=7 --name seed7
+uv run deepc run closed_loop                               # DeePC on results/open_loop/default.json -> results/closed_loop/default.json
+uv run deepc run closed_loop --set open_loop_run=results/open_loop/seed7.json --set 'r=["Heaviside(t - 1)", "0", "0", "0"]' --name step
+uv run deepc run closed_loop --set duration=10 --sweep lambda_g=1,10,100 --name lg
                                                            # one record per value: results/closed_loop/lg-lambda_g-<v>.json
-uv run deepc run closed_loop --set online_hankel=true --set hankel_warmup_steps=20
-                                                           # a feature's own settings apply only while it is on
 uv run deepc run closed_loop my-setup.json                 # a saved settings file is the way to keep a setup
 uv run deepc draw results/closed_loop/default.json         # every panel it declares -> results/closed_loop/default/<panel>.png
-uv run deepc draw results/closed_loop/lg-*.json --panel output-e-x1
-                                                           # the runs on one plot -> results/closed_loop/<runs>/output-e-x1.png
-uv run deepc draw results/closed_loop/lg-*.json --number rmse_e_x1 --vs lambda_g
+uv run deepc draw results/closed_loop/lg-*.json --panel y1
+                                                           # the runs on one plot -> results/closed_loop/<runs>/y1.png
+uv run deepc draw results/closed_loop/lg-*.json --number y1_rmse --vs lambda_g
                                                            # a number against the swept setting, every run a point
 uv run deepc draw results/closed_loop/lg-*.json --panel cost --runs rows
                                                            # a row each
 uv run lab --no-open                                       # the Lab on http://127.0.0.1:8765: run a piece, look at what it wrote
 ```
 
-A setting left unset takes the code's own default, the plant's where it has one, and the record
-saves what it resolved (`constants`). A record holds the settings the run used, the arrays its
+A setting left at none takes the value the record names in `constants` (System's x* and u*, the
+origin; Closed loop's x_0, its open-loop run's). A record holds the settings the run used, the arrays its
 charts draw, summary numbers each a reduction of one of them, and its provenance (commit,
 dirty flag, date, duration, library versions). `results/` is git-ignored: a run never writes a
 tracked file.
 
 The setting labels, chart names, axes and legends follow the developer's pattern (a capital
 first, no articles, acronyms and the standard mathematical terms); every one is listed in
-`docs/project/lab-words.md`, and the page's own words are in `devkit/harness/words.toml`. Help lines are no word a Lab user reads (Benchlab 0.3.0 shows no
-hover); System and Open loop have none, Dataset and Closed loop keep theirs as the code's
-documentation until the rewrite deletes those pieces.
+`docs/project/lab-words.md`, and the page's own words are in `devkit/harness/words.toml`. No
+piece has help lines (Benchlab 0.3.0 shows no hover).

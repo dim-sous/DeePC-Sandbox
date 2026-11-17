@@ -1,87 +1,37 @@
 # Methods
 
-What the code computes: the plant, how the training data is collected, the Hankel matrices, the DeePC
-quadratic program, the loop that runs it, its two optional variants, the metrics and the tuner.
+What the code computes: the Hankel matrices, the DeePC quadratic program, the closed loop that runs it and
+its numbers (§3–§5, §8), the typed system and the open-loop simulation that makes the controller's data
+(§10, §11), and the two variants whose code no piece reaches any more (§6, §7). §1, §2 and §9 described the
+plant class, its data collection and the tuner, deleted on 2026-11-17; each keeps a note of what went.
 
 **Read this first.** This document was written from the code on 2026-11-10 and checked against the papers
 on 2026-11-11: the arXiv versions of [1]–[3], [5] and [6], whose section, equation and theorem numbers are
 the ones used here. [4] is not on arXiv and has not been read. Each section states what the code does.
-§3, §4, §6 and §7, the sections that cite a method, end with an **Against the sources** paragraph that quotes
+§3, §4, §6 and §7, the sections that compare the code with a method, end with an **Against the sources** paragraph that quotes
 what the papers state and names where the code differs; the other sections cite no paper. Line
 pointers (`file.py:line`) were read at commit `3067d03` and re-pointed to the three-root layout by
 matching each line's text. Where the code departs from a paper, from what it claims,
 or from itself, the incident in [`docs/project/failures.md`](docs/project/failures.md) is named (D1, D2, …).
 
-## 1. The plant
+## 1. The plant (deleted 2026-11-17)
 
-The plant implements `PlantBase` (`tools/plants/base.py`) and is listed in `PLANT_REGISTRY`
-(`tools/plants/__init__.py:12`). The kinematic bicycle this section also described was deleted on
-2026-11-11 (`docs/project/failures.md`, its header). The plant's outputs are **tracking errors**
-against a reference waypoint $r$, not measurements of the state: the controller is asked to drive the
-errors to zero.
+The coupled masses were a hand-written plant class (`c7f4569:tools/plants/coupled_masses.py`), stepped by
+forward Euler at $T_s$, its outputs the **tracking errors** $e = x - r$ against a scenario's waypoints
+(D15). The same system is now typed as rows, the `system` piece's default, $	heta = [k, k_{12}, c,
+c_{12}] = [2, 1, 0.3, 0.1]$ with unit masses, integrated by RK45 (§10); its outputs are the states
+themselves, $y = x$. The old class's actuator bound $|F_i| \le 5$ is the open-loop simulation's default
+(§11); its rate bound of 2 per sample, its `default` steps and its SI units have no counterpart. Its
+`sinusoidal` scenario, $r_{x_1} = \sin(0.2\pi t)$, $r_{x_2} = 0.8\sin(0.3\pi t + \pi/3)$, the velocity
+references zero, is the closed loop's default reference, typed (§5).
 
-### 1.1 Coupled two-mass spring-damper
+## 2. Collecting the training data (deleted 2026-11-17)
 
-`tools/plants/coupled_masses.py`. State $x = [x_1,\ v_1,\ x_2,\ v_2]$, input $u = [F_1,\ F_2]$. The plant declares
-SI units (`input_units`, `output_units`: N, m, m/s), assumed: nothing else in the code states
-them (the developer's decision, 2026-11-11). The continuous dynamics (docstring and `:59-70`):
-
-```math
-\begin{aligned}
-m_1 \ddot x_1 &= -k_1 x_1 - c_1 \dot x_1 + k_{12}(x_2 - x_1) + c_{12}(\dot x_2 - \dot x_1) + F_1, \\
-m_2 \ddot x_2 &= -k_2 x_2 - c_2 \dot x_2 + k_{12}(x_1 - x_2) + c_{12}(\dot x_1 - \dot x_2) + F_2,
-\end{aligned}
-```
-
-written as $\dot x = A_c x + B_c u$ and discretised by forward Euler, $A = I + T_s A_c$, $B = T_s B_c$
-(`:73-74`). One step (`:111-112`): $x^+ = A x + B\, \mathrm{clip}(u, -F_{max}, F_{max})$. Defaults (`:38-48`):
-$T_s$ = 0.05 s, $m_1 = m_2$ = 1, $k_1 = k_2$ = 2, $k_{12}$ = 1, $c_1 = c_2$ = 0.3, $c_{12}$ = 0.1,
-$F_{max}$ = 5, and a rate bound of 2 per sample.
-
-**Outputs** (`:127`): $e = x - r$, with $r = [r_{x_1},\ r_{v_1},\ r_{x_2},\ r_{v_2}]$.
-
-**Scenarios**: `default` (`:215-239`), position steps held 5 s each, mass 1 through
-$0, 1, -0.5, 1.5, -1, 0.5, -1.5, 1, 0$ and mass 2 through $0, -0.5, 1, -1, 0.5, 1.5, -0.5, 0$ starting
-2.5 s later; `sinusoidal` (`:251-252`), $r_{x_1} = \sin(0.2\pi t)$, $r_{x_2} = 0.8\sin(0.3\pi t + \pi/3)$. In
-both, the velocity references stay zero, so $e_{v_i} = v_i$ even while the position reference moves. The
-`default` references are zero for the first 5 s.
-
-**Constraints** (`:129-137`): $|F_i| \le F_{max}$ and $|\Delta F_i| \le 2$ per sample; no output bounds.
-
-## 2. Collecting the training data
-
-The plant is built at the dataset run's step $T_s$, by default its own (§1), and every closed loop on that
-data steps at the same $T_s$ (`devkit/harness/dataset/run.py`, `plant_of`; D1).
-
-`devkit/sim/data_generation.py:18-70`. The plant's `get_data_collection_config()` names $E$ episodes (5 for the
-masses), an excitation signal, a baseline controller $\kappa$ and a nominal reference $\bar r_k$. `T_data`
-samples are split into $E$ episodes of $\lfloor T_{data}/E \rfloor$ samples, the first
-$T_{data} \bmod E$ episodes one longer (`:33-40`). Each episode resets the plant to its own initial state
-(`:44`) and runs, for $k = 0, \dots, T_e - 1$ (`:52-65`):
-
-```math
-u_k = \kappa\big(e(x_k, \bar r_k)\big) + w_k, \qquad x_{k+1} = f(x_k, u_k), \qquad
-y_k = e(x_{k+1}, \bar r_k) + n_k, \qquad n_k \sim \mathcal N(0, \sigma_n^2 I),
-```
-
-with $w_k$ the excitation and $\sigma_n$ = `noise_std_output` (0.005). The recorded
-output $y_k$ is the one after the step. The recorded input $u_k$ is the one before the plant's own clipping
-(§1; `devkit/sim/data_generation.py:57-64`): where the plant clips, the data holds an input it did not apply
-(D12). The baseline controller reads the error before the noise is added
-(D4). The episodes are then stacked end to end into one record of `T_data` samples (`:70`; D9).
-
-**Coupled masses** (`tools/plants/coupled_masses.py:162-279`): each episode starts at position offsets
-$(x_1, x_2) \in \{(0,0), (0.5,-0.5), (-0.5,0.5), (0.3,0.3), (-0.3,-0.3)\}$ with $v_i \sim U(-0.2, 0.2)$. Nominal
-reference: zero. Baseline: $F_i = -1.5\, e_{x_i} - 0.8\, e_{v_i}$. Excitation per channel:
-$\tfrac12$ PRBS (amplitude $0.6 F_{max}$, minimum hold 3) $+\ \tfrac12$ multisine (amplitude $0.6 F_{max}$,
-8 frequencies).
-
-**The two signals.** What the code calls a PRBS (`tools/plants/excitation.py:9-26`) is a binary signal
-$\pm A$ that starts at a random sign and flips after each hold, the hold drawn uniformly from
-$\{m, \dots, 2m\}$ samples. It is not a maximum-length shift-register sequence. The multisine (`tools/plants/excitation.py:29-50`) is
-$s(t) = \sum_i \sin(2\pi f_i t + \phi_i)$ with $f_i \sim U(0.01, 0.4) \cdot \frac{1}{2T_s}$ and
-$\phi_i \sim U(0, 2\pi)$, scaled so that $\max |s| = A$. Frequencies and phases are drawn again for every
-episode and channel.
+The old dataset piece (`c7f4569:devkit/sim/data_generation.py`) ran several episodes, each from its own
+reset state, under a proportional baseline controller plus excitation, and stacked them end to end; it
+recorded the output after each step with noise and the input before the plant's clip (D4, D9, D12). The
+controller's data is now one open-loop run (§11): one trajectory, no baseline controller, the applied
+input recorded, $y_k = h(x_k)$ plus noise.
 
 ## 3. Hankel matrices and persistency of excitation
 
@@ -95,8 +45,9 @@ H_L(w) = \begin{bmatrix} w_0 & w_1 & \cdots & w_{T-L} \\ w_1 & w_2 & \cdots & w_
 
 DeePC uses $L = T_{ini} + N$ (`src/deepc/config.py:66`): the first $T_{ini}$ block rows are the *past* blocks
 $U_p, Y_p$, the last $N$ the *future* blocks $U_f, Y_f$ (`src/deepc/online_hankel.py:86-90`, which the
-controller uses; `src/deepc/hankel.py:40-81` does the same and nothing calls it, D8). At the plant's defaults
-($T_{ini}, N$ = 4, 20), $H_L(u)$ is 48 × 577.
+controller uses; `src/deepc/hankel.py:40-81` does the same, called only by a test of the fundamental lemma,
+`tests/test_closed_loop.py`). At the closed loop's defaults ($T_{ini}, N$ = 4, 20) on the default open-loop
+run ($T$ = 600, $m$ = 2), $H_L(u)$ is 48 × 577.
 
 **Persistency of excitation** (`src/deepc/regularization.py:8-30`). The check is
 
@@ -117,8 +68,8 @@ order $n + L$.
 - **Differs:** the code checks order $L$, not $L + n$ (D13).
 - **Several datasets:** [6, Definition 2, eq. (8)] combines them in a mosaic-Hankel matrix
   $[H_k(u^1)\ \cdots\ H_k(u^q)]$, one Hankel block per dataset, and [6, Theorem 2] extends the lemma to it
-  under "collectively persistently exciting" inputs of order $n + L$. **Differs:** the code stacks the
-  episodes into one signal before building one Hankel matrix (D9).
+  under "collectively persistently exciting" inputs of order $n + L$. The closed loop builds its Hankel
+  matrix from one open-loop run, one trajectory, so no column joins two (D9, closed 2026-11-17).
 - Both statements are for linear time-invariant systems.
 
 ## 4. The DeePC quadratic program
@@ -140,21 +91,25 @@ $\sigma_{out} \in \mathbb R^{Np}_{\ge 0}$ on the output bounds.
 \end{aligned}
 ```
 
-- $Q$ and $R$ are diagonal, `Q_diag` and `R_diag` repeated over the horizon (`:131-135`): the masses'
-  weights are $[20, 1, 20, 1]$ and $[0.1, 0.1]$.
+- $Q$ and $R$ are diagonal, `Q_diag` and `R_diag` repeated over the horizon (`:131-135`): the closed
+  loop's defaults are $[20, 1, 20, 1]$ and $[0.1, 0.1]$, the old coupled masses' (§5).
   $R$ weighs the inputs themselves, not their changes.
 - $\rho$ is the 1-norm (`L1`) or the **squared** 2-norm (`L2`), chosen by `reg_norm_g` and `reg_norm_sigma_y`
-  (`:137-145`). The plant defaults to squared 2-norm on $g$ and 1-norm on $\sigma_y$, with $\lambda_g$ = 10
-  and $\lambda_y = 10^4$; $\lambda_{out}$ = 0, so no output bound acts by default.
-- $u_{ini}, y_{ini}$ are the last $T_{ini}$ applied inputs and outputs; $u_{prev}$ is the last applied input
-  (`devkit/sim/simulation.py:129-134`); $\tau$ is the noise-adaptive tightening (§6), zero otherwise.
+  (`:137-145`). The closed loop defaults to squared 2-norm on $g$ and 1-norm on $\sigma_y$, with
+  $\lambda_g$ = 10 and $\lambda_y = 10^4$; it sets no $\lambda_{out}$ (the controller's default 0), so no
+  output bound acts, and hands the controller $\pm\infty$ as the rate bounds.
+- $u_{ini}, y_{ini}$ are the last $T_{ini}$ applied inputs and measured outputs, samples $k - T_{ini}, \dots,
+  k - 1$; $u_{prev}$ is the last applied input (`devkit/harness/closed_loop/run.py`, §5); $\tau$ is the
+  noise-adaptive tightening (§6), zero in every run since no piece reaches §6.
 - The Hankel blocks, $u_{ini}$, $y_{ini}$, $y_{ref}$, $u_{prev}$, $\lambda_g$, $\lambda_y$ and $\tau$ are
   CVXPY parameters, so the problem is built once and re-solved with new values.
 - Solver (`src/deepc/controller.py:243-266`): OSQP with `eps_abs` = `eps_rel` = $10^{-5}$, `max_iter` = 10000, polishing, warm start.
   A `cvxpy.SolverError` re-solves with SCS, and the solve names the solver that answered; any other exception
-  reaches the caller (D3). With no solution, the controller returns $u = 0$, flagged on the solve, and the
-  loop applies it. Both are counted per run with the statuses (`devkit/sim/simulation.py`, `solve_counts`; D2,
-  D3). Otherwise the first predicted input $u_0$ is applied (`src/deepc/controller.py:296`).
+  reaches the caller (D3). With the closed loop's $\pm\infty$ rate bounds, SCS answered
+  `unbounded_inaccurate` with no solution where OSQP found one (D18). With no solution, the controller
+  returns $u = 0$, flagged on the solve; the closed loop stops on the flag and applies nothing (§5). The
+  statuses and solvers are counted per run (`devkit/harness/closed_loop/run.py`, `solve_counts`; D2, D3).
+  Otherwise the first predicted input $u_0$ is applied (`src/deepc/controller.py:296`).
 
 This is the formulation the old README states. The old README names Coulson et al. [1] as its source; the
 code names none for the QP. The old README also lists Berberich et al. [5]; no code here implements it.
@@ -172,31 +127,43 @@ approximation" of it.
   makes no low-rank approximation (D14). [2, Remark 4.3]: "being robust in the trajectory space in the
   $\lVert\cdot\rVert_2$ sense requires regularizing with a $\lVert\cdot\rVert_2$" (the norm, not its square).
 - **Added by the code**, in none of [1, eq. (6)–(8)]: the input-rate bounds and the soft output bounds.
-- **Output timing:** [1, eq. (1)] has $y(t) = Cx(t) + Du(t)$. The output the code records after input $u_k$
-  is, for the coupled masses, $y_k = A x_k + B\,\mathrm{clip}(u_k) - r$: while the clip does not act (it
-  never does in the frozen training data, D12), the form of [1, eq. (1)] with $C = A$, $D = B$ and the
-  reference subtracted.
-- **Differs, the reference:** [1, eq. (6)] tracks a reference $r$ with the system's outputs. The code's
-  outputs are errors against the scenario's reference, its cost reference is zero, and its training errors
-  are taken against the nominal reference (§2, §5) (D15).
+- **Output timing:** [1, eq. (1)] has $y(t) = Cx(t) + Du(t)$. The data and the loop both measure
+  $y_k = h(x_k)$ plus noise, from the state at the same sample (§5, §11); with $D = 0$, since $h$ names no
+  input.
+- **As in [1, eq. (6)], the reference:** the loop tracks a typed reference $r$ with the system's outputs,
+  $y_{ref} = (r_k, \dots, r_{k+N-1})$ (§5). Until 2026-11-17 the outputs were errors and the cost reference
+  zero (D15, closed).
 
-## 5. The closed loop, tracking on errors
+## 5. The closed loop
 
-`devkit/sim/simulation.py:37-203`. The plant starts at the first waypoint, $x_0 = r_0$ (`:74`;
-`get_initial_state_for_scenario` returns the waypoint itself). The loop then runs:
+`devkit/harness/closed_loop/run.py`, on a saved open-loop run (§11), which it runs again and checks
+(`devkit/harness/open_loop/run.py`, `open_loop_of`). The run's inputs and measured outputs are the
+controller's data (§3, §4). The loop's plant is the run's plant: the same system, $T_s$, actuator bounds,
+$\sigma$, $\sigma_d$ and integrator tolerances, sampled by the same two functions, `measure` and `step`
+(`tools/system/step.py`), so the output the data holds and the one the loop gives the controller come from
+one formula (D4, D10, D12, closed 2026-11-17). The reference is typed as one row per output in $t$
+(`tools/system/parse.py`, `parse_signal`: the functions of §10 and `Heaviside`, $\tfrac12$ at 0). From
+$x_0$ (none: the open-loop run's), for $k = 0, \dots, T_{ini} + K - 1$, $K$ = `int(duration / T_s)`:
 
-1. **Warm-up**, $T_{ini}$ steps with $u = 0$ (`:84-89`), each recording $y_i = e(x_{i+1}, r_i)$.
-2. **Then, for** $k = 0, \dots, K - 1$, with $K$ = `int(sim_duration / Ts)` (`src/deepc/config.py:62-63`), $T_s$ the plant's step (D1):
-   - solve §4 with $y_{ref} = 0$ over the whole horizon (`devkit/sim/simulation.py:132`);
-   - apply $u_0$;
-   - record $y = e(x_{i+1}, r_i)$ with $i = k + T_{ini}$ (`devkit/sim/simulation.py:145-147`).
+```math
+y_k = h(x_k) + n_k, \qquad
+u_k = \mathrm{clip}(\hat u_k, u_{min}, u_{max}), \qquad x_{k+1} = \Phi_{T_s}(x_k, u_k, d_k),
+```
 
-The loop adds no measurement noise (D4). The state after step $i$, at time $(i+1)T_s$, is compared with
-waypoint $r_i$, at time $iT_s$ (D10).
+with $n_k$ and $d_k$ drawn as in §11 from the loop's own generator, seeded by its own `seed` (default 1,
+not the data's 42; the developer, 2026-11-17), the noise then the disturbance. For $k < T_{ini}$,
+$\hat u_k = 0$ (the developer, 2026-11-17). After that $\hat u_k$ is the first input of §4, solved with
+$u_{ini}, y_{ini}$ the samples $k - T_{ini}, \dots, k - 1$ and $y_{ref} = (r(t_k), \dots, r(t_{k+N-1}))$,
+$t_k = k T_s$. The past window ends at $k - 1$ because a Hankel column pairs $u_j$ with $y_j = h(x_j)$ and
+$u_k$ is not yet chosen; [1, Algorithm 1] is not re-read for this (the papers are not in every checkout). A
+solve that leaves no solution stops the run, naming the sample, the status and the solver (the developer,
+2026-11-17). The controller is used as it is (the developer, 2026-11-17: no maths edits yet).
 
 ## 6. Noise-adaptive regularisation (`noise_adaptive`)
 
-`src/deepc/noise_estimator.py`, `devkit/sim/simulation.py:113-127`. From the second solve on, the residual between the
+**No piece reaches this since 2026-11-17:** the closed loop does not offer it (the developer's 3d,
+`docs/project/design.md`); its code stays in `src/deepc/` until the maths phase (D8). As the old loop ran
+it: `src/deepc/noise_estimator.py`, `c7f4569:devkit/sim/simulation.py:113-127`. From the second solve on, the residual between the
 output recorded after a step and the output the previous solve predicted for it,
 $\varrho_k = y_k - \hat y_{k|k-1}$, enters a window of the last $W$ = 10 residuals. Once it holds 3 or
 more, the per-channel sample standard deviation $\hat\sigma$ (`ddof` = 1) gives
@@ -228,7 +195,8 @@ averaged over 15 random simulations for each $\epsilon$."
 
 ## 7. Online Hankel window (`online_hankel`)
 
-`src/deepc/online_hankel.py`, `devkit/sim/simulation.py:150-154`.
+**No piece reaches this since 2026-11-17** (as §6). As the old loop ran it: `src/deepc/online_hankel.py`,
+`c7f4569:devkit/sim/simulation.py:150-154`.
 
 - **Size.** The window holds `max_cols` columns: `hankel_window_size`, or the number of offline columns when
   that is 0, the default (`:54-55`). A larger window is padded with copies of the last offline column
@@ -260,38 +228,28 @@ real-time".
 
 ## 8. Metrics
 
-`devkit/sim/metrics.py` (`compute_metrics`, what `tune.py` scores by) and each plant's `compute_custom_metrics`:
+`devkit/harness/closed_loop/run.py`, each a reduction of an array on the record
+(`devkit/harness/closed_loop/record.py`):
 
-- **RMSE per output channel**, over all $T_{ini} + K$ samples, warm-up included.
-- **Coupled masses** (`tools/plants/coupled_masses.py:195-202`): the RMSE of $(e_{x_1}, e_{x_2})$ jointly.
-- **Solve times**: mean, maximum and total wall-clock time of the `solve` call.
-- **Solves by outcome** (`devkit/sim/simulation.py`, `solve_counts`): per status, matched exactly; per solver
-  that answered; and the solves that left no solution, after which zeros were applied. The "optimal" share
-  is the share whose status is exactly `optimal` (D2, D3).
+- **RMSE per output**, of $h(x_k) - r_k$, the plant's output before the noise, over all $T_{ini} + K$
+  samples, warm-up included.
+- **Solves by outcome** (`solve_counts`): per status, matched exactly, and per solver that answered (D2, D3).
+- **Solve time**: mean, standard deviation and maximum wall-clock time of the `solve` call.
 - **The slack**: the mean and maximum of $\lVert \sigma_y \rVert_2$, whichever norm its penalty uses.
+- **Clipped inputs**: the samples where the plant's clip changed the controller's input.
 
-## 9. Tuning (`tune.py`)
+The controller's excitation rank and the rank it needs (§3) are kept with the run's constants.
 
-Optuna's TPE sampler, seed 42 (`tune.py:333-336`), minimises one metric per trial: `rmse_e_x1`. A trial that raises, or scores NaN or infinity, stops the study (D3). Each trial
-collects its data at seed 42 and runs the closed loop for `--sim-duration` (default 10 s) on the `--scenario`
-(default `default`). Search space (`tune.py:61-71`):
+## 9. Tuning (deleted 2026-11-17)
 
-| setting | range | scale |
-|---|---|---|
-| `Ts` | 0.02 – 0.2 s | log (the trial's plant step, D1) |
-| `Tini` | 1 – 10 | integer |
-| `N` | 3 – 30 | integer |
-| `T_data` | 100 – 1000, step 50 | integer |
-| `lambda_g` | 0.01 – 200 | log |
-| `lambda_y` | 1 – 10⁶ | log |
-| `reg_norm_g`, `reg_norm_sigma_y` | L1, L2 | choice |
-
-A trial that raises, or returns a non-finite metric, scores $10^6$ (D3).
+`c7f4569:tune.py` searched the old controller's settings with Optuna's TPE sampler, scoring one metric of
+the old loop. Deleted with it (the developer's 5a, `docs/project/design.md`: a sweep in the Lab covers
+"different configurations").
 
 ## 10. The typed system (`system`, the rewrite's first piece)
 
-`tools/system/`, the first piece of the rewrite in `docs/project/design.md`; §1–§9 describe the
-pipeline it replaces, which still runs on the plant class.
+`tools/system/`, the first piece of the rewrite in `docs/project/design.md`; it replaces the plant class of
+§1.
 
 **What is typed** (`tools/system/parse.py`). One row per state equation, $\dot x_i = f_i(x, u, d,
 \theta)$, one per output equation, $y_j = h_j(x, \theta)$, and the values of the parameter vector
@@ -333,7 +291,7 @@ message.
 
 **Checked against** (`tests/test_system.py`): the exact zero-order-hold sampling of a linear
 system, $x_{k+1} = A_d x_k + B_d u_k$ with $\begin{bmatrix} A_d & B_d \\ 0 & I \end{bmatrix} =
-\exp\!\left(\begin{bmatrix} A & B \\ 0 & 0 \end{bmatrix} T_s\right)$ [8], on the two masses of §1
+\exp\!\left(\begin{bmatrix} A & B \\ 0 & 0 \end{bmatrix} T_s\right)$ [8], on the two masses (§1)
 typed with $\theta = [k, k_{12}, c, c_{12}]$; and the closed forms of $\dot x_1 = -\theta_1 x_1$ and
 $\dot x_1 = u_1$.
 
@@ -351,7 +309,8 @@ d_k \sim \mathcal N(0, \mathrm{diag}(\sigma_d^2)), \qquad x_{k+1} = \Phi_{T_s}(x
 ```
 
 with $\Phi_{T_s}$ the integration of $\dot x = f(x, u_k, d_k, \theta)$ over one sampling time with
-$u_k$ and $d_k$ held (§10, `tools/system/step.py`); $d_k$ is the unmodelled disturbance, entering
+$u_k$ and $d_k$ held (§10, `tools/system/step.py`, the same `measure` and `step` the closed loop
+samples its plant by, §5); $d_k$ is the unmodelled disturbance, entering
 where the system's rows name it (the developer, 2026-11-11). **Departure, declared:** $d_k$ has a
 fixed standard deviation per sample and is held over $T_s$; it is not the sampling of a
 continuous-time white noise of fixed intensity, whose per-sample variance scales with $1/T_s$, so
@@ -403,5 +362,4 @@ is git-ignored. [4] is not on arXiv and has not been read.
 8. C. F. Van Loan, "Computing integrals involving the matrix exponential", *IEEE Transactions on
    Automatic Control* 23(3), 1978. Not read.
 
-Software, at the versions `uv.lock` pins: CVXPY 1.8.1, OSQP 1.1.1, SCS 3.2.11, Optuna 4.8.0, NumPy 2.4.2,
-SciPy 1.17.1, Plotly 6.6.0.
+Software, at the versions `uv.lock` pins: CVXPY 1.8.1, OSQP 1.1.1, SCS 3.2.11, NumPy 2.4.2, SciPy 1.17.1.

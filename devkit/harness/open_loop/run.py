@@ -3,11 +3,13 @@ the output y_k = h(x_k) + n_k is measured, as Coulson et al. [1, eq. (1)] y(t) =
 (METHODS.md §11); an input u_k is drawn i.i.d. uniform on its excitation range, as [1, §VI-B], and
 a disturbance d_k Gaussian; the plant clips u_k to its actuator bounds, holds both over T_s and
 integrates (``system.step``). No baseline controller (the developer, 2026-11-11). No printing, no
-saving, no drawing.
+saving, no drawing. And ``open_loop_of(path)``: a saved open-loop run, run again and checked, for
+the closed loop, which runs on one.
 """
 
 from __future__ import annotations
 
+import os
 import time
 
 import numpy as np
@@ -15,10 +17,15 @@ import numpy as np
 from deepc.regularization import check_persistent_excitation
 from harness.system import system_of
 from benchlab import stamp
-from system import step
+from system import measure, step
 
 from .config import Config
 from .record import Record
+
+#: The saved runs already checked in this process, by the state -- real path, mtime, size -- of the
+#: file and of the system run it names: a sweep of closed loops on one file pays the check once
+#: (as ``harness.dataset.dataset_of`` did), and a system file written again is checked again.
+_CHECKED: dict[tuple, Record] = {}
 
 
 def _sized(name: str, values: list, size: int, what: str) -> np.ndarray:
@@ -102,8 +109,8 @@ def run(cfg: Config) -> Record:
         if not np.all(np.isfinite(state)):
             raise ValueError(f"the state at sample {k} (t = {k * cfg.Ts}) is {state.tolist()}: "
                              f"not finite")
-        x[k], clean[k] = state, plant.h(state)
-        y[k] = clean[k] + noise[k]
+        x[k] = state
+        clean[k], y[k] = measure(plant.h, state, noise[k])
         ticked = time.perf_counter()
         state, u[k], changed = step(plant.f, state, drawn[k], d[k], cfg.Ts, u_min, u_max,
                                     cfg.rtol, cfg.atol)
@@ -123,3 +130,35 @@ def run(cfg: Config) -> Record:
                    "m": plant.m, "p": plant.p, "q": plant.q, "r": plant.r,
                    "clipped_per_input": clipped.tolist()},
         t=np.arange(cfg.T) * cfg.Ts, u=u, y=y, x=x, d=d, numbers=numbers)
+
+
+def open_loop_of(path: str) -> Record:
+    """The saved open-loop run at ``path``, checked against the code that reads it: run again from
+    the settings it saved -- its system run read again and checked too (``system_of``) -- it must
+    hold what the file holds, array for array; a file written by code this checkout no longer
+    holds, or on a system file written again since, is refused, with the command that writes it
+    again. Checked once per state of the file and of its system run in a process."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"no saved open-loop run at {path}; the open-loop piece writes "
+                                f"one: {Record.produced_by} [--name NAME]")
+
+    def state(file: str) -> tuple:
+        st = os.stat(file)
+        return os.path.realpath(file), st.st_mtime_ns, st.st_size
+
+    saved = Record.load(path)
+    system = saved.config.system_run
+    key = (state(path), state(system) if os.path.exists(system) else None)
+    if key not in _CHECKED:
+        again = run(saved.config)
+        differ = [f for f in ("t", "u", "y", "x", "d")
+                  if not np.array_equal(getattr(saved, f), getattr(again, f))]
+        differ += [k for k in ("f_read", "h_read", "theta")
+                   if saved.constants.get(k) != again.constants[k]]
+        if differ:
+            raise ValueError(f"the open-loop run at {path} does not run again to what it holds "
+                             f"({', '.join(differ)} differ): code this checkout no longer holds, "
+                             f"or a system run written again since, wrote it; run it again "
+                             f"({Record.produced_by})")
+        _CHECKED[key] = saved
+    return _CHECKED[key]

@@ -60,12 +60,13 @@ def test_tools_never_imports_devkit() -> None:
 
 
 #: What the controller is. Two-way ratchet: an undeclared module fails, a declared one that
-#: vanished fails. Decided 2026-11-11, the layout move: today's controller code, as it was.
-#:   config            -> DeePCConfig (still holding bench settings: sim_duration, T_data,
-#:                        noise_std_output; a later branch splits them out)
-#:   constraints       -> the named bounds a plant hands the controller
+#: vanished fails. Decided 2026-11-11, the layout move: today's controller code, as it was; no
+#: piece reaches the variants or the named bounds since 2026-11-17, kept until the maths phase (D8).
+#:   config            -> DeePCConfig (still holding bench settings no piece reads: sim_duration,
+#:                        T_data, noise_std_output, the noise-adaptive ones)
+#:   constraints       -> named bounds and constraints_to_arrays (no piece calls them, D8)
 #:   controller        -> the sparse QP
-#:   hankel            -> block-Hankel matrices (build_data_matrices unused, D8)
+#:   hankel            -> block-Hankel matrices (build_data_matrices: a test's only, D8)
 #:   noise_estimator   -> the noise-adaptive variant's estimator (D16)
 #:   online_hankel     -> the sliding window the controller builds its blocks in (D17)
 #:   regularization    -> the persistency-of-excitation check (D13)

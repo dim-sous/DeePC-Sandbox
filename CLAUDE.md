@@ -1,13 +1,13 @@
 # DeePC Sandbox — data-enabled predictive control on simulated plants
 
-A DeePC controller (Coulson, Lygeros & Dörfler 2019) run on a simulated plant, a coupled two-mass
-spring-damper (the kinematic bicycle was deleted 2026-11-11). It is being rebuilt as BESS and RCWS
+A DeePC controller (Coulson, Lygeros & Dörfler 2019) run on a simulated plant typed as equations,
+by default a coupled two-mass spring-damper (the plant classes were deleted 2026-11-11 and -17). It is being rebuilt as BESS and RCWS
 were: first the scaffolding (rules, safety net, records, a Lab) to expose the gaps and bugs in
 today's code, then the fixes. What it is and how it runs: `README.md`. This file holds the working rules.
 
 **Only advisory rules live here** — the ones no test can catch. A checked rule lives in the
 test that checks it, and that test's docstring carries its incident tag. Each rule points at
-what holds it: an incident in `docs/project/failures.md` (`[D1]`–`[D17]`; a rule without its
+what holds it: an incident in `docs/project/failures.md` (`[D1]`–`[D18]`; a rule without its
 incident degrades into a slogan), a sibling repository's incident (BESS `[B…]`, RCWS `[A…]`),
 or a test. When in doubt, the rules win.
 
@@ -20,10 +20,10 @@ or a test. When in doubt, the rules win.
   one JSON record per run under `results/<piece>/`; flags and examples: `devkit/README.md`);
   `uv run deepc draw <record.json>… [--panel …] [--number N --vs SETTING]` (stills beside the
   records); `uv run lab [--no-open]` (the Lab: one local page over the records; it computes
-  nothing); `uv run python tune.py …` (Optuna over the closed loop's settings).
-- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net,
-  `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch
-  that means to move the numbers, and that branch's PR says so.
+  nothing).
+- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net of
+  frozen numbers went with the old pipeline (2026-11-17); the new one is its own branch, and is
+  remade only on a branch that means to move the numbers, whose PR says so.
 
 ## Workflow
 
@@ -64,14 +64,14 @@ or a test. When in doubt, the rules win.
 Layout is where files live; architecture is what depends on what — keep the two words apart.
 Three roots, one direction, as BESS's: `src/` is the controller a real system would run
 (`deepc`: Hankel matrices, the sparse QP, the excitation check, the constraints it reads, the
-noise-adaptive and online-Hankel variants); `tools/` the simulated world it never sees on
-hardware (`plants`: the plants, their data-collection recipes and excitation signals, the plant
-registry); `devkit/` the bench (`sim`, `harness`: `devkit/README.md`) on Benchlab, which holds
+noise-adaptive and online-Hankel variants no piece reaches); `tools/` the simulated world it never
+sees on hardware (`system`: the typed system, its integrator and sample, a signal typed in t);
+`devkit/` the bench (`harness`: the pieces, `devkit/README.md`) on Benchlab, which holds
 the records, charts, `deepc` command and Lab, taken by a range in `pyproject.toml` at the commit
 `uv.lock` holds: a change to those is made in Benchlab, of which DeePC uses only what its README
 lists for a project (`tests/test_bench.py`; `devkit/README.md`). Imports run `src ← tools ←
 devkit` and stay flat (`import deepc`, never `import src.deepc`), held by `tests/test_roots.py`;
-inside devkit, by `tests/test_devkit_layers.py`. `tune.py` stays at the root until a branch retires it.
+inside devkit, by `tests/test_devkit_layers.py`.
 
 The judgment calls no test can make yet:
 
@@ -112,8 +112,8 @@ say "I don't know — here is the experiment", then run it. One rule, four faces
 - In code — a comment states what the code DOES, checked against the lines below it;
   identifiers name the condition, never its cause. `[D6]`
 - In figures — they DESCRIBE, never conclude (skill `figure-conventions`): axis labels name the
-  quantity (t, u1, y1, x1), no units — the old pieces keep theirs until rewritten; a legend
-  naming every trace when more than one, nothing else, no title. A bound names the quantity it
+  quantity (t, u1, y1, x1), no units; a legend naming every trace when more than one, nothing
+  else, no title. A bound names the quantity it
   bounds. `[D7]`
 - In error handling — fail LOUD: no swallowed exceptions, no stand-in answer for one the code
   failed to compute. A solver status is counted by its own name in the record, and a fallback

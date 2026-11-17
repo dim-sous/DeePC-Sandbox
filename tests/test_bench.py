@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchlab.cli import main
 from benchlab.testing import check_project
 
 from tests.lab_runs import make_runs
@@ -14,10 +13,5 @@ from tests.lab_runs import make_runs
 def test_every_piece_plugs_into_the_bench(tmp_path) -> None:
     root, out_dir = make_runs(tmp_path)
     out = Path(root) / out_dir
-    system = out / "system" / "default.json"
-    main(["run", "system", "--name", "default", "--out-dir", str(out)])
-    main(["run", "open_loop", "--set", f"system_run={system}", "--name", "default",
-          "--out-dir", str(out)])
-    check_project(runs=[system, out / "open_loop" / "default.json",
-                        out / "dataset" / "default.json", out / "closed_loop" / "first.json",
-                        out / "closed_loop" / "second.json"])
+    check_project(runs=[out / "system" / "default.json", out / "open_loop" / "default.json",
+                        out / "closed_loop" / "first.json", out / "closed_loop" / "second.json"])

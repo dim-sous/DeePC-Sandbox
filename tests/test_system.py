@@ -11,7 +11,7 @@ from scipy.linalg import expm
 
 from harness import get_component
 from benchlab import with_overrides
-from system import ATOL, RTOL, hold, parse
+from system import ATOL, RTOL, hold, parse, parse_signal
 
 SYSTEM = get_component("system")
 
@@ -239,3 +239,29 @@ def test_the_default_run_draws_bode_and_three_responses_with_no_unit() -> None:
     assert by["bode-magnitude"].x_log and by["bode-magnitude"].y_log and by["bode-phase"].x_log
     assert not by["step"].x_log
     assert all("[" not in s.x_label + s.y_label for s in rec.series())
+
+
+def test_a_signal_reads_t_and_a_step_and_spreads_a_constant_row() -> None:
+    """A reference row is an expression in t (the developer's 3a, docs/project/design.md); a step
+    is SymPy's Heaviside, 1/2 at 0 as NumPy evaluates it after lambdify (SymPy 1.14)."""
+    read, signal = parse_signal(["sin(2*pi*0.1*t)", "Heaviside(t - 1)", "0.5"])
+    t = np.array([0.0, 1.0, 2.5])
+    assert read == ("sin(0.2*pi*t)", "Heaviside(t - 1.0)", "0.500000000000000")
+    out = signal(t)
+    assert out.shape == (3, 3)
+    assert np.allclose(out[:, 0], np.sin(2 * np.pi * 0.1 * t), rtol=0, atol=1e-15)
+    assert out[:, 1].tolist() == [0.0, 0.5, 1.0] and out[:, 2].tolist() == [0.5, 0.5, 0.5]
+
+
+@pytest.mark.parametrize("rows,words", [
+    (["x1"], "r1 = 'x1' names ['x1']"),
+    (["u1 + t"], "r1 = 'u1 + t' names ['u1']"),
+    (["t", "__import__"], "r2 = '__import__' names ['__import__']"),
+    (["t;"], "r1 = 't;' holds [';']"),
+    (["1/0"], "r1 = '1/0' is not an expression"),
+    (["t", " "], "r2 is empty"),
+    ([], "no row: r1 = … is needed"),
+])
+def test_what_a_signal_cannot_read_is_refused_in_words(rows, words) -> None:
+    with pytest.raises(ValueError, match=re.escape(words)):
+        parse_signal(rows)

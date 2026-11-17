@@ -26,8 +26,9 @@ uv run pytest
 
 Run the whole suite, locally: it is the PR gate. Report the real result and its wall time; if
 a test fails, say so and show its output. A branch meant to move no number keeps the safety
-net (`tests/test_reference.py`) green; a branch meant to move numbers remakes it
-(`uv run python -m tests.reference.make`) and says which cases moved and why.
+net of frozen numbers green, and shows bit for bit that what it moved did not move; a branch
+meant to move numbers remakes the net and says which cases moved and why. Between 2026-11-17 and
+the branch that makes the new net there is none: compare records before and after instead.
 
 ## 3. Run the code review yourself
 

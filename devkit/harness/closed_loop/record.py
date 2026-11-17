@@ -1,16 +1,16 @@
-"""What one run of the closed-loop piece leaves behind, and the panels and numbers it declares.
+"""What one run of the closed-loop piece leaves behind: at every sample, the inputs the plant
+applied, the outputs it measured (noise included) and the same outputs before the noise, the
+reference, the true states and the disturbances; at every solve, the solver's status, the solver
+that answered, the objective, ‖σ_y‖₂ and the solve's wall-clock time. One chart per channel
+against t, the reference on its output's chart and the actuator bounds on their input's, and the
+solver's charts against the time of each solve; named as the developer names them (2026-11-11):
+u1…, y1…, x1…, r1…, d1…, t, no units. The true states are drawn for the developer; the
+controller never reads them.
 
-The arrays are the ones ``run_simulation`` returns, under names of their own: the time grid and
-the outputs, inputs and reference over the warm-up and the loop (``time``), and one entry per
-solve for the solver's own (``statuses``, ``cost``, ``sigma_y_norm``, ``lambda_g``,
-``solve_time_s``). A value a solve left without one is NaN in its array, never dropped. Every
-number is a reduction of an array on this record. Solves are counted by status, each status its
-own number, so an inaccurate solve is never counted as an optimal one (D2); by the solver that
-answered, and the solves that left no solution, where zeros were applied, are counted (D3),
-all through ``sim.simulation.solve_counts``. Every axis carries
-its unit, a channel's the plant's own (``input_units``, ``output_units``). The words follow the
-developer's pattern (``docs/project/lab-words.md``). No chart declares a pooling statistic: the
-closed loop holds no seed of its own, so its runs are never replicates of one run.
+Every number is a reduction of an array on this record. The RMSE of each output is taken on
+h(x_k) - r_k, the plant's own output before the noise, not on the measured y (CLAUDE.md: the
+plant's state generates the scores). Solves are counted by status, each status its own number
+(D2), and by the solver that answered (D3).
 """
 
 from __future__ import annotations
@@ -19,21 +19,13 @@ import dataclasses
 
 import numpy as np
 
-from benchlab import Number, Provenance, Series, bound_refs
+from benchlab import Number, Provenance, Series
 from benchlab import Record as _Record
 
 from .config import Config
 
-_OUTPUTS, _INPUTS, _SOLVER = "Outputs", "Inputs", "Solver"
-
-
-def _metric_words(name: str) -> str:
-    """A plant metric's words from its code name: ``rmse_position_combined`` reads "Position
-    combined RMSE"."""
-    if not name.startswith("rmse_"):
-        return name[:1].upper() + name[1:].replace("_", " ")
-    words = name[len("rmse_"):].replace("_", " ")
-    return f"{words[:1].upper()}{words[1:]} RMSE"
+_OUTPUTS, _INPUTS, _STATES, _DISTURBANCES, _SOLVER = (
+    "Outputs", "Inputs", "States", "Disturbances", "Solver")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -41,25 +33,19 @@ class Record(_Record):
     name: str
     config: Config
     provenance: Provenance | None
-    constants: dict                 # the resolved DeePCConfig, the plant's step, the rank of H_L(u), the dataset run
-    inputs: list                    # input channel names
-    outputs: list                   # output channel names
-    input_units: list               # the unit of each input, the plant's own
-    input_bounds: np.ndarray        # (m, 2) each input's [lower, upper] bound: the plant's get_constraints, which its step clips to
-    output_units: list              # the unit of each output, the plant's own
-    plant_metrics: list             # the names the plant's compute_custom_metrics returned
-    plant_metric_units: list        # their units, the plant's own (metric_units)
-    time: np.ndarray                # (T,) [s] on the config's step, warm-up included
-    u: np.ndarray                   # (T, m) the controller's inputs, before the plant's own clipping
-    y: np.ndarray                   # (T, p) outputs (tracking errors)
-    reference: np.ndarray           # (T, ref_dim) the waypoints
-    statuses: list                  # (K,) the solver's status per solve
-    solvers: list                   # (K,) the solver that answered per solve (OSQP, or SCS after a SolverError)
-    zero_input: list                # (K,) True where the solve left no solution and zeros were applied
-    cost: np.ndarray                # (K,) objective per solve
-    sigma_y_norm: np.ndarray        # (K,) 2-norm of the past-output slack per solve
-    lambda_g: np.ndarray            # (K,) lambda_g used per solve
-    solve_time_s: np.ndarray        # (K,) wall-clock time per solve
+    constants: dict          # the open-loop run and its plant; r as read; the controller as built
+    t: np.ndarray            # (K,) the sample times k T_s, warm-up included
+    u: np.ndarray            # (K, m) the inputs the plant applied: the controller's, then clipped
+    y: np.ndarray            # (K, p) the outputs measured, h(x_k) plus noise: what DeePC reads
+    y_true: np.ndarray       # (K, p) h(x_k), the outputs before the noise
+    r: np.ndarray            # (K, p) the reference r(t_k)
+    x: np.ndarray            # (K, n) the true states x_k
+    d: np.ndarray            # (K, r) the disturbances d_k, held over each step
+    statuses: list           # (S,) the solver's status per solve, S = K - T_ini
+    solvers: list            # (S,) the solver that answered per solve (OSQP, or SCS after a SolverError)
+    cost: np.ndarray         # (S,) the objective per solve
+    sigma_y_norm: np.ndarray  # (S,) ‖σ_y‖₂ per solve
+    solve_time: np.ndarray   # (S,) wall-clock time per solve
     numbers: dict
 
     component = "closed_loop"
@@ -75,52 +61,45 @@ class Record(_Record):
         return {s: self.solvers.count(s) for s in dict.fromkeys(self.solvers)}
 
     def series(self) -> tuple[Series, ...]:
-        t, step = self.time, np.arange(len(self.statuses))
-        out = [Series(name=f"output-{c}".replace("_", "-"), x=t, x_label="Time [s]",
-                      y_label=f"{c} [{unit}]", traces=((c, self.y[:, j]),), group=_OUTPUTS,
-                      title=c, doc=f"{c} at each step, warm-up included")
-               for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
-        out += [Series(name=f"input-{c}".replace("_", "-"), x=t, x_label="Time [s]",
-                       y_label=f"{c} [{unit}]", traces=((c, self.u[:, j]),), group=_INPUTS,
-                       refs=bound_refs(self.input_bounds[j], c, unit),
-                       title=c, doc=f"The controller's {c} at each step, warm-up included, before "
-                                    f"the plant's own clipping; the plant's bounds on it")
-                for j, (c, unit) in enumerate(zip(self.inputs, self.input_units))]
-        out += [Series(name=name, x=step, x_label="Solve [-]", y_label=f"{title} [{unit}]",
-                       traces=((title, values),), group=_SOLVER, title=title,
-                       doc=f"{doc} at each solve")
-                for name, title, unit, doc, values in (
-                    ("solve-time", "Solve time", "s", "Wall-clock time of the solve",
-                     self.solve_time_s),
-                    ("cost", "J", "-", "Objective value J", self.cost),
-                    ("sigma-y-norm", "‖σ_y‖₂", "-", "2-norm of the past-output slack σ_y",
-                     self.sigma_y_norm),
-                    ("lambda-g", "λ_g", "-", "λ_g the solve used", self.lambda_g))]
+        def bounds(j: int) -> tuple[tuple[str, float], ...]:
+            lows, highs = self.constants["u_min"], self.constants["u_max"]
+            return tuple((f"{side} bound of u{j + 1}", float(v))
+                         for side, v in (("Lower", lows[j]), ("Upper", highs[j]))
+                         if np.isfinite(v))
+        out = [Series(name=f"y{i + 1}", x=self.t, x_label="t", y_label=f"y{i + 1}",
+                      traces=((f"y{i + 1}", self.y[:, i]), (f"r{i + 1}", self.r[:, i])),
+                      group=_OUTPUTS, title=f"y{i + 1}")
+               for i in range(self.y.shape[1])]
+        out += [Series(name=f"u{j + 1}", x=self.t, x_label="t", y_label=f"u{j + 1}",
+                       traces=((f"u{j + 1}", self.u[:, j]),), refs=bounds(j), group=_INPUTS,
+                       title=f"u{j + 1}")
+                for j in range(self.u.shape[1])]
+        out += [Series(name=f"x{i + 1}", x=self.t, x_label="t", y_label=f"x{i + 1}",
+                       traces=((f"x{i + 1}", self.x[:, i]),), group=_STATES, title=f"x{i + 1}")
+                for i in range(self.x.shape[1])]
+        out += [Series(name=f"d{k + 1}", x=self.t, x_label="t", y_label=f"d{k + 1}",
+                       traces=((f"d{k + 1}", self.d[:, k]),), group=_DISTURBANCES,
+                       title=f"d{k + 1}")
+                for k in range(self.d.shape[1])]
+        solved = self.t[len(self.t) - len(self.statuses):]      # the samples a solve chose u at
+        out += [Series(name=name, x=solved, x_label="t", y_label=title,
+                       traces=((title, values),), group=_SOLVER, title=title)
+                for name, title, values in (("solve-time", "Solve time", self.solve_time),
+                                            ("cost", "J", self.cost),
+                                            ("sigma-y-norm", "‖σ_y‖₂", self.sigma_y_norm))]
         return tuple(out)
 
     def number_specs(self) -> tuple[Number, ...]:
-        out = [Number(f"rmse_{c}", f"{c} RMSE", unit, headline=(j == 0), group=_OUTPUTS,
-                      doc=f"Root mean square of {c} over every step, warm-up included")
-               for j, (c, unit) in enumerate(zip(self.outputs, self.output_units))]
-        out += [Number(name, _metric_words(name), unit, group=_OUTPUTS,
-                       doc="The plant's own metric (compute_custom_metrics)")
-                for name, unit in zip(self.plant_metrics, self.plant_metric_units)]
-        out += [Number(f"solves_{s}", f"Solves: {s.replace('_', ' ')}", group=_SOLVER,
-                       doc=f"Solves whose status is exactly {s!r}")
+        out = [Number(f"y{i + 1}_rmse", f"y{i + 1} RMSE", headline=(i == 0), group=_OUTPUTS)
+               for i in range(self.y.shape[1])]
+        out += [Number("clipped", "Clipped inputs", group=_INPUTS)]
+        out += [Number(f"solves_{s}", f"Solves: {s.replace('_', ' ')}", group=_SOLVER)
                 for s in self.status_counts()]
-        out += [Number(f"solves_by_{s}", f"Solves by {s}", group=_SOLVER,
-                       doc=f"Solves {s} answered" + (", after OSQP raised a SolverError"
-                                                     if s == "SCS" else ""))
+        out += [Number(f"solves_by_{s}", f"Solves by {s}", group=_SOLVER)
                 for s in self.solver_counts()]
-        out += [Number("zero_inputs_applied", "Zero inputs applied", group=_SOLVER,
-                       doc="Solves that left no solution, after which the controller's zero "
-                           "input was applied"),
-                Number("solve_time_mean_s", "Mean solve time", "s", group=_SOLVER,
-                       doc="Mean wall-clock time of a solve"),
-                Number("solve_time_max_s", "Max solve time", "s", group=_SOLVER,
-                       doc="Longest wall-clock time of a solve"),
-                Number("sigma_y_norm_mean", "Mean ‖σ_y‖₂", group=_SOLVER,
-                       doc="Mean 2-norm of the past-output slack σ_y"),
-                Number("sigma_y_norm_max", "Max ‖σ_y‖₂", group=_SOLVER,
-                       doc="Largest 2-norm of the past-output slack σ_y")]
+        out += [Number("solve_time_mean", "Mean solve time", group=_SOLVER),
+                Number("solve_time_std", "Solve time std", group=_SOLVER),
+                Number("solve_time_max", "Max solve time", group=_SOLVER),
+                Number("sigma_y_norm_mean", "Mean ‖σ_y‖₂", group=_SOLVER),
+                Number("sigma_y_norm_max", "Max ‖σ_y‖₂", group=_SOLVER)]
         return tuple(out)
