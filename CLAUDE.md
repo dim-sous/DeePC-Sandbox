@@ -1,9 +1,9 @@
 # DeePC Sandbox — data-enabled predictive control on simulated plants
 
-A DeePC controller (Coulson, Lygeros & Dörfler 2019) run on a simulated plant typed as equations,
-by default a coupled two-mass spring-damper (the plant classes were deleted 2026-11-11 and -17). It is being rebuilt as BESS and RCWS
-were: first the scaffolding (rules, safety net, records, a Lab) to expose the gaps and bugs in
-today's code, then the fixes. What it is and how it runs: `README.md`. This file holds the working rules.
+A DeePC controller (Coulson, Lygeros & Dörfler 2019) on a simulated plant typed as equations, by
+default a coupled two-mass spring-damper (plant classes deleted 2026-11-11 and -17). Rebuilt as BESS
+and RCWS were: first the scaffolding (rules, safety net, records, a Lab) to expose the gaps and bugs,
+then the fixes. What it is and how it runs: `README.md`. This file holds the working rules.
 
 **Only advisory rules live here** — the ones no test can catch. A checked rule lives in the
 test that checks it, and that test's docstring carries its incident tag. Each rule points at
@@ -21,9 +21,9 @@ or a test. When in doubt, the rules win.
   `uv run deepc draw <record.json>… [--panel …] [--number N --vs SETTING]` (stills beside the
   records); `uv run lab [--no-open]` (the Lab: one local page over the records; it computes
   nothing).
-- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net of
-  frozen numbers went with the old pipeline (2026-11-17); the new one is its own branch, and is
-  remade only on a branch that means to move the numbers, whose PR says so.
+- The suite: `uv run pytest`, whole — it runs LOCALLY and IS the PR gate. Its safety net,
+  `tests/reference/`, is remade only by `uv run python -m tests.reference.make`, on a branch
+  that means to move the numbers, whose PR says so, or on the computer that is to hold it.
 
 ## Workflow
 
@@ -42,8 +42,8 @@ or a test. When in doubt, the rules win.
 - Short supervised stretches; ask before ANY multi-agent fan-out, every time (RCWS `[A12]`).
   "Investigate X" means diagnose-and-report. Asked to finish or resume something, run exactly
   the missing pieces — never a widened scope.
-- A refactor proves itself by NOT changing the numbers: the safety net, bit for bit; a test
-  that checks a key exists proves nothing. (BESS `[B4]`)
+- A refactor proves itself by NOT changing the numbers: the safety net, bit for bit on the
+  computer that made it, else within its tolerance, said so; a key's presence proves nothing. `[B4]`
 - Name the conditions every number came from — the plant, the scenario, the seed, the
   duration, and every setting off its default, stated in full; a default config is a posture,
   not a neutral one; a run at one condition is that condition, not a capability. `[D1]`

@@ -161,7 +161,8 @@ at which u and in what region equilibria are sought (a pendulum has one at every
   in the last bit (largest change 3e-30), the bicycle's loops by up to 6e-8 (2026-11-11,
   `git archive master` run there). PR #13 remade it on their computer, so the cloud may now fail
   it the other way. Which computer makes the net, or what it compares bit for bit, is theirs to
-  decide (asked at the #13 hand-off, not answered).
+  decide (asked at the #13 hand-off, not answered). **Answered 2026-11-17: bit for bit per computer** (the new
+  net, below).
 - Seen in the Lab at the #13 hand-off, not explained: on the masses, sinusoidal, 3 s, defaults,
   e_x1 falls to about −1.5 m while F1 stays between −1.5 and +0.6 N, never at its 5 N bound; the
   same on `master`. For the maths phase.
@@ -194,8 +195,8 @@ test in `tests/test_system.py`; `pyproject.toml` takes `benchlab>=0.7,<1` from B
 and `uv.lock` holds `5023526` (`v0.7.0`). The suite on Benchlab's pushed branch, whose tree that
 commit's equals: 132 passed in 111 s. The developer drove it in the Lab ("Looks right").
 
-**2026-11-17, the rewrite's branch 3, framework only** (on this session's branch; built and handed
-off, not yet committed when this was written). The developer: "No math-based edit/decisions yet,
+**2026-11-17, the rewrite's branch 3, framework only** (merged as PR #23, `7cbd032`, on the
+developer's word after a hand-off in the Lab). The developer: "No math-based edit/decisions yet,
 only framework/structure work" ([[project-scope]]). Closed loop now runs on a saved Open loop run
 (`harness.open_loop.open_loop_of`, run again and checked); the loop's plant is that run's, sampled
 by the same `system.measure` and `system.step`; r typed per output in t (`system.parse_signal`, with
@@ -209,9 +210,25 @@ solution in 41 s where OSQP found one). Measured while planning, for the maths p
 ‖g‖₁ at λ_g 10 made OSQP stop 34 of 40 solves at its iteration limit (~1.4 s each), Clarabel
 (installed with CVXPY) solved all 40 (~0.8 s).
 
-**Next after it:** the new safety net (decision 3h; which computer makes it is the developer's
-call, still open); then S2/S3 of the system analysis or the maths phase, the developer's pick. Found
-on the way, not fixed: `LIBRARIES` in `devkit/harness/__init__.py` omits SymPy and python-control,
-which the open and closed loops' numbers depend on; `docs/project/lab-words.md` does not list the
+**2026-11-17, the new safety net** (branch after #23; the developer: "Let's focus on work isolated
+in this repo and non math based", then picked it). `tests/reference/` (`cases.py`, `make.py`,
+six cases: system default and pendulum, open loop default and clipped, closed loop default at
+2 s and a 1 s step), `tests/test_reference.py`. **Answered, the old open question of which computer
+makes the net:** "Bit for bit, per computer" -- the manifest records the computer (OS, machine,
+CPU model, Python, library versions); there every array byte for byte, elsewhere within
+each finite value within 1e-9 of its array's largest finite |value|, inf and NaN where they were,
+the pass warning that it was not bit for bit.
+Made in the cloud container; on the developer's computer it runs in tolerance mode until they
+remake it there. Measured: a 1e-12 change of the warm-up input fails both closed-loop cases byte
+for byte; in tolerance mode only ‖σ_y‖₂ catches it (largest change 3.9e-9 of its scale), and that
+near-zero array (~1e-14) is the one most likely to differ on another computer. The net's branch
+also added SymPy and python-control to `harness.LIBRARIES` (code review: the net read a second list).
+
+**Next after it:** the developer's pick, among what stays in this repo with no maths (2026-11-17):
+housekeeping (the leftovers below), the controller tidy-up (bench settings in `DeePCConfig`, the
+code no piece reaches, D6, D18's ±∞ rows -- their call whether that counts as maths); outside
+it, taking RunLab v0.10.0 (`uv lock --upgrade-package benchlab`, no edit expected: RunLab's R6
+keeps `benchlab` as a stand-in until 1.0, when DeePC's install lines and `<1` must change). Found
+on the way, not fixed: `docs/project/lab-words.md` does not list the
 System piece's pole map; `devkit/README.md`'s Benchlab table still names `tests/test_lab.py`, gone
 with R1.
