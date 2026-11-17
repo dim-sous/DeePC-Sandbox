@@ -29,7 +29,7 @@ TITLE = "DeePC Lab"
 #: The repository whose commit stamps a record.
 ROOT = Path(__file__).resolve().parent.parent.parent
 #: The libraries a run's numbers depend on, recorded with every run.
-LIBRARIES: tuple[str, ...] = ("numpy", "scipy", "cvxpy", "osqp", "scs")
+LIBRARIES: tuple[str, ...] = ("numpy", "scipy", "sympy", "control", "cvxpy", "osqp", "scs")
 #: Every word the Lab's page writes itself, a slot Benchlab names for each.
 WORDS = Path(__file__).with_name("words.toml")
 

@@ -101,8 +101,13 @@ The suite runs locally and is the gate for every change. It holds:
   every `file:line` pointer in this README, METHODS.md and failures.md must exist, and each pointer must fall
   inside its file. Whether a pointer still points at the code it describes is not checked.
 
-There is no safety net of frozen numbers between 2026-11-17 and the branch that makes the new one:
-the old one froze the old pipeline's numbers and went with it.
+**The safety net** (`tests/reference/`, `tests/test_reference.py`): what each piece produces at
+stated settings, frozen -- two System runs, two Open loop runs, two short Closed loops -- with
+every setting each case ran under and the computer that made the files. On that computer every
+array must match byte for byte; on another, each value within 1e-9 of its array's largest finite
+value, every inf or NaN where it was, and the test warns that it compared within tolerance, not bit for bit (the developer,
+2026-11-17). Remade only by `uv run python -m tests.reference.make`, on a change meant to move the
+numbers or on the computer that is to hold them.
 
 ## Project layout
 

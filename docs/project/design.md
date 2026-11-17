@@ -164,7 +164,9 @@ wait for the maths phase. Measured while planning (40 solves at those settings w
 **Decided (3e–3h)**, 2026-11-17: (3e) the first T_ini samples apply zero input, as the old loop's
 warm-up; (3f) a solve with no solution stops the run, naming the sample, the status and the solver;
 (3g) the loop has its own seed, default 1, not the data's 42; (3h) the new safety net is made on its
-own branch, after the developer has judged the new loop in the Lab.
+own branch, after the developer has judged the new loop in the Lab. Made 2026-11-17
+(`tests/reference/`): bit for bit on the computer that made it, within 1e-9 elsewhere, said so (the
+developer's pick, "Bit for bit, per computer").
 
 ## 4. The Lab
 

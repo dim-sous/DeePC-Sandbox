@@ -44,6 +44,9 @@ metadata:
 - **Lab words** follow their pattern (a capital first, no articles, acronyms, the standard
   mathematical terms; `docs/project/lab-words.md`); they do not want to be asked word by word.
 - **Scope** is theirs: [[project-scope]]. Keep a branch to its gap; say plainly what is left out.
+- **The safety net compares bit for bit per computer** (2026-11-17, their pick): byte for byte on
+  the computer the manifest names, within 1e-9 elsewhere, and a pass in tolerance says so. Say
+  which mode a hand-off's suite ran in.
 - **No maths decisions in the platform phase** (2026-11-17, answering a solver/duration question
   with "No math-based edit/decisions yet, only framework/structure work"): do not ask them to
   choose a solver, a norm, a regulariser or a default that is a maths posture; keep today's and
