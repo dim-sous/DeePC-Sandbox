@@ -25,15 +25,15 @@ from harness import COMPONENTS, NAMES
 
 ROOT = Path(__file__).resolve().parent.parent
 DEVKIT = ROOT / "devkit"
-#: Not a devkit package, but held like one: before the move ``sim`` could not import ``record``,
-#: and the pieces could not import ``figure``, ``terminal`` or ``lab``.
+#: Not a devkit package, but held like one: before the move the pieces could not import
+#: ``figure``, ``terminal`` or ``lab``.
 _BENCHLAB = "benchlab"
 #: Who may import whom among the devkit's packages and Benchlab, by dotted prefix. ``harness``
 #: covers the registry and the pieces, which declare their settings and records on the names
 #: Benchlab holds for a project; how much of Benchlab any file here may reach is held by
-#: Benchlab's own check (``tests/test_bench.py``). ``sim`` is the bench's simulation code the
-#: pieces drive, and reaches neither.
-_MAY_IMPORT = {"sim": set(), "harness": {"sim", _BENCHLAB}}
+#: Benchlab's own check (``tests/test_bench.py``). The bench's old simulation code, ``sim``, went
+#: with the old closed loop; the pieces simulate through ``tools/system``.
+_MAY_IMPORT = {"harness": {_BENCHLAB}}
 
 
 def _sources(package: str) -> list[Path]:

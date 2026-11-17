@@ -29,7 +29,7 @@ import numpy as np
 import sympy as sp
 from sympy.parsing.sympy_parser import convert_xor, parse_expr, standard_transformations
 
-__all__ = ["FUNCTIONS", "Parsed", "parse"]
+__all__ = ["FUNCTIONS", "SIGNAL_NAMES", "Parsed", "parse", "parse_signal"]
 
 #: The function names (and the constant pi) a typed expression may use, as SymPy objects.
 FUNCTIONS: dict[str, object] = {"sin": sp.sin, "cos": sp.cos, "tan": sp.tan, "exp": sp.exp,
@@ -75,17 +75,23 @@ def _rows(rows: Sequence[str], label: str) -> list[str]:
     return out
 
 
-def _checked(text: str, where: str) -> set[str]:
-    """The variable names row ``where`` uses, or a refusal in words."""
-    where = f"{where} = {text!r}"
+def _names(text: str, where: str, vocabulary: str) -> set[str]:
+    """The names row ``where`` uses, after its characters and dots are checked; ``vocabulary``
+    says in a refusal which names a row may use."""
     if not _CHARS.fullmatch(text):
         bad = sorted(set(text) - set("0123456789+-*/^(). _") - {c for c in text if c.isalnum()})
-        raise ValueError(f"{where} holds {bad}: only numbers, x1…, u1…, d1…, theta1…, the "
-                         f"functions {sorted(FUNCTIONS)}, + - * / ^ ** and parentheses are read")
+        raise ValueError(f"{where} holds {bad}: only numbers, {vocabulary}, + - * / ^ ** and "
+                         f"parentheses are read")
     bare = _NUMBER.sub(" ", text)
     if "." in bare:
         raise ValueError(f"{where} has a '.' outside a number")
-    names = set(_NAME.findall(bare))
+    return set(_NAME.findall(bare))
+
+
+def _checked(text: str, where: str) -> set[str]:
+    """The variable names row ``where`` uses, or a refusal in words."""
+    where = f"{where} = {text!r}"
+    names = _names(text, where, f"x1…, u1…, d1…, theta1…, the functions {sorted(FUNCTIONS)}")
     unknown = sorted(n for n in names if n not in FUNCTIONS and not _VARIABLE.fullmatch(n))
     if unknown:
         raise ValueError(f"{where} names {unknown}: the names read are x1…, u1…, d1…, theta1… "
@@ -109,6 +115,29 @@ def _indices(names: set[str], kind: str) -> set[int]:
 
 def _union(sets: list[set[str]], kind: str) -> set[int]:
     return set().union(*(_indices(s, kind) for s in sets))
+
+
+def _read(text: str, where: str, local: dict) -> sp.Expr:
+    """Row ``where``, already checked token by token, as SymPy reads it with the names ``local``,
+    every number a float; refused in words when it is not a finite real expression."""
+    where = f"{where} = {text!r}"
+    try:
+        expr = parse_expr(_as_floats(text, where), local_dict=dict(local),
+                          global_dict=dict(_GLOBALS), transformations=_TRANSFORMS)
+    # what parse_expr raises on text that is not an expression: unbalanced parentheses
+    # (TokenError), a misplaced operator (SyntaxError), a function called wrongly (TypeError),
+    # a division by a zero number (ZeroDivisionError)
+    except (tokenize.TokenError, SyntaxError, TypeError, ZeroDivisionError) as exc:
+        raise ValueError(f"{where} is not an expression ({type(exc).__name__}: {exc})") from exc
+    if not isinstance(expr, sp.Expr):          # "()" reads as a Python tuple
+        raise ValueError(f"{where} is not an expression (it reads as {expr!r})")
+    if expr.has(sp.zoo, sp.nan, sp.oo, -sp.oo):
+        raise ValueError(f"{where} reads as {expr}, which is not finite")
+    if expr.has(sp.I):
+        raise ValueError(f"{where} reads as {expr}, which is not real")
+    if any(abs(c) > sys.float_info.max for c in expr.atoms(sp.Float)):
+        raise ValueError(f"{where} holds a constant too large for a float")
+    return expr
 
 
 def parse(f_rows: Sequence[str], h_rows: Sequence[str], theta: Sequence[float]) -> Parsed:
@@ -149,28 +178,8 @@ def parse(f_rows: Sequence[str], h_rows: Sequence[str], theta: Sequence[float]) 
     thetas = sp.symbols(f"theta1:{q + 1}") if q else ()
     local = {**FUNCTIONS, **{str(s): s for s in (*xs, *us, *ds, *thetas)}}
 
-    def read(text: str, where: str) -> sp.Expr:
-        where = f"{where} = {text!r}"
-        try:
-            expr = parse_expr(_as_floats(text, where), local_dict=dict(local),
-                              global_dict=dict(_GLOBALS), transformations=_TRANSFORMS)
-        # what parse_expr raises on text that is not an expression: unbalanced parentheses
-        # (TokenError), a misplaced operator (SyntaxError), a function called wrongly (TypeError),
-        # a division by a zero number (ZeroDivisionError)
-        except (tokenize.TokenError, SyntaxError, TypeError, ZeroDivisionError) as exc:
-            raise ValueError(f"{where} is not an expression ({type(exc).__name__}: {exc})") from exc
-        if not isinstance(expr, sp.Expr):          # "()" reads as a Python tuple
-            raise ValueError(f"{where} is not an expression (it reads as {expr!r})")
-        if expr.has(sp.zoo, sp.nan, sp.oo, -sp.oo):
-            raise ValueError(f"{where} reads as {expr}, which is not finite")
-        if expr.has(sp.I):
-            raise ValueError(f"{where} reads as {expr}, which is not real")
-        if any(abs(c) > sys.float_info.max for c in expr.atoms(sp.Float)):
-            raise ValueError(f"{where} holds a constant too large for a float")
-        return expr
-
-    f_exprs = [read(t, f"x{i}'") for i, t in enumerate(f_parts, 1)]
-    h_exprs = [read(t, f"y{j}") for j, t in enumerate(h_parts, 1)]
+    f_exprs = [_read(t, f"x{i}'", local) for i, t in enumerate(f_parts, 1)]
+    h_exprs = [_read(t, f"y{j}", local) for j, t in enumerate(h_parts, 1)]
     read_names = {str(s) for e in f_exprs + h_exprs for s in e.free_symbols}
     unused = sorted(set(range(1, q + 1)) - _indices(read_names, "theta"))
     if unused:
@@ -198,3 +207,40 @@ def parse(f_rows: Sequence[str], h_rows: Sequence[str], theta: Sequence[float]) 
                   h_read=tuple(map(str, h_exprs)), theta=theta,
                   f=lambda x, u, d: np.array(f_raw(x, u, d, theta), dtype=float),
                   h=lambda x: np.array(h_raw(x, theta), dtype=float), jacobians=jacobians)
+
+
+#: The names a signal row may use beside the functions: the time ``t`` and the unit step
+#: ``Heaviside``, SymPy's, whose value at 0 is 1/2 (as NumPy evaluates it after
+#: ``sympy.lambdify``, SymPy 1.14).
+SIGNAL_NAMES: dict[str, object] = {"t": sp.Symbol("t"), "Heaviside": sp.Heaviside}
+
+
+def parse_signal(rows: Sequence[str], label: str = "r{}"
+                 ) -> tuple[tuple[str, ...], Callable[[np.ndarray], np.ndarray]]:
+    """Rows ``rows``, one per channel (``label`` names row i, from 1), each an expression in the
+    time ``t``, numbers, ``FUNCTIONS`` and ``Heaviside``, checked token by token as a system row
+    is. Returns the rows as SymPy reads them and ``signal(t) -> (len(t), len(rows))`` for times
+    ``t`` (K,); anything else raises ``ValueError`` naming the row."""
+    parts = _rows(rows, label)
+    if not parts:
+        raise ValueError(f"no row: {label.format(1)} = … is needed")
+    vocabulary = f"t, Heaviside, the functions {sorted(FUNCTIONS)}"
+    local = {**FUNCTIONS, **SIGNAL_NAMES}
+    exprs = []
+    for i, text in enumerate(parts, 1):
+        where = label.format(i)
+        names = _names(text, f"{where} = {text!r}", vocabulary)
+        unknown = sorted(names - set(local))
+        if unknown:
+            raise ValueError(f"{where} = {text!r} names {unknown}: the names read are "
+                             f"{vocabulary}")
+        exprs.append(_read(text, where, local))
+    raw = sp.lambdify((SIGNAL_NAMES["t"],), exprs, "numpy")
+
+    def signal(t: np.ndarray) -> np.ndarray:
+        t = np.asarray(t, dtype=float)
+        # a row with no t in it evaluates to one number: spread over the times
+        return np.column_stack([np.broadcast_to(np.asarray(v, dtype=float), t.shape)
+                                for v in raw(t)])
+
+    return tuple(map(str, exprs)), signal

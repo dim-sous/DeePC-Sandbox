@@ -1,9 +1,8 @@
 ---
 name: figure-conventions
-description: Checklist for anything that draws or annotates a figure (a record's panel declaration, a Lab card, a still, tune.py's report). Figures describe; they never conclude.
-when_to_use: Writing or editing plotting code (a piece's Record declaration, tune.py, or Benchlab's figure layer and Lab, which draw DeePC's charts), annotating a chart, or choosing what a hand-off shows.
+description: Checklist for anything that draws or annotates a figure (a record's panel declaration, a Lab card, a still). Figures describe; they never conclude.
+when_to_use: Writing or editing plotting code (a piece's Record declaration, or Benchlab's figure layer and Lab, which draw DeePC's charts), annotating a chart, or choosing what a hand-off shows.
 paths:
-  - tune.py
   - devkit/harness/**/*.py
 allowed-tools: Read Grep Glob Edit Write Bash
 ---
@@ -17,8 +16,7 @@ corrected. This is the figure face of "evidence over judgement" in `CLAUDE.md`.
 ## What may appear on a figure
 
 - Axis labels naming the quantity: `t`, `u1`, `y1`, `x1`, **no units** (the developer,
-  2026-11-11: "no units anywhere"). The old pieces (`dataset`, `closed_loop` on the plant
-  classes) keep their units until the rewrite replaces them.
+  2026-11-11: "no units anywhere"); every piece since 2026-11-17.
 - A legend naming **every** trace, when there is more than one thing to tell apart. One trace
   is named by its axis labels, so it gets no legend.
 - Scaling that shows the data.
@@ -55,8 +53,7 @@ that sentence goes in the hand-off, not in the figure.
 ## Every figure regenerates
 
 One panel spec is drawn two ways (the Lab's card, a still from `deepc draw`) from what a
-record declares, as in BESS (Benchlab's `benchlab/figure/`); `tune.py`'s HTML report is the one older
-figure left, drawn from the study that wrote it. Either way: never edit an
+record declares, as in BESS (Benchlab's `benchlab/figure/`). Never edit an
 image by hand, and never write a one-off script whose output cannot be made again.
 
 ## What the developer's gate needs

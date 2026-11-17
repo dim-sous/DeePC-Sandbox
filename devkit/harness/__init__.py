@@ -19,7 +19,7 @@ __all__ = ["NAMES", "COMPONENTS", "get_component", "COMMAND", "TITLE", "ROOT", "
            "WORDS"]
 
 #: The registered pieces, in the order every surface shows them.
-NAMES: tuple[str, ...] = ("closed_loop", "dataset", "system", "open_loop")
+NAMES: tuple[str, ...] = ("system", "open_loop", "closed_loop")
 
 #: The command ``pyproject.toml`` installs: the side door, whose line the Lab prints beside
 #: each run it starts.

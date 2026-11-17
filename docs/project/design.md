@@ -151,6 +151,21 @@ does not have (D14), and the two variants, noise-adaptive regularisation and the
 window, which depart from the papers they cite (D16, D17). Any of them comes back on its own
 branch, with a source.
 
+**Built, framework only (2026-11-17).** The developer: "No math-based edit/decisions yet, only
+framework/structure work". So the branch moved the plumbing and left the controller as it was: its
+QP is today's (`src/deepc/controller.py`), not yet [1, eq. (8)] (λ_g on the squared 2-norm by
+default, no low-rank step, OSQP); the form offers today's controller settings at the old coupled
+masses' defaults (T_ini 4, N 20, Q [20, 1, 20, 1], R [0.1, 0.1], λ_g 10, λ_y 10⁴, norms L2 and L1,
+duration 30) and the old `sinusoidal` scenario typed as r. What [1, eq. (8)] asks, and the solver,
+wait for the maths phase. Measured while planning (40 solves at those settings with λ_g on
+‖g‖₁, the default runs, this cloud machine): OSQP stopped 34 of 40 at its iteration limit, about
+1.4 s each; Clarabel, already installed with CVXPY, answered all 40 optimal in about 0.8 s.
+
+**Decided (3e–3h)**, 2026-11-17: (3e) the first T_ini samples apply zero input, as the old loop's
+warm-up; (3f) a solve with no solution stops the run, naming the sample, the status and the solver;
+(3g) the loop has its own seed, default 1, not the data's 42; (3h) the new safety net is made on its
+own branch, after the developer has judged the new loop in the Lab.
+
 ## 4. The Lab
 
 Three pieces, one form each. Charts per run: each $y_i$ with its $r_i$, each $u_j$ with its bounds,

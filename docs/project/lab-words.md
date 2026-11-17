@@ -5,7 +5,7 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 
 > All words begin with a capital letter.
 > Acronyms whenever possible (RMSE, RMS).
-> No articles: "Dataset run", not "the dataset run".
+> No articles: "System run", not "the system run".
 > Standard terminology: the literature's symbols for DeePC's settings (T_s, T_ini, N, Q, R,
 > λ_g, λ_y, σ_y, g, J), σ for a standard deviation.
 
@@ -17,7 +17,7 @@ title and the command whose line it prints beside each run are `TITLE` and `COMM
 `devkit/harness/__init__.py`. The words of what refused something -- the figure layer's, a
 record's, param's, the runner's -- are those layers' own, shown as they are (§1). A chart's
 or a number's code name
-(`output-e-x1`, `rmse_e_x1`) is not a word the page shows as a title: it stays the
+(`sigma-y-norm`, `y1_rmse`) is not a word the page shows as a title: it stays the
 file `deepc draw` writes and a link's address key. No word is on a hover but a greyed control's
 reason and a chart's own -- a point's run and value, and the chart toolbar's button names (Zoom,
 Pan, Zoom in, Zoom out, Reset axes), plotly's -- (Benchlab's `docs/design.md` decision 5, since
@@ -26,8 +26,9 @@ sentence needs them.
 
 **Your word, 2026-11-11:** inputs (manipulated variables) are u1…, outputs (measurements) y1…,
 true states x1…, time t — "the names everywhere (axis labels, chart buttons, EVERYWHERE)" — and
-no units anywhere. The System piece follows it; the Dataset and Closed loop pieces keep the plant
-classes' names (e_x1, F1, …) and units until the rewrite replaces them (`docs/project/design.md`).
+no units anywhere. Every piece follows it since 2026-11-17, when the Dataset piece and the old
+Closed loop, which kept the plant class's names (e_x1, F1, …) and units, were deleted; the
+reference is r1…, beside its output.
 
 ## 1. The page's own words
 
@@ -39,117 +40,16 @@ progress, and what a click says. Beside them the page shows words it does not wr
   (The chart declares no statistic · The runs draw different traces · …), a card that cannot
   draw saying why in its foot (e.g. First declare no panel 'cost'; drawn without them, the
   comparison would leave them out unsaid), and the legends: a run alone is its name; a trace
-  every run holds identically: a, b — e_x1 (identical); a pooled line: Mean of 2 runs · e_x1
+  every run holds identically: a, b — r1 (identical); a pooled line: Mean of 2 runs · y1
 - a record's: the constants it keeps (each `group · key` as the record holds it, e.g.
   deepc_config · lambda_g), and why a file cannot be read, in the loader's words
 - param's and the runner's, on a failed run in the strip and in the form's refusal, e.g.
-  Number parameter 'Config.sim_duration' must be at least 0.0, not -1.0.
+  Integer parameter 'Config.N' must be at least 1, not 0.
 - the controls a card has (the developer's cut, 2026-11-11): a chart card one, its runs
   (Overlay · Split · Mean · RMS); a number card two, X, offering the settings that differ
   between the shown runs by their label, and its runs (All · Mean · RMS)
 
 ## 2. The pieces' own words
-
-### Closed loop (`closed_loop`)
-
-Settings, by group -- `code name`: label [unit]:
-
-- **Data**
-  - `dataset_run`: Dataset run
-- **Scenario**
-  - `scenario`: Scenario
-  - `sim_duration`: Duration [s]
-- **Controller**
-  - `Tini`: T_ini [samples]
-  - `N`: N [samples]
-  - `Q_diag`: Q [-]
-  - `R_diag`: R [-]
-  - `lambda_g`: λ_g [-]
-  - `lambda_y`: λ_y [-]
-  - `lambda_out`: λ_out [-]
-  - `reg_norm_g`: Norm on g [-]
-  - `reg_norm_sigma_y`: Norm on σ_y [-]
-- **Features**
-  - `noise_adaptive`: Noise-adaptive λ
-  - `online_hankel`: Online Hankel
-  - `no_constraints`: No constraints
-- **Noise-adaptive** (folded)
-  - `noise_estimation_window`: W [-]
-  - `baseline_noise_std`: σ_0 [-]
-  - `max_lambda_scaling`: k_max [-]
-  - `constraint_tightening_factor`: c [-]
-- **Online Hankel** (folded)
-  - `hankel_window_size`: Hankel columns [-]
-  - `hankel_warmup_steps`: Warm-up steps [-]
-
-### Dataset (`dataset`)
-
-Settings, by group -- `code name`: label [unit]:
-
-- **Plant**
-  - `plant`: Plant
-  - `Ts`: T_s [s]
-- **Data**
-  - `T_data`: T [samples]
-  - `noise_std_output`: σ_n [output unit]
-- **Run**
-  - `seed`: Seed [-]
-
-Charts of Closed loop (coupled masses run), by group -- `code name`: title · bottom axis · ordinate · legend:
-
-- **Outputs**
-  - `output-e-x1`: e_x1 · Time [s] · e_x1 [m] · e_x1
-  - `output-e-v1`: e_v1 · Time [s] · e_v1 [m/s] · e_v1
-  - `output-e-x2`: e_x2 · Time [s] · e_x2 [m] · e_x2
-  - `output-e-v2`: e_v2 · Time [s] · e_v2 [m/s] · e_v2
-- **Inputs**
-  - `input-F1`: F1 · Time [s] · F1 [N] · F1, Lower bound of F1 [N], Upper bound of F1 [N]
-  - `input-F2`: F2 · Time [s] · F2 [N] · F2, Lower bound of F2 [N], Upper bound of F2 [N]
-- **Solver**
-  - `solve-time`: Solve time · Solve [-] · Solve time [s] · Solve time
-  - `cost`: J · Solve [-] · J [-] · J
-  - `sigma-y-norm`: ‖σ_y‖₂ · Solve [-] · ‖σ_y‖₂ [-] · ‖σ_y‖₂
-  - `lambda-g`: λ_g · Solve [-] · λ_g [-] · λ_g
-
-Numbers of Closed loop (coupled masses run), by group -- `code name`: label [unit]:
-
-- **Outputs**
-  - `rmse_e_x1`: e_x1 RMSE [m]
-  - `rmse_e_v1`: e_v1 RMSE [m/s]
-  - `rmse_e_x2`: e_x2 RMSE [m]
-  - `rmse_e_v2`: e_v2 RMSE [m/s]
-  - `rmse_position_combined`: Position combined RMSE [m]
-- **Solver**
-  - `solves_optimal_inaccurate`: Solves: optimal inaccurate
-  - `solves_optimal`: Solves: optimal
-  - `solves_by_OSQP`: Solves by OSQP (`solves_by_SCS`: Solves by SCS)
-  - `zero_inputs_applied`: Zero inputs applied
-  - `solve_time_mean_s`: Mean solve time [s]
-  - `solve_time_max_s`: Max solve time [s]
-  - `sigma_y_norm_mean`: Mean ‖σ_y‖₂
-  - `sigma_y_norm_max`: Max ‖σ_y‖₂
-
-Charts of Dataset (coupled masses run), by group -- `code name`: title · bottom axis · ordinate · legend:
-
-- **Inputs**
-  - `input-F1`: F1 · Sample [-] · F1 [N] · F1, Lower bound of F1 [N], Upper bound of F1 [N]
-  - `input-F2`: F2 · Sample [-] · F2 [N] · F2, Lower bound of F2 [N], Upper bound of F2 [N]
-- **Outputs**
-  - `output-e-x1`: e_x1 · Sample [-] · e_x1 [m] · e_x1
-  - `output-e-v1`: e_v1 · Sample [-] · e_v1 [m/s] · e_v1
-  - `output-e-x2`: e_x2 · Sample [-] · e_x2 [m] · e_x2
-  - `output-e-v2`: e_v2 · Sample [-] · e_v2 [m/s] · e_v2
-
-Numbers of Dataset (coupled masses run), by group -- `code name`: label [unit]:
-
-- **Inputs**
-  - `u_rms_F1`: F1 RMS [N]
-  - `u_rms_F2`: F2 RMS [N]
-- **Outputs**
-  - `y_rms_e_x1`: e_x1 RMS [m]
-  - `y_rms_e_v1`: e_v1 RMS [m/s]
-  - `y_rms_e_x2`: e_x2 RMS [m]
-  - `y_rms_e_v2`: e_v2 RMS [m/s]
 
 ### System (`system`)
 
@@ -251,3 +151,55 @@ Numbers of Open loop, by group -- `code name`: label:
   - `step_time_mean`: Mean step time
   - `step_time_std`: Step time std
   - `step_time_max`: Max step time
+
+### Closed loop (`closed_loop`)
+
+Settings, by group -- `code name`: label (· its rows · add button) (no units):
+
+- **Data**
+  - `open_loop_run`: Open loop run
+  - `x0`: x_0
+  - `seed`: Seed
+- **Reference**
+  - `r`: r · rows r1 =, r2 =, … · + Reference
+  - `duration`: Duration
+- **Controller**
+  - `Tini`: T_ini
+  - `N`: N
+  - `Q`: Q
+  - `R`: R
+  - `lambda_g`: λ_g
+  - `lambda_y`: λ_y
+  - `reg_norm_g`: Norm on g
+  - `reg_norm_sigma_y`: Norm on σ_y
+
+Charts of Closed loop (default run on the default open-loop run, the two masses), by group --
+`code name`: title · bottom axis · ordinate · legend:
+
+- **Outputs**
+  - `y1`: y1 · t · y1 · y1, r1 (and `y2`…`y4` alike)
+- **Inputs**
+  - `u1`: u1 · t · u1 · u1, Lower bound of u1, Upper bound of u1 (and `u2`)
+- **States**
+  - `x1`: x1 · t · x1 · x1 (and `x2`…`x4`)
+- **Disturbances**
+  - `d1`: d1 · t · d1 · d1 (and `d2`)
+- **Solver**
+  - `solve-time`: Solve time · t · Solve time · Solve time
+  - `cost`: J · t · J · J
+  - `sigma-y-norm`: ‖σ_y‖₂ · t · ‖σ_y‖₂ · ‖σ_y‖₂
+
+Numbers of Closed loop, by group -- `code name`: label:
+
+- **Outputs**
+  - `y1_rmse`: y1 RMSE (and `y2_rmse`…`y4_rmse`)
+- **Inputs**
+  - `clipped`: Clipped inputs
+- **Solver**
+  - `solves_optimal`: Solves: optimal (each status its own, e.g. `solves_optimal_inaccurate`: Solves: optimal inaccurate)
+  - `solves_by_OSQP`: Solves by OSQP (`solves_by_SCS`: Solves by SCS)
+  - `solve_time_mean`: Mean solve time
+  - `solve_time_std`: Solve time std
+  - `solve_time_max`: Max solve time
+  - `sigma_y_norm_mean`: Mean ‖σ_y‖₂
+  - `sigma_y_norm_max`: Max ‖σ_y‖₂

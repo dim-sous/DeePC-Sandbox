@@ -13,9 +13,7 @@ dependencies = [
     "control>=0.10.2",
     "cvxpy>=1.8.1",
     "numpy>=2.4.2",
-    "optuna>=4.8.0",
     "param>=2.4.2",
-    "plotly>=6.6.0",
     "scipy>=1.17.1",
     "sympy>=1.14.0",
 ]
@@ -37,8 +35,8 @@ dev = [
 [tool.setuptools.packages.find]
 # Three roots, one direction, as BESS's: src/ is the controller a real system would run; tools/
 # is the simulated world it never sees on hardware; devkit/ is the test bench. All three land on
-# sys.path via the editable install, so imports stay flat (`import deepc`, `import plants`,
-# `import sim`). The direction src <- tools <- devkit is held by tests/test_roots.py.
+# sys.path via the editable install, so imports stay flat (`import deepc`, `import system`,
+# `import harness`). The direction src <- tools <- devkit is held by tests/test_roots.py.
 where = ["src", "tools", "devkit"]
 # Only folders with an __init__.py are packages (BESS, 2026-10-26: a deleted package's leftover
 # __pycache__ folder was installed as an empty namespace package).
@@ -62,5 +60,5 @@ cache-keys = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # The roots are importable through the editable install; the repository root is on the path for
-# `tune.py` (`import tune`) and for `tests`.
+# `tests` (`from tests.lab_runs import …`).
 pythonpath = ["."]

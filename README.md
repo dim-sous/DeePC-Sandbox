@@ -1,8 +1,9 @@
 # DeePC Sandbox
 
-A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** on a simulated plant, a
-coupled two-mass spring-damper. An active personal project, not a library or product. A kinematic
-bicycle was deleted on 2026-11-11: no source for its model was known.
+A personal research sandbox for **Data-Enabled Predictive Control (DeePC)** on a simulated plant typed
+as equations, by default a coupled two-mass spring-damper. An active personal project, not a library or
+product. A kinematic bicycle was deleted on 2026-11-11 (no source for its model was known), and the
+coupled masses' hand-written plant class on 2026-11-17, replaced by the same system typed as rows.
 
 ## About
 
@@ -14,40 +15,35 @@ rich input-output trajectory contains all information needed to predict future b
 state it, and where the code departs from them, is in [METHODS.md](METHODS.md), §3.
 
 - **Systems, typed.** The `system` piece defines a system as rows: one per state equation
-  ($\dot x_i = f_i(x, u, \theta)$), one per output equation ($y_j = h_j(x, \theta)$), and the values
-  of the parameter vector $\theta$, in `x1…`, `u1…`, `theta1…`. SymPy reads and checks them
-  ([METHODS.md](METHODS.md) §10). A run also analyses the system at a point you give, $(x^*, u^*)$,
-  for one input–output pair: its exact linearisation, the poles, the Bode plot and the step,
-  impulse and ramp responses (python-control). It is the first piece of a rewrite
-  ([docs/project/design.md](docs/project/design.md)).
+  ($\dot x_i = f_i(x, u, d, \theta)$), one per output equation ($y_j = h_j(x, \theta)$), and the
+  values of the parameter vector $\theta$, in `x1…`, `u1…`, `d1…`, `theta1…`. SymPy reads and checks
+  them ([METHODS.md](METHODS.md) §10). A run also analyses the system at a point you give,
+  $(x^*, u^*)$, for one input–output pair: its exact linearisation, the poles, the Bode plot and the
+  step, impulse and ramp responses (python-control).
 - **Open loop.** The `open_loop` piece simulates a saved system run from $x_0$: an i.i.d. uniform
   excitation per input, clipped to the actuator bounds, and a Gaussian disturbance where the
   system's rows name one ($d_1, \dots$), both held over $T_s$ and integrated by RK45; the outputs
   measured as $y_k = h(x_k)$ plus Gaussian noise (§11). Its numbers: the PE order of $u$, each
-  output's SNR, the clipped inputs, the step time. The closed loop on it comes
-  next; the dataset and closed-loop pieces below still run on the plant class until then.
-- **Plants.**
+  output's SNR, the clipped inputs, the step time. Its record is the controller's data.
+- **Closed loop.** The `closed_loop` piece runs DeePC on a saved open-loop run (§5). The loop's
+  plant is that run's plant (its system, $T_s$, actuator bounds, noise, disturbance and
+  tolerances), sampled by the same two functions; the reference is typed as one row in $t$ per
+  output ($r_1, \dots$); the loop has its own seed and initial state. The first $T_{ini}$ samples
+  apply zero input; a solve with no solution stops the run. Its numbers: the RMSE of
+  $h(x_k) - r_k$ per output, the solves by status and by solver, the solve time's mean, spread and
+  maximum, $\lVert\sigma_y\rVert_2$, the clipped inputs.
+- **Controller.** The DeePC quadratic program in sparse form (inputs and outputs as decision
+  variables), with regularisation of the Hankel weights and a slack on the past outputs, and hard
+  input bounds (§4). Its code also holds input-rate bounds, soft output bounds, noise-adaptive
+  regularisation and an online Hankel window, which no piece reaches since 2026-11-17 (§6, §7).
+- **Stack.** CVXPY with OSQP (SCS as the fallback), SymPy, python-control, Benchlab for the records,
+  the charts (a still and the Lab's live twin), the `deepc` command and the Lab, NumPy and SciPy.
 
-  | Plant | Type | Inputs | Outputs | Scenarios |
-  |-------|------|--------|---------|-----------|
-  | `coupled_masses` | LTI MIMO | forces $F_1$, $F_2$ | position and velocity errors of both masses | `default` (steps), `sinusoidal` |
-
-- **Data.** Several episodes, each driven by a proportional baseline controller plus excitation,
-  with Gaussian noise on the recorded outputs.
-- **Controller.** The DeePC quadratic program in sparse form (inputs and outputs as decision variables), with
-  regularisation of the Hankel weights and a slack on the past outputs, hard input and rate bounds, and
-  optional soft output bounds. The outputs are tracking errors and the reference is zero.
-- **Variants**, both off by default: noise-adaptive regularisation (`noise_adaptive`) and an online
-  Hankel window fed by closed-loop data (`online_hankel`).
-- **Tuning.** A Bayesian search over the controller's settings with Optuna.
-- **Stack.** CVXPY with OSQP (SCS as the fallback), Optuna's TPE sampler, Benchlab for the records,
-  the charts (a still and the Lab's live twin), the `deepc` command and the Lab, Plotly for
-  `tune.py`'s report, NumPy and SciPy.
-
-The equations, the data collection, the controller, its variants, the metrics and their sources are in
-[METHODS.md](METHODS.md). The project is being rebuilt, first with the scaffolding that will expose its gaps
-(the rules in [CLAUDE.md](CLAUDE.md), a safety net, the three-folder layout, then records and a Lab), then
-the fixes.
+The equations, the controller, its sources and where the code departs from them are in
+[METHODS.md](METHODS.md); the rewrite's plan and the developer's decisions in
+[docs/project/design.md](docs/project/design.md). The project is being rebuilt, first with the
+scaffolding that will expose its gaps (the rules in [CLAUDE.md](CLAUDE.md), the three-folder layout,
+records and a Lab), then the fixes.
 
 ## Installation
 
@@ -70,40 +66,16 @@ its numbers and the commit; [devkit/README.md](devkit/README.md) has an example 
 uv run deepc run system                        # the two masses typed, read and checked -> results/system/default.json
 uv run deepc run system --set 'f=["x2", "-sin(x1) - theta1*x2 + u1"]' --set 'h=["x1"]' --set 'theta=[0.2]' --name pendulum
 uv run deepc run open_loop                     # that system simulated open loop -> results/open_loop/default.json
-uv run deepc run dataset                       # training data from the coupled masses -> results/dataset/default.json
-uv run deepc run closed_loop                   # DeePC on that data -> results/closed_loop/default.json
-uv run deepc run closed_loop --set sim_duration=10 --sweep lambda_g=1,10,100 --name lg
+uv run deepc run closed_loop                   # DeePC on that run -> results/closed_loop/default.json
+uv run deepc run closed_loop --set duration=10 --sweep lambda_g=1,10,100 --name lg
 uv run deepc draw results/closed_loop/default.json                       # its charts as PNGs beside it
-uv run deepc draw results/closed_loop/lg-*.json --number rmse_e_x1 --vs lambda_g
+uv run deepc draw results/closed_loop/lg-*.json --number y1_rmse --vs lambda_g
 uv run lab --no-open                           # the Lab on http://127.0.0.1:8765: runs ticked and compared on the left, live charts on the right
 ```
 
 The Lab runs the pieces for you, from a form over the settings, each run its own process, side by
 side up to the machine's cores, and computes nothing itself. Benchlab's own suite drives the page; here one test
 checks that the pieces plug into it (`tests/test_bench.py`).
-
-Bayesian tuning over the controller's settings (Optuna) writes its own report under `results/tune/`;
-a failed trial stops the study:
-
-```bash
-uv run python tune.py --plant coupled_masses --n-trials 100 --sim-duration 10
-```
-
-**Adding a plant.** Implement `PlantBase` from `tools/plants/base.py`:
-
-```python
-from plants.base import PlantBase, Constraints, DataCollectionConfig
-
-class MyPlant(PlantBase):
-    # Implement: m, p, Ts, input_names, output_names, state
-    # Implement: step(), reset(), get_output(), get_constraints()
-    # Implement: get_default_config_overrides(), get_scenarios()
-    # Implement: get_data_collection_config(), make_episode_initial_state()
-    # Optional:  compute_custom_metrics()
-    ...
-```
-
-Then add it to `PLANT_REGISTRY` in `tools/plants/__init__.py` and collect its data with `uv run deepc run dataset --set plant=my_plant`.
 
 ## Checks
 
@@ -113,62 +85,61 @@ uv run pytest
 
 The suite runs locally and is the gate for every change. It holds:
 
-- **The safety net** (`tests/reference/`). Today's numbers are frozen: training data, reference paths,
-  four closed loops and the metrics `tune.py` scores by. The test compares the code against them byte for byte, along
-  with every setting each case ran under.
-- **The layout's direction** (`tests/test_roots.py`). The controller (`src/`) imports neither the plants
-  (`tools/`) nor the bench (`devkit/`), the plants never import the bench, and `src/` holds exactly the
-  modules its inventory declares.
-- **The pieces** (`tests/test_harness.py`). Each reproduces the frozen numbers bit for bit through its
-  saved file, its numbers are reductions of its arrays, and a saved dataset run that no longer runs again
-  to its file is refused.
+- **The pieces** (`tests/test_system.py`, `tests/test_open_loop.py`, `tests/test_closed_loop.py`).
+  Each against known answers: the parser and the reference reader, what they read and refuse; the
+  integrator and both loops' plant against the exact sampled linear system; the loop's plant is
+  the open-loop run's; the fundamental lemma on the Hankel blocks of noise-free data; what each
+  piece refuses; that its numbers are reductions of its arrays; that a saved run which no longer
+  runs again to its file is refused.
+- **The solves** (`tests/test_solve_outcomes.py`). Every status counted by its own name, the SCS
+  fallback named, no solution flagged.
+- **The layout's direction** (`tests/test_roots.py`, `tests/test_devkit_layers.py`). The controller
+  (`src/`) imports neither the simulated world (`tools/`) nor the bench (`devkit/`), the world
+  never imports the bench, and `src/` holds exactly the modules its inventory declares.
+- **Benchlab's check** (`tests/test_bench.py`) on a small run of every piece.
 - **The document checks.** CLAUDE.md's length budget and METHODS.md's citations. Every folder path and
   every `file:line` pointer in this README, METHODS.md and failures.md must exist, and each pointer must fall
   inside its file. Whether a pointer still points at the code it describes is not checked.
 
-The frozen files are remade only by `uv run python -m tests.reference.make`, on a change meant to move the
-numbers.
+There is no safety net of frozen numbers between 2026-11-17 and the branch that makes the new one:
+the old one froze the old pipeline's numbers and went with it.
 
 ## Project layout
 
 | Path | Role |
 |---|---|
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
-| `tools/system/` | the typed system: the parser (`parse.py`, text to $f$, $h$ and the sizes), the one integrator (`integrate.py`, RK45 with $u$ held), `System` and `system_of` (`__init__.py`) |
-| `tools/plants/` | the simulated world: `PlantBase` (`base.py`), the coupled masses (`coupled_masses.py`), the excitation signals (`excitation.py`), the plant registry (`__init__.py`) |
-| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the simulation code (`devkit/sim/`) and the pieces (`devkit/harness/`), declared to Benchlab, which holds the settings and records, the charts, the `deepc` command and the Lab |
-| `tune.py` | Bayesian search over the controller's settings (Optuna) |
-| `tests/` | the safety net (`tests/reference/`, `test_reference.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), the pieces and their records (`test_harness.py`), that they plug into Benchlab (`test_bench.py`), the units they declare (`test_units.py`) and the document checks (`test_conventions.py`) |
+| `tools/system/` | the simulated world: the parser (`parse.py`, rows to $f$, $h$ and the sizes, and a reference typed in $t$), the one integrator (`integrate.py`, RK45 with $u$ held), the plant's sample (`step.py`: the output measured, then the step with the actuator clip), the linearisation (`linearize.py`) |
+| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the pieces (`devkit/harness/`), declared to Benchlab, which holds the settings and records, the charts, the `deepc` command and the Lab |
+| `tests/` | the pieces (`test_system.py`, `test_open_loop.py`, `test_closed_loop.py`), the solves (`test_solve_outcomes.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), that they plug into Benchlab (`test_bench.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
-| `docs/project/failures.md` | the incidents the rules were written after (D1–D17) |
+| `docs/project/failures.md` | the incidents the rules were written after (D1–D18) |
 | `references/` | the papers, on each computer only (git-ignored: the repository is public) |
 
 ## Limitations
 
 Simulation only. The known problems are recorded in
-[docs/project/failures.md](docs/project/failures.md); D1–D3 are fixed, D7 closed, the others not yet:
+[docs/project/failures.md](docs/project/failures.md):
 
 - **D1** (fixed, PR #8) `--Ts`, and the tuner's search over it, never reached the plant.
 - **D2** (fixed, PR #9) an inaccurate solve was counted as optimal.
 - **D3** (fixed, PR #9) solver failures were silent: a hidden SCS retry, a zero input applied, warnings that
   changed nothing, a tuner that scored a failed trial 1e6.
-- **D4** the training outputs are noisy and the closed-loop outputs are not.
-- **D5** the online Hankel gate reads an estimator that only runs under `noise_adaptive`.
+- **D4, D9, D10, D12, D15** (closed 2026-11-17, with the old pipeline) the old loop's outputs had no
+  noise, its Hankel columns joined episodes, it aligned the reference differently from the data,
+  its data recorded inputs before the clip, and it tracked errors with a zero reference. The new
+  loop measures as the data does, on one open-loop run, tracking a reference with $y$.
+- **D5, D11, D16, D17** the code of the noise-adaptive and online-Hankel variants, kept in `src/`
+  but reached by no piece since 2026-11-17.
 - **D6** comments that describe other code.
 - **D7** (closed, the bicycle deleted) the bicycle's output bounds sat on the speed error.
-- **D8** code nothing calls.
-- **D9** Hankel columns that join two episodes, or the training data and the loop.
-- **D10** the loop and the data align the reference with the state differently.
-- **D11** the noise-adaptive tightening enters no constraint at the defaults.
-- **D12** the training data records inputs before the plant clips them.
+- **D8** code nothing calls: the variants' code above is kept on purpose until the maths phase.
 - **D13** the excitation check uses a lower order than the fundamental lemma asks for.
 - **D14** the default regulariser on the Hankel weights is the squared 2-norm, where Coulson et al. use the
   1-norm and a low-rank step the code lacks.
-- **D15** tracking on errors with a zero reference, where Coulson et al. track a reference with the
-  system's outputs.
-- **D16** the noise-adaptive rule is not the one in the paper it cites.
-- **D17** the online window is not the one in the paper it cites.
+- **D18** with no rate bound, as the closed loop builds the controller, the SCS fallback found no
+  solution where OSQP found one.
 
 **Claims from before the rebuild, not re-measured.** These were written into the old CLAUDE.md before any
 run was recorded. No record backs them, and each stays unverified until one re-measures it.
