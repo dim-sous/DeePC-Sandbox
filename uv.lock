@@ -12,8 +12,8 @@ resolution-markers = [
 
 [[package]]
 name = "benchlab"
-version = "0.7.0"
-source = { git = "https://github.com/dim-sous/BenchLab?branch=main#5023526453c805bdfcea50bc814b9e407949d607" }
+version = "0.19.0"
+source = { git = "https://github.com/dim-sous/BenchLab?branch=main#4ac138bce2ba7ac51cf1d030c38c803660851f3a" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
