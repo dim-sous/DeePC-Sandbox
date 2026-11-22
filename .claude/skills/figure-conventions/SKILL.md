@@ -1,7 +1,7 @@
 ---
 name: figure-conventions
 description: Checklist for anything that draws or annotates a figure (a record's panel declaration, a Lab card, a still). Figures describe; they never conclude.
-when_to_use: Writing or editing plotting code (a piece's Record declaration, or Benchlab's figure layer and Lab, which draw DeePC's charts), annotating a chart, or choosing what a hand-off shows.
+when_to_use: Writing or editing plotting code (a piece's Record declaration, or RunLab's figure layer and Lab, which draw DeePC's charts), annotating a chart, or choosing what a hand-off shows.
 paths:
   - devkit/harness/**/*.py
 allowed-tools: Read Grep Glob Edit Write Bash
@@ -53,7 +53,7 @@ that sentence goes in the hand-off, not in the figure.
 ## Every figure regenerates
 
 One panel spec is drawn two ways (the Lab's card, a still from `deepc draw`) from what a
-record declares, as in BESS (Benchlab's `benchlab/figure/`). Never edit an
+record declares, as in BESS (RunLab's `runlab/figure/`). Never edit an
 image by hand, and never write a one-off script whose output cannot be made again.
 
 ## What the developer's gate needs

@@ -19,7 +19,7 @@ import time
 
 import numpy as np
 
-from benchlab import stamp
+from runlab import stamp
 from deepc.config import DeePCConfig
 from deepc.controller import DeePCController
 from harness.open_loop import open_loop_of

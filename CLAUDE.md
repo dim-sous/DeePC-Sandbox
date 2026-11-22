@@ -66,9 +66,9 @@ Three roots, one direction, as BESS's: `src/` is the controller a real system wo
 (`deepc`: Hankel matrices, the sparse QP, the excitation check, the constraints it reads, the
 noise-adaptive and online-Hankel variants no piece reaches); `tools/` the simulated world it never
 sees on hardware (`system`: the typed system, its integrator and sample, a signal typed in t);
-`devkit/` the bench (`harness`: the pieces, `devkit/README.md`) on Benchlab, which holds
+`devkit/` the bench (`harness`: the pieces, `devkit/README.md`) on RunLab, which holds
 the records, charts, `deepc` command and Lab, taken by a range in `pyproject.toml` at the commit
-`uv.lock` holds: a change to those is made in Benchlab, of which DeePC uses only what its README
+`uv.lock` holds: a change to those is made in RunLab, of which DeePC uses only what its README
 lists for a project (`tests/test_bench.py`; `devkit/README.md`). Imports run `src ← tools ←
 devkit` and stay flat (`import deepc`, never `import src.deepc`), held by `tests/test_roots.py`;
 inside devkit, by `tests/test_devkit_layers.py`.
@@ -89,7 +89,7 @@ The judgment calls no test can make yet:
   Lab, with no other edit (RCWS `dd18796` took ten files).
 - After any move, search code, docs and settings for the old names (RCWS #159).
 - The words a Lab user reads — labels, chart names, legends; no hovers but a greyed control's
-  reason and a chart's own (Benchlab's `docs/design.md` decision 5) — follow the developer's
+  reason and a chart's own (RunLab's `docs/design.md` decision 5) — follow the developer's
   pattern (2026-11-11): inputs u1…, outputs y1…, states x1…, time t, everywhere; no units; a
   capital first for words, no articles, acronyms and the standard mathematical terms; the page's
   own in `devkit/harness/words.toml`, the rest in `docs/project/lab-words.md`; on their word (RCWS #96).

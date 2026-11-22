@@ -16,7 +16,7 @@ import numpy as np
 
 from deepc.regularization import check_persistent_excitation
 from harness.system import system_of
-from benchlab import stamp
+from runlab import stamp
 from system import measure, step
 
 from .config import Config

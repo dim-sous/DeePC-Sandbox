@@ -10,7 +10,7 @@ import pytest
 from scipy.linalg import expm
 
 from harness import get_component
-from benchlab import with_overrides
+from runlab import with_overrides
 from system import ATOL, RTOL, hold, parse, parse_signal
 
 SYSTEM = get_component("system")
@@ -171,7 +171,7 @@ def test_the_pole_numbers_say_whether_the_point_is_stable() -> None:
 
 
 def test_the_pole_map_is_the_saved_poles_on_one_scale_with_no_title_and_no_unit() -> None:
-    """A figure the record draws itself (Benchlab's ``Figure``): the poles a run saves, a cross
+    """A figure the record draws itself (RunLab's ``Figure``): the poles a run saves, a cross
     each, real part across and imaginary part up."""
     hanging = SYSTEM.run(SYSTEM.Config(**PENDULUM, x_star=[0.0, 0.0]))
     [pole_map] = hanging.figures()

@@ -1,7 +1,7 @@
-# Every word DeePC's Lab writes itself, one table per part of the page: Benchlab names each slot
-# (benchlab/lab/words.py), DeePC fills it. To change a word, change it here. A word writes a
+# Every word DeePC's Lab writes itself, one table per part of the page: RunLab names each slot
+# (runlab/lab/words.py), DeePC fills it. To change a word, change it here. A word writes a
 # field as {n}; a word that counts has a .one and a .many. Leaving a slot out, naming one
-# Benchlab does not have, or writing a field a slot does not offer stops `uv run lab` from
+# RunLab does not have, or writing a field a slot does not offer stops `uv run lab` from
 # starting, naming each. Write {{ for a brace. A piece's own words (its settings, charts and
 # numbers) are in its folder beside this file.
 

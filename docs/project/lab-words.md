@@ -10,7 +10,7 @@ Every word the Lab shows, as it shows it now. They follow your pattern from BESS
 > λ_g, λ_y, σ_y, g, J), σ for a standard deviation.
 
 **Where a word is written.** The page's own words -- its buttons, headings, counts, notes and
-refusals -- are in `devkit/harness/words.toml`, one slot each that Benchlab names (Benchlab
+refusals -- are in `devkit/harness/words.toml`, one slot each that RunLab names (RunLab
 0.4.0, its `docs/design.md` decision 4): to change one, change it there. A piece's words (its
 settings, charts and numbers) are in `devkit/harness/<piece>/`, listed below (§2); the page's
 title and the command whose line it prints beside each run are `TITLE` and `COMMAND` in
@@ -20,8 +20,8 @@ or a number's code name
 (`sigma-y-norm`, `y1_rmse`) is not a word the page shows as a title: it stays the
 file `deepc draw` writes and a link's address key. No word is on a hover but a greyed control's
 reason and a chart's own -- a point's run and value, and the chart toolbar's button names (Zoom,
-Pan, Zoom in, Zoom out, Reset axes), plotly's -- (Benchlab's `docs/design.md` decision 5, since
-Benchlab 0.3.0); a reason is a sentence: it begins with a capital and keeps its articles where a
+Pan, Zoom in, Zoom out, Reset axes), plotly's -- (RunLab's `docs/design.md` decision 5, since
+RunLab 0.3.0); a reason is a sentence: it begins with a capital and keeps its articles where a
 sentence needs them.
 
 **Your word, 2026-11-11:** inputs (manipulated variables) are u1…, outputs (measurements) y1…,

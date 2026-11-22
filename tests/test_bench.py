@@ -1,11 +1,11 @@
-"""DeePC plugs into Benchlab: the one check Benchlab ships for a project (its ``README.md``, "What
+"""DeePC plugs into RunLab: the one check RunLab ships for a project (its ``README.md``, "What
 a project may use"), on a small run of every piece, made through the command line."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from benchlab.testing import check_project
+from runlab.testing import check_project
 
 from tests.lab_runs import make_runs
 
