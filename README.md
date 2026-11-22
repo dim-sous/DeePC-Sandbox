@@ -36,7 +36,7 @@ state it, and where the code departs from them, is in [METHODS.md](METHODS.md), 
   variables), with regularisation of the Hankel weights and a slack on the past outputs, and hard
   input bounds (§4). Its code also holds input-rate bounds, soft output bounds, noise-adaptive
   regularisation and an online Hankel window, which no piece reaches since 2026-11-17 (§6, §7).
-- **Stack.** CVXPY with OSQP (SCS as the fallback), SymPy, python-control, Benchlab for the records,
+- **Stack.** CVXPY with OSQP (SCS as the fallback), SymPy, python-control, RunLab for the records,
   the charts (a still and the Lab's live twin), the `deepc` command and the Lab, NumPy and SciPy.
 
 The equations, the controller, its sources and where the code departs from them are in
@@ -74,7 +74,7 @@ uv run lab --no-open                           # the Lab on http://127.0.0.1:876
 ```
 
 The Lab runs the pieces for you, from a form over the settings, each run its own process, side by
-side up to the machine's cores, and computes nothing itself. Benchlab's own suite drives the page; here one test
+side up to the machine's cores, and computes nothing itself. RunLab's own suite drives the page; here one test
 checks that the pieces plug into it (`tests/test_bench.py`).
 
 ## Checks
@@ -96,7 +96,7 @@ The suite runs locally and is the gate for every change. It holds:
 - **The layout's direction** (`tests/test_roots.py`, `tests/test_devkit_layers.py`). The controller
   (`src/`) imports neither the simulated world (`tools/`) nor the bench (`devkit/`), the world
   never imports the bench, and `src/` holds exactly the modules its inventory declares.
-- **Benchlab's check** (`tests/test_bench.py`) on a small run of every piece.
+- **RunLab's check** (`tests/test_bench.py`) on a small run of every piece.
 - **The document checks.** CLAUDE.md's length budget and METHODS.md's citations. Every folder path and
   every `file:line` pointer in this README, METHODS.md and failures.md must exist, and each pointer must fall
   inside its file. Whether a pointer still points at the code it describes is not checked.
@@ -115,8 +115,8 @@ numbers or on the computer that is to hold them.
 |---|---|
 | `src/deepc/` | the controller, what a real system would run: settings (`config.py`), the constraints it reads (`constraints.py`), the QP (`controller.py`), Hankel matrices (`hankel.py`, `online_hankel.py`), the excitation check (`regularization.py`), the noise estimator (`noise_estimator.py`) |
 | `tools/system/` | the simulated world: the parser (`parse.py`, rows to $f$, $h$ and the sizes, and a reference typed in $t$), the one integrator (`integrate.py`, RK45 with $u$ held), the plant's sample (`step.py`: the output measured, then the step with the actuator clip), the linearisation (`linearize.py`) |
-| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the pieces (`devkit/harness/`), declared to Benchlab, which holds the settings and records, the charts, the `deepc` command and the Lab |
-| `tests/` | the pieces (`test_system.py`, `test_open_loop.py`, `test_closed_loop.py`), the solves (`test_solve_outcomes.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), that they plug into Benchlab (`test_bench.py`) and the document checks (`test_conventions.py`) |
+| `devkit/` | the bench ([devkit/README.md](devkit/README.md)): the pieces (`devkit/harness/`), declared to RunLab, which holds the settings and records, the charts, the `deepc` command and the Lab |
+| `tests/` | the pieces (`test_system.py`, `test_open_loop.py`, `test_closed_loop.py`), the solves (`test_solve_outcomes.py`), the layout's direction (`test_roots.py`, `test_devkit_layers.py`), that they plug into RunLab (`test_bench.py`) and the document checks (`test_conventions.py`) |
 | `METHODS.md` | what the code computes, as equations, with references |
 | `CLAUDE.md` | the working rules |
 | `docs/project/failures.md` | the incidents the rules were written after (D1–D18) |

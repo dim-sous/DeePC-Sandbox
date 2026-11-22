@@ -1,11 +1,11 @@
 """The shape of the devkit's packages and of every registered piece (BESS's
 ``tests/test_devkit_layers.py``, adapted).
 
-The generic layers -- the records, the charts, the command line and the Lab -- are Benchlab's; the
-half of this file about their shape moved there with them (Benchlab's ``tests/test_layers.py``),
-and with Benchlab's branch R1 so did the check that they name no piece, which Benchlab holds
+The generic layers -- the records, the charts, the command line and the Lab -- are RunLab's; the
+half of this file about their shape moved there with them (RunLab's ``tests/test_layers.py``),
+and with RunLab's branch R1 so did the check that they name no piece, which RunLab holds
 against its own made-up pieces. A piece is a package under ``harness/`` exposing exactly
-``Config``, ``run`` and ``Record``, on the names Benchlab holds for a project. Reading the
+``Config``, ``run`` and ``Record``, on the names RunLab holds for a project. Reading the
 registry imports no piece.
 """
 
@@ -20,20 +20,20 @@ from pathlib import Path
 import param
 import pytest
 
-from benchlab import Record, Settings
+from runlab import Record, Settings
 from harness import COMPONENTS, NAMES
 
 ROOT = Path(__file__).resolve().parent.parent
 DEVKIT = ROOT / "devkit"
 #: Not a devkit package, but held like one: before the move the pieces could not import
 #: ``figure``, ``terminal`` or ``lab``.
-_BENCHLAB = "benchlab"
-#: Who may import whom among the devkit's packages and Benchlab, by dotted prefix. ``harness``
+_RUNLAB = "runlab"
+#: Who may import whom among the devkit's packages and RunLab, by dotted prefix. ``harness``
 #: covers the registry and the pieces, which declare their settings and records on the names
-#: Benchlab holds for a project; how much of Benchlab any file here may reach is held by
-#: Benchlab's own check (``tests/test_bench.py``). The bench's old simulation code, ``sim``, went
+#: RunLab holds for a project; how much of RunLab any file here may reach is held by
+#: RunLab's own check (``tests/test_bench.py``). The bench's old simulation code, ``sim``, went
 #: with the old closed loop; the pieces simulate through ``tools/system``.
-_MAY_IMPORT = {"harness": {_BENCHLAB}}
+_MAY_IMPORT = {"harness": {_RUNLAB}}
 
 
 def _sources(package: str) -> list[Path]:
@@ -42,7 +42,7 @@ def _sources(package: str) -> list[Path]:
 
 def _imports(path: Path):
     """Every module a file imports by its full name; ``from a import b`` as ``a.b``, since ``b``
-    may be a module (``from benchlab import lab`` reaches the Lab)."""
+    may be a module (``from runlab import lab`` reaches the Lab)."""
     for node in ast.walk(ast.parse(path.read_text())):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -64,7 +64,7 @@ def test_every_devkit_package_is_in_the_import_table() -> None:
 @pytest.mark.parametrize("package", sorted(_MAY_IMPORT))
 def test_the_dependency_runs_one_way_between_the_layers(package: str) -> None:
     allowed = _MAY_IMPORT[package] | {package}
-    held = set(_MAY_IMPORT) | {_BENCHLAB}
+    held = set(_MAY_IMPORT) | {_RUNLAB}
     for path in _sources(package):
         crossing = sorted({n for n in _imports(path)
                            if n.split(".")[0] in held and not _within(n, allowed)})

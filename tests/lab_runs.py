@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from benchlab.cli import main
+from runlab.cli import main
 
 OUT_DIR = "results"
 

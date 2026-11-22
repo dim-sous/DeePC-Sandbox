@@ -1,7 +1,7 @@
 """Three roots, one direction: src <- tools <- devkit, and src holds exactly what a controller runs.
 
 `src/` is the DeePC controller a real system would run. It may not import the simulated world
-(`tools/`) or the test bench (`devkit/`, and Benchlab, the bench's records, charts, command line and
+(`tools/`) or the test bench (`devkit/`, and RunLab, the bench's records, charts, command line and
 Lab): on real hardware neither exists. `tools/` may import `src/` and libraries, never the bench.
 The bench may import everything. (BESS's #1, adopted here by the layout move; the three wrong-way
 imports it removed are in its PR.)
@@ -20,8 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SRC, TOOLS, DEVKIT = ROOT / "src", ROOT / "tools", ROOT / "devkit"
 #: The bench that is installed rather than held under `devkit/`: it was `devkit/record`,
-#: `figure`, `terminal` and `lab` until they moved to Benchlab.
-BENCH_INSTALLED = ["benchlab"]
+#: `figure`, `terminal` and `lab` until they moved to RunLab.
+BENCH_INSTALLED = ["runlab"]
 
 
 def _packages(root: Path) -> list[str]:

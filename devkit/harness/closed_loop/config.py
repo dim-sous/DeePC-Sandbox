@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import param
 
-from benchlab import Settings
+from runlab import Settings
 
 DATA, REFERENCE, CONTROLLER = "Data", "Reference", "Controller"
 GROUPS: tuple[str, ...] = (DATA, REFERENCE, CONTROLLER)

@@ -9,7 +9,7 @@ description = "DeePC sandbox — developing, testing, and benchmarking Data-Enab
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "benchlab>=0.7,<1",     # the bench: records, charts, the command line, the Lab (devkit/README.md)
+    "runlab>=1,<2",     # the bench: records, charts, the command line, the Lab (devkit/README.md)
     "control>=0.10.2",
     "cvxpy>=1.8.1",
     "numpy>=2.4.2",
@@ -19,11 +19,11 @@ dependencies = [
 ]
 
 [project.scripts]
-deepc = "benchlab.cli:main"     # run a piece, save its record (devkit/README.md)
-lab = "benchlab.lab:main"       # the Lab: one local page over the pieces (devkit/README.md)
+deepc = "runlab.cli:main"     # run a piece, save its record (devkit/README.md)
+lab = "runlab.lab:main"       # the Lab: one local page over the pieces (devkit/README.md)
 
-[project.entry-points.benchlab]
-# DeePC's declaration to Benchlab: the registry module, beside its COMMAND, TITLE, ROOT, LIBRARIES
+[project.entry-points.runlab]
+# DeePC's declaration to RunLab: the registry module, beside its COMMAND, TITLE, ROOT, LIBRARIES
 project = "harness"
 
 [dependency-groups]
@@ -43,9 +43,9 @@ where = ["src", "tools", "devkit"]
 namespaces = false
 
 [tool.uv.sources]
-# Benchlab from its main line; uv.lock holds the commit, raised by
-# `uv lock --upgrade-package benchlab`, then the whole suite (Benchlab's README)
-benchlab = { git = "https://github.com/dim-sous/BenchLab", branch = "main" }
+# RunLab from its main line; uv.lock holds the commit, raised by
+# `uv lock --upgrade-package runlab`, then the whole suite (RunLab's README)
+runlab = { git = "https://github.com/dim-sous/RunLab", branch = "main" }
 
 [tool.uv]
 # The editable install records the package list at install time, so a package added or moved

@@ -4,7 +4,7 @@ the linearisation (A, B, C), its poles, the pair's frequency response (Bode) and
 impulse and ramp responses, by python-control. Names as the developer names them (2026-11-11):
 ω, |G|, ∠G, t, δy; no units (the phase is in degrees, by the Bode plot's convention). The poles
 are also drawn, on the complex plane: a figure the record draws itself, since a chart is lines
-against an abscissa (Benchlab's ``Figure``).
+against an abscissa (RunLab's ``Figure``).
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import dataclasses
 
 import numpy as np
 
-from benchlab import Figure, Number, Provenance, Series
-from benchlab import Record as _Record
+from runlab import Figure, Number, Provenance, Series
+from runlab import Record as _Record
 
 from .config import Config
 

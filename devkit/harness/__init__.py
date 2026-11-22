@@ -2,9 +2,9 @@
 and ``Record`` (``tests/test_devkit_layers.py`` holds that). Reading the registry imports
 nothing; naming a piece imports that piece only (BESS's ``devkit/harness/__init__.py``).
 
-It is also DeePC's declaration to Benchlab, which runs, draws and shows the pieces: the module
-``pyproject.toml`` names in ``[project.entry-points.benchlab]``, holding ``COMMAND``, ``TITLE``,
-``ROOT``, ``LIBRARIES`` and ``WORDS`` beside the registry (Benchlab's ``README.md``).
+It is also DeePC's declaration to RunLab, which runs, draws and shows the pieces: the module
+``pyproject.toml`` names in ``[project.entry-points.runlab]``, holding ``COMMAND``, ``TITLE``,
+``ROOT``, ``LIBRARIES`` and ``WORDS`` beside the registry (RunLab's ``README.md``).
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ TITLE = "DeePC Lab"
 ROOT = Path(__file__).resolve().parent.parent.parent
 #: The libraries a run's numbers depend on, recorded with every run.
 LIBRARIES: tuple[str, ...] = ("numpy", "scipy", "sympy", "control", "cvxpy", "osqp", "scs")
-#: Every word the Lab's page writes itself, a slot Benchlab names for each.
+#: Every word the Lab's page writes itself, a slot RunLab names for each.
 WORDS = Path(__file__).with_name("words.toml")
 
 
