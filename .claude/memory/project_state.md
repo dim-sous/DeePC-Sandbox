@@ -243,3 +243,5 @@ settings in `DeePCConfig`, the code no piece reaches, D6 -- their call whether t
 maths); then D18 (now known to move no number). Outside this repo: taking RunLab v0.10.0
 (`uv lock --upgrade-package benchlab`, no edit expected: RunLab's R6 keeps `benchlab` as a
 stand-in until 1.0, when DeePC's install lines and `<1` must change).
+
+**RunLab 1.16.0 taken (2026-11-24, its lock raised alone, `uv lock --upgrade-package runlab`):** 1.0.0 -> 1.16.0 (`b465348`). The suite 138 passed; RunLab's `check_project` passed on one default run of each piece (every chart and form drawn); the page driven: each piece lists its run, draws its charts, opens its form, no page or server error. What 1.1 to 1.16 added (scene cards, Messages, cold start, colours by meaning, re-fly, a named runs folder...) is RunLab's README; DeePC uses none yet.
