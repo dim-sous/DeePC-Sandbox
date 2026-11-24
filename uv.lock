@@ -1265,8 +1265,8 @@ wheels = [
 
 [[package]]
 name = "runlab"
-version = "1.0.0"
-source = { git = "https://github.com/dim-sous/RunLab?branch=main#db9200b81a800d641a0058e64bf2a08f300467c2" }
+version = "1.16.0"
+source = { git = "https://github.com/dim-sous/RunLab?branch=main#b4653487d8cf500aaa365f866bf2b656dcd8e619" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
